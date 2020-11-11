@@ -111,14 +111,53 @@ def solve_trust_region_subproblem(B: np.ndarray,
     return s, 'hard'
 
 
-def slam(lam: float, w: np.ndarray, eigvals: np.ndarray, eigvecs: np.ndarray):
+def slam(lam: float,
+         w: np.ndarray,
+         eigvals: np.ndarray,
+         eigvecs: np.ndarray) -> np.ndarray:
+    """
+    Computes the solution s(lambda) as subproblem solution according to
+    $-(B + \lamba*I)*s = g$
+
+    :param lam:
+        lambda
+    :param w:
+        precomputed eigenvector coefficients for -g
+    :param eigvals:
+        precomputed eigenvalues of B
+    :param eigvecs:
+        precomputed eigenvectors of B
+
+    :return:
+        s
+    """
     c = w.copy()
     el = eigvals + lam
     c[el != 0] /= el[el != 0]
     return eigvecs.dot(c)
 
 
-def dslam(lam: float, w: np.ndarray, eigvals: np.ndarray, eigvecs: np.ndarray):
+def dslam(lam: float,
+          w: np.ndarray,
+          eigvals: np.ndarray,
+          eigvecs: np.ndarray):
+    """
+    Computes the derivative of the solution s(lambda) with respect to
+    lambda, where s is the ubproblem solution according to
+    $-(B + \lamba*I)*s = g$
+
+    :param lam:
+        $\lambda$
+    :param w:
+        precomputed eigenvector coefficients for -g
+    :param eigvals:
+        precomputed eigenvalues of B
+    :param eigvecs:
+        precomputed eigenvectors of B
+
+    :return:
+        $\frac{\partial s(\lamba)}{\partial \lamba}$
+    """
     c = w.copy()
     el = eigvals + lam
     c[el != 0] /= - np.power(el[el != 0], 2)
@@ -126,8 +165,29 @@ def dslam(lam: float, w: np.ndarray, eigvals: np.ndarray, eigvecs: np.ndarray):
     return eigvecs.dot(c)
 
 
-def secular(lam: float, w: np.ndarray, eigvals: np.ndarray,
-            eigvecs: np.ndarray, delta: float):
+def secular(lam: float,
+            w: np.ndarray,
+            eigvals: np.ndarray,
+            eigvecs: np.ndarray,
+            delta: float):
+    """
+    Secular equation $\phi(\lamba) = \frac{1}{||s||} - \frac{1}{\Delta}
+    Subproblem solutions are given by the roots of this equation
+
+    :param lam:
+        $\lambda$
+    :param w:
+        precomputed eigenvector coefficients for -g
+    :param eigvals:
+        precomputed eigenvalues of B
+    :param eigvecs:
+        precomputed eigenvectors of B
+    :param delta:
+        trust region radius $\Delta$
+
+    :return:
+        $\phi(\lamba)$
+    """
     if lam < -np.min(eigvals):
         return np.inf  # safeguard to implement boundary
     s = slam(lam, w, eigvals, eigvecs)
@@ -136,6 +196,24 @@ def secular(lam: float, w: np.ndarray, eigvals: np.ndarray,
 
 def dsecular(lam: float, w: np.ndarray, eigvals: np.ndarray,
              eigvecs: np.ndarray, _):
+    """
+    Derivative of the secular equation $\phi(\lamba) = \frac{1}{||s||} -
+    \frac{1}{\Delta} with respect to `\lambda`
+
+    :param lam:
+        $\lambda$
+    :param w:
+        precomputed eigenvector coefficients for -g
+    :param eigvals:
+        precomputed eigenvalues of B
+    :param eigvecs:
+        precomputed eigenvectors of B
+    :param delta:
+        trust region radius $\Delta$
+
+    :return:
+        $\frac{\partial \phi(\lamba)}{\partial \lamba}$
+    """
     s = slam(lam, w, eigvals, eigvecs)
     ds = dslam(lam, w, eigvals, eigvecs)
     return - s.T.dot(ds) / (norm(s) ** 3)

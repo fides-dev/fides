@@ -3,13 +3,17 @@ from .logging import logger
 
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
-from scipy.sparse import linalg as splinalg
 import scipy.linalg as linalg
 
 from .subproblem import solve_trust_region_subproblem
 
 
-def normalize(v):
+def normalize(v: np.ndarray) -> Nones:
+    """
+    Inplace normalization of a vector
+    :param v:
+        vector to be normalizes
+    """
     nv = norm(v)
     if nv > 0:
         v[:] = v/nv  # change inplace
@@ -17,6 +21,8 @@ def normalize(v):
 
 class Step:
     """
+    Base class for the computation of a proposal step
+
     :ivar x: current state of optimization variables
     :ivar s: proposed step
     :ivar sc: coefficients in the 1D/2D subspace that defines the affine
@@ -121,15 +127,20 @@ class Step:
         self.sc *= self.alpha
         self.ss *= self.alpha
 
-    def reduce_to_subspace(self):
+    def reduce_to_subspace(self) -> None:
         """
-        This function projects the matrices B and the vector g_hat to the
+        This function projects the matrix shess and the vector sg to the
         subspace
         """
         self.chess = self.subspace.T.dot(self.shess.dot(self.subspace))
         self.cg = self.subspace.T.dot(self.sg)
 
-    def compute_step(self):
+    def compute_step(self) -> None:
+        """
+        Compute the step as solution to the trust region subproblem. Special
+        code is used for the special case 1-dimensional subspace case
+        :return:
+        """
         if self.subspace.shape[1] > 1:
             self.sc, _ = solve_trust_region_subproblem(self.chess, self.cg,
                                                        self.delta)
@@ -140,6 +151,10 @@ class Step:
         self.s = self.scaling.dot(self.ss) + self.s0
 
     def calculate(self):
+        """
+        Calculates step and the expected objective function value according to
+        the quadratic approximation
+        """
         self.reduce_to_subspace()
         self.compute_step()
         self.step_back()
@@ -153,7 +168,7 @@ class TRStepFull(Step):
     the trust region subproblem.
     """
 
-    type = 'tr'
+    type = 'trnd'
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
                  ub, lb):
@@ -164,11 +179,11 @@ class TRStepFull(Step):
 
 class TRStep2D(Step):
     """
-    This class provides the machinery to compute an exact solution of
-    the trust region subproblem.
+    This class provides the machinery to compute an approximate solution of
+    the trust region subproblem according to a 2D subproblem
     """
 
-    type = 'tr'
+    type = 'tr2d'
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
                  ub, lb, subspace):
@@ -210,7 +225,8 @@ class TRStep2D(Step):
 
 class TRStepReflected(Step):
     """
-    This class provides the machinery to compute
+    This class provides the machinery to compute a reflected step based on
+    trust region subproblem solution thathit the boundaries.
     """
 
     type = 'trr'
@@ -235,6 +251,9 @@ class TRStepReflected(Step):
 
 
 class GradientStep(Step):
+    """
+    This class provides the machinery to compute a gradient step.
+    """
 
     type = 'g'
 

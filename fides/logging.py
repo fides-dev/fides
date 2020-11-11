@@ -1,3 +1,10 @@
+"""
+Logging
+-------
+This module provides the machinery that is used to display progress of the
+optimizer as well as debugging information
+"""
+
 import logging
 
 logger = logging.getLogger('fides')

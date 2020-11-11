@@ -1,3 +1,9 @@
+"""
+Minimization
+------------
+This module performs the optimization given a step proposal.
+"""
+
 import time
 
 import numpy as np
@@ -9,10 +15,28 @@ from .hessian_approximation import HessianApproximation
 from .defaults import MAXITER
 from .logging import logger
 
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, Tuple
 
 
 class Optimizer:
+    """
+    Performs optimization
+
+    :ivar fun: objective function
+    :ivar funargs: keyword arguments that are passed to the function
+    :ivar lb: lower optimization boundaries
+    :ivar ub: upper optimization boundaries
+    :ivar options: options that configure convergence checks
+    :ivar delta: trust region radius
+    :ivar x: current optimization variables
+    :ivar fval: objective function value at x
+    :ivar grad: objective function gradient at x
+    :ivar hess: objective function Hessian (approximation) at x
+    :ivar hessian_update: object that performs hessian updates
+    :ivar starttime: time at which optimization was started
+    :ivar iteration: current iteration
+    :ivar converged: flag indicating whether optimization has converged
+    """
     def __init__(self, fun: Callable,
                  ub: np.ndarray,
                  lb: np.ndarray,
@@ -20,38 +44,79 @@ class Optimizer:
                  options: Optional[Dict] = None,
                  funargs: Optional[Dict] = None,
                  hessian_update: Optional[HessianApproximation] = None):
-        self.fun = fun
+        """
+        Create an optimizer object
+
+        :param fun:
+            This is the objective function, if no `hessian_update` is
+            provided, this function must return a tuple (fval, grad),
+            otherwise this function must return a tuple (fval, grad, Hessian)
+        :param ub:
+            Upper optimization boundaries. Individual entries can be set to
+            np.inf for respective variable to have no upper bound
+        :param lb:
+            Lower optimization boundaries. Individual entries can be set to
+            -np.inf for respective variable to have no lower bound
+        :param verbose:
+            Verbosity level, pick from logging.[DEBUG,INFO,WARNING,ERROR]
+        :param options:
+            Options that control termination of optimization.
+            See `minimize` for details.
+        :param funargs:
+            Additional keyword arguments that are to be passed to fun for
+            evaluation
+        :param hessian_update:
+            Subclass of :py:class:`HessianApproximation` that performs the
+            hessian update strategy.
+        """
+        self.fun: Callable = fun
         if funargs is None:
             funargs = {}
-        self.funargs = funargs
+        self.funargs: Dict = funargs
 
-        self.lb = lb
-        self.ub = ub
+        self.lb: np.ndarray = np.array(lb)
+        self.ub: np.ndarray = np.array(ub)
 
         if options is None:
             options = {}
 
-        self.options = options
+        self.options: Dict = options
 
         self.delta = 10
 
-        self.x = np.empty(ub.shape)
-        self.fval = np.nan
-        self.grad = np.empty(ub.shape)
-        self.hess = np.empty((ub.shape[0], ub.shape[0]))
+        self.x: np.ndarray = np.empty(ub.shape)
+        self.fval: float = np.nan
+        self.grad: np.ndarray = np.empty(ub.shape)
+        self.hess: np.ndarray = np.empty((ub.shape[0], ub.shape[0]))
 
-        self.hessian_update = hessian_update
+        self.hessian_update: HessianApproximation = hessian_update
 
-        self.starttime = np.nan
-        self.iteration = 0
-        self.converged = False
+        self.starttime: float = np.nan
+        self.iteration: int = 0
+        self.converged: bool = False
         logger.setLevel(verbose)
 
     def minimize(self, x0: np.ndarray):
         """
-        Minimize the objective function
+        Minimize the objective function the interior trust-region reflective
+        algorithm described by [ColemanLi1994] and [ColemanLi1996]
 
-        :param x0: initial guess
+        Convergence with respect to function value is achieved when
+        $|f_{k+1} - f_k_|$ < options[`fatol`] - $f_k$ options[`frtol`].
+
+        Similarly,  convergence with respect to optimization variables is
+        achieved when
+        $||x_{k+1} - x_k||$ < options[`xatol`] - $x_k$ options[`xrtol`]
+
+        Convergence with respect to the gradient is achieved when
+        $||\nabla f_{k}||$ < options[`gtol`]
+
+        Other than that, optimization can be terminated when iterations exceed
+        options[`maxiter`] or the elapsed time is expected to exceed
+        options[`maxtime`].
+
+        :param x0:
+            initial guess
 
         :return:
             fval: final function value
@@ -125,6 +190,24 @@ class Optimizer:
         return self.fval, self.x, self.grad, self.hess
 
     def update_tr_radius(self, fval, grad, step_sx, dv, qppred) -> bool:
+        """
+        Update the trust region radius
+
+        :param fval:
+            new function value if step defined by step_sx is taken
+        :param grad:
+            new gradient value if step defined by step_sx is taken
+        :param step_sx:
+            proposed scaled step
+        :param dv:
+            derivative of scaling vector v wrt x
+        :param qppred:
+            predicted objective function value according to the quadratic
+            approximation
+
+        :return:
+            flag indicating whether the proposed step should be accepted
+        """
         nsx = norm(step_sx)
         if not np.isfinite(fval):
             self.delta = np.min([self.delta / 4, nsx / 4])
@@ -141,7 +224,17 @@ class Optimizer:
                 self.delta = np.min([self.delta / 4, nsx / 4])
             return ratio >= .25 and fval < self.fval * 1.1
 
-    def check_convergence(self, fval, x, grad):
+    def check_convergence(self, fval, x, grad) -> None:
+        """
+        Check whether optimization has converged.
+
+        :param fval:
+            updated objective function value
+        :param x:
+            updated optimization variables
+        :param grad:
+            updated objective function gradient
+        """
         converged = False
 
         fatol = self.options.get('fatol', 1e-6)
@@ -175,10 +268,12 @@ class Optimizer:
 
         self.converged = converged
 
-    def check_continue(self):
+    def check_continue(self) -> bool:
         """
         Checks whether minimization should continue based on convergence,
         iteration count and remaining computational budget
+        :return:
+            flag indicating whether minimization should continue
         """
 
         if self.converged:
@@ -212,7 +307,7 @@ class Optimizer:
 
         return True
 
-    def make_non_degenerate(self, eps=1e2 * np.spacing(1)):
+    def make_non_degenerate(self, eps=1e2 * np.spacing(1)) -> None:
         """
         Ensures that x is non-degenerate, this should only be necessary for
         initial points.
@@ -226,7 +321,7 @@ class Optimizer:
             self.x[upperi] = self.x[upperi] - eps
             self.x[loweri] = self.x[loweri] + eps
 
-    def get_affine_scaling(self):
+    def get_affine_scaling(self) -> Tuple[np.ndarray, np.ndarray]:
         """
         Computes the vector v and dv, the diagonal of it's Jacobian. For the
         definition of v, see Definition 2 in [Coleman-Li1994]
@@ -250,6 +345,15 @@ class Optimizer:
         return v, dv
 
     def log_step(self, accepted: bool, steptype: str, normdx: float):
+        """
+        Prints diagnostic information about the current step to the log
+        :param accepted: 
+            flag indicating whether the current step was accepted
+        :param steptype: 
+            identifier how the current step was computed
+        :param normdx:
+            norm of the current step 
+        """
         iterspaces = max(len(str(self.options.get('maxiter', MAXITER))), 5) - \
             len(str(self.iteration))
         steptypespaces = 4 - len(steptype)
@@ -262,6 +366,10 @@ class Optimizer:
                     f' | {int(accepted)}')
 
     def log_header(self):
+        """
+        Prints the header for diagnostic information, should complement
+        :py:func:`Optimizer.log_step`.
+        """
         iterspaces = len(str(self.options.get('maxiter', MAXITER))) - 5
         logger.info(f'{" " * iterspaces} iter '
                     f'|    fval    |  delta   | ||step|| |  ||g||   '
@@ -269,6 +377,13 @@ class Optimizer:
                     f'accept')
 
     def check_finite(self):
+        """
+        Checks whether objective function value, gradient and Hessian (
+        approximation) have finite values and optimization can continue.
+
+        :raises:
+            RuntimeError if any of the variables have non-finite entries
+        """
 
         if self.iteration == 0:
             pointstr = 'at initial point.'
@@ -292,6 +407,13 @@ class Optimizer:
                                f'{pointstr}')
 
     def check_in_bounds(self, x: Optional[np.ndarray] = None):
+        """
+        Checks whether the current optimization variables are all within the
+        specified boundaries
+
+        :raises:
+            RuntimeError if any of the variables are not within boundaries
+        """
         if x is None:
             x = self.x
 
