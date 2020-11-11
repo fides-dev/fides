@@ -1,4 +1,4 @@
-from pytr.subproblem import solve_trust_region_subproblem
+from fides.subproblem import solve_trust_region_subproblem
 from scipy.spatial.transform import Rotation as R
 
 import numpy as np

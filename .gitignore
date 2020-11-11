@@ -2,3 +2,5 @@
 .idea/*
 venv/*
 *.pyc
+fides.egg-info/*
+.DS_Store

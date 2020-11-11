@@ -38,6 +38,7 @@ def solve_trust_region_subproblem(B: np.ndarray,
     # decomposition, which works pretty well for n=2
     eigvals, eigvecs = linalg.eig(B)
     eigvals = np.real(eigvals)
+    eigvecs = np.real(eigvecs)
     w = - eigvecs.T.dot(g)
     jmin = eigvals.argmin()
     mineig = eigvals[jmin]
@@ -53,9 +54,9 @@ def solve_trust_region_subproblem(B: np.ndarray,
 
     # POSITIVE DEFINITE
     if mineig > np.sqrt(np.spacing(1)):  # positive definite
-        s = slam(0, w, eigvals, eigvecs)  # s = - self.cB\self.cg_hat
+        s = np.real(slam(0, w, eigvals, eigvecs))  # s = - self.cB\self.cg_hat
         if norm(s) <= delta + np.sqrt(np.spacing(1)):  # CASE 0
-            logger.debug('Interior 2D subproblem solution')
+            logger.debug('Interior subproblem solution')
             return s, 'posdef'
         else:
             laminit = 0
@@ -73,34 +74,38 @@ def solve_trust_region_subproblem(B: np.ndarray,
             r = newton(secular, laminit, dsecular, tol=1e-12, maxiter=maxiter,
                        args=(w, eigvals, eigvecs, delta),)
             s = slam(r, w, eigvals, eigvecs)
-            logger.debug('Found boundary 2D subproblem solution via newton')
-            return s, 'indef'
+            if norm(s) <= delta + 1e-12:
+                logger.debug('Found boundary subproblem solution via newton')
+                return s, 'indef'
         except RuntimeError:
             pass
         try:
-            xf = laminit * 2
+            xf = (laminit + np.sqrt(np.spacing(1))) * 10
             # search to the right for a change of sign
             while secular(xf, w, eigvals, eigvecs, delta) < 0 and \
                     maxiter > 0:
-                xf = laminit * 2
+                xf = xf * 10
                 maxiter -= 1
-            r = brentq(secular, xf/2, xf, xtol=1e-12, maxiter=maxiter,
-                       args=(w, eigvals, eigvecs, delta))
-            s = slam(r, w, eigvals, eigvecs)
-            logger.debug('Found boundary 2D subproblem solution via brentq')
-            return s, 'indef'
+            if maxiter > 0:
+                r = brentq(secular, xf/10, xf, xtol=1e-12, maxiter=maxiter,
+                           args=(w, eigvals, eigvecs, delta))
+                s = slam(r, w, eigvals, eigvecs)
+                if norm(s) <= delta + np.sqrt(np.spacing(1)):
+                    logger.debug(
+                        'Found boundary subproblem solution via brentq'
+                    )
+                    return s, 'indef'
         except RuntimeError:
             pass  # may end up here due to ill-conditioning, treat as hard case
 
     # HARD CASE (gradient is orthogonal to eigenvector to smallest eigenvalue)
-    w[w == w[jmin]] = 0
+    w[(eigvals-mineig) == 0] = 0
     s = slam(-mineig, w, eigvals, eigvecs)
-    s[np.isnan(s)] = 0
     # we know that ||s(lam) + sigma*v_jmin|| = delta, since v_jmin is
     # orthonormal, we can just substract the difference in norm to get
     # the right length.
 
-    sigma = np.sqrt(delta ** 2 - norm(s) ** 2)
+    sigma = np.sqrt(max(delta ** 2 - norm(s) ** 2, 0))
     s = s + sigma * eigvecs[:, jmin]
     logger.debug('Found boundary 2D subproblem solution via hard case')
     return s, 'hard'
@@ -110,7 +115,6 @@ def slam(lam: float, w: np.ndarray, eigvals: np.ndarray, eigvecs: np.ndarray):
     c = w.copy()
     el = eigvals + lam
     c[el != 0] /= el[el != 0]
-    c[(el == 0) & (c != 0)] = np.inf
     return eigvecs.dot(c)
 
 

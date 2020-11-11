@@ -18,15 +18,20 @@ class Optimizer:
                  lb: np.ndarray,
                  verbose: Optional[int] = logging.DEBUG,
                  options: Optional[Dict] = None,
+                 funargs: Optional[Dict] = None,
                  hessian_update: Optional[HessianApproximation] = None):
         self.fun = fun
+        if funargs is None:
+            funargs = {}
+        self.funargs = funargs
+
         self.lb = lb
         self.ub = ub
 
         if options is None:
-            self.options = {}
-        else:
-            self.options = options
+            options = {}
+
+        self.options = options
 
         self.delta = 10
 
@@ -59,11 +64,14 @@ class Optimizer:
 
         self.x = np.array(x0).copy()
         self.make_non_degenerate()
+        self.check_in_bounds()
         if self.hessian_update is None:
-            self.fval, self.grad, self.hess = self.fun(self.x)
+            self.fval, self.grad, self.hess = self.fun(self.x, **self.funargs)
         else:
-            self.fval, self.grad = self.fun(self.x)
+            self.fval, self.grad = self.fun(self.x, **self.funargs)
             self.hess = self.hessian_update.get_mat()
+
+        self.check_finite()
 
         tr_space = None
 
@@ -86,9 +94,9 @@ class Optimizer:
             x_new = self.x + step_x
 
             if self.hessian_update is None:
-                fval_new, grad_new, hess_new = self.fun(x_new)
+                fval_new, grad_new, hess_new = self.fun(x_new, **self.funargs)
             else:
-                fval_new, grad_new = self.fun(x_new)
+                fval_new, grad_new = self.fun(x_new, **self.funargs)
 
             accepted = self.update_tr_radius(
                 fval_new, grad_new, step_sx, dv, qppred
@@ -105,9 +113,13 @@ class Optimizer:
                     self.hess = self.hessian_update.get_mat()
                 else:
                     self.hess = hess_new
+                self.check_in_bounds(x_new)
                 self.fval = fval_new
                 self.x = x_new
                 self.grad = grad_new
+                self.check_finite()
+                self.make_non_degenerate()
+
                 tr_space = None
 
         return self.fval, self.x, self.grad, self.hess
@@ -118,45 +130,46 @@ class Optimizer:
             self.delta = np.min([self.delta / 4, nsx / 4])
             return False
         else:
-            qpval = step_sx.dot(dv * np.abs(grad) * step_sx) / 2
+            qpval = 0.5 * step_sx.dot(dv * np.abs(grad) * step_sx)
             ratio = (fval + qpval - self.fval) / qppred
 
             # values as proposed in algorithm 4.1 in Nocedal & Wright
-            if ratio >= 0.75:
+            if ratio >= 0.75 and nsx > self.delta * 0.9:
                 self.delta = 2 * self.delta
-            elif ratio <= .25 or nsx < self.delta * 0.9:
+            elif ratio <= .25 or nsx < self.delta * 0.9 \
+                    or fval > self.fval * 1.1:
                 self.delta = np.min([self.delta / 4, nsx / 4])
-            return ratio >= .25
+            return ratio >= .25 and fval < self.fval * 1.1
 
     def check_convergence(self, fval, x, grad):
         converged = False
 
-        fatol = self.options.get('fatol', 0)
+        fatol = self.options.get('fatol', 1e-6)
         frtol = self.options.get('frtol', 0)
         xatol = self.options.get('xatol', 0)
         xrtol = self.options.get('xrtol', 0)
-        gtol = self.options.get('gtol', 1e-6)
+        gtol = self.options.get('gtol', np.sqrt(np.spacing(1)))
         gnorm = norm(grad)
 
         if np.isclose(fval, self.fval, atol=fatol, rtol=frtol):
             logger.info(
                 f'Stopping as function difference '
                 f'{np.abs(self.fval - fval)} was smaller than specified '
-                f'tolerances (atol={fatol}, rtol={frtol})'
+                f'tolerances (atol={fatol:.2E}, rtol={frtol:.2E})'
             )
             converged = True
 
         elif np.isclose(x, self.x, atol=xatol, rtol=xrtol).all():
             logger.info(
                 f'Stopping as step was smaller than specified tolerances ('
-                f'atol={xatol}, rtol={xrtol})'
+                f'atol={xatol:.2E}, rtol={xrtol:.2E})'
             )
             converged = True
 
         elif gnorm <= gtol:
             logger.info(
-                f'Stopping as gradient satisfies convergence criteria: '
-                f'||g|| < {gtol}'
+                f'Stopping as gradient norm satisfies convergence criteria: '
+                f'{gnorm:.2E} < {gtol:.2E}'
             )
             converged = True
 
@@ -190,7 +203,7 @@ class Optimizer:
             )
             return False
 
-        if self.delta < np.sqrt(np.spacing(1)):
+        if self.delta < np.spacing(1):
             logger.error(
                 'Stopping as trust region radius is smaller that machine '
                 'precision.'
@@ -254,3 +267,44 @@ class Optimizer:
                     f'|    fval    |  delta   | ||step|| |  ||g||   '
                     f'| step | '
                     f'accept')
+
+    def check_finite(self):
+
+        if self.iteration == 0:
+            pointstr = 'at initial point.'
+        else:
+            pointstr = f'at iteration {self.iteration}.'
+
+        if not np.isfinite(self.fval):
+            raise RuntimeError(f'Encountered non-finite function {self.fval} '
+                               f'value {pointstr}')
+
+        if not np.isfinite(self.grad).all():
+            ix = np.where(np.logical_not(np.isfinite(self.grad)))
+            raise RuntimeError('Encountered non-finite gradient entries'
+                               f' {self.grad[ix]} for indices {ix} '
+                               f'{pointstr}')
+
+        if not np.isfinite(self.hess).all():
+            ix = np.where(np.logical_not(np.isfinite(self.hess)))
+            raise RuntimeError('Encountered non-finite gradient hessian'
+                               f' {self.hess[ix]} for indices {ix} '
+                               f'{pointstr}')
+
+    def check_in_bounds(self, x: Optional[np.ndarray] = None):
+        if x is None:
+            x = self.x
+
+        if self.iteration == 0:
+            pointstr = 'at initial point.'
+        else:
+            pointstr = f'at iteration {self.iteration}.'
+
+        for ref, sign, name in zip([self.ub, self.lb],
+                                   [-1.0, 1.0],
+                                   ['upper bounds', 'lower bounds']):
+            diff = sign * (ref - x)
+            if not np.all(diff <= 0):
+                ix = np.where(diff > 0)
+                raise RuntimeError(f'Exceeded upper bounds for indices {ix} by'
+                                   f'{diff[ix]} {pointstr}')

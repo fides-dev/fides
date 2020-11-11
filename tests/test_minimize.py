@@ -1,4 +1,4 @@
-from pytr import Optimizer, BFGS, SR1, DFP
+from fides import Optimizer, BFGS, SR1, DFP
 import numpy as np
 
 from scipy import linalg
@@ -54,10 +54,9 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ):
     lb, ub, x0 = bounds_and_init
 
     opt = Optimizer(
-        fun, ub, lb, verbose=logging.DEBUG,
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
         hessian_update=happ(len(x0)) if happ is not None else None)
     opt.minimize(x0)
-    assert np.all(np.real(linalg.eig(opt.hess)[0] > 0))
     assert np.isclose(opt.x, [1, 1]).all()
     assert np.isclose(opt.grad, np.zeros(opt.x.shape), atol=1e-6).all()
 

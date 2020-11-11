@@ -4,6 +4,7 @@ from .logging import logger
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from scipy.sparse import linalg as splinalg
+import scipy.linalg as linalg
 
 from .subproblem import solve_trust_region_subproblem
 
@@ -85,6 +86,9 @@ class Step:
         self.chess = None
         self.subspace = None
 
+        self.s0 = np.zeros((hess.shape[0],))
+        self.ss0 = np.zeros((hess.shape[0],))
+
     def step_back(self):
         """
         This function truncates the step based on the distance of the
@@ -104,7 +108,7 @@ class Step:
             br = np.max(np.vstack([
                 (self.ub[nonzero] - self.x[nonzero])/self.s[nonzero],
                 (self.lb[nonzero] - self.x[nonzero])/self.s[nonzero]
-            ]))
+            ]), axis=0)
             self.ipt = np.argmin(br)
             if np.isscalar(br):
                 self.minbr = br
@@ -125,24 +129,40 @@ class Step:
         self.chess = self.subspace.T.dot(self.shess.dot(self.subspace))
         self.cg = self.subspace.T.dot(self.sg)
 
-    def compute_transformed_step(self):
-        self.sc, _ = solve_trust_region_subproblem(self.chess, self.cg,
-                                                   self.delta)
-        self.ss = self.subspace.dot(self.sc)
+    def compute_step(self):
+        if self.subspace.shape[1] > 1:
+            self.sc, _ = solve_trust_region_subproblem(self.chess, self.cg,
+                                                       self.delta)
+        else:
+            self.sc = quad1d(self.shess, self.sg, self.subspace[:, 0],
+                             self.delta)
+        self.ss = self.subspace.dot(np.real(self.sc)) + self.ss0
+        self.s = self.scaling.dot(self.ss) + self.s0
 
     def calculate(self):
         self.reduce_to_subspace()
-
-        self.compute_transformed_step()
-        self.s = self.scaling.dot(self.ss)
-        self.s[np.isnan(self.s)] = 0
-
+        self.compute_step()
         self.step_back()
-        self.qpval = self.qpval0 + \
-            self.cg.dot(self.sc) + .5 * self.sc.dot(self.chess).dot(self.sc)
+        self.qpval = self.qpval0 + self.cg.dot(self.sc) + \
+            .5 * (self.sc.dot(self.chess).dot(self.sc))[0, 0]
 
 
-class TRStep(Step):
+class TRStepFull(Step):
+    """
+    This class provides the machinery to compute an exact solution of
+    the trust region subproblem.
+    """
+
+    type = 'tr'
+
+    def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
+                 ub, lb):
+        super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
+                         ub, lb)
+        self.subspace = np.eye(hess.shape[0])
+
+
+class TRStep2D(Step):
     """
     This class provides the machinery to compute an exact solution of
     the trust region subproblem.
@@ -158,7 +178,7 @@ class TRStep(Step):
         if self.subspace is None:
             n = len(sg)
 
-            s_newt = splinalg.spsolve(hess, sg)
+            s_newt = linalg.solve(hess, sg)
             posdef = s_newt.dot(hess.dot(s_newt)) <= 0
             normalize(s_newt)
 
@@ -166,6 +186,9 @@ class TRStep(Step):
                 if posdef:
                     # in this case we are in Case 2 of Fig 12 in
                     # [Coleman-Li1994]
+                    logger.debug('Newton direction did not have negative '
+                                 'curvature adding scaling * np.sign(sg) to '
+                                 '2D subspace.')
                     s_grad = scaling * np.sign(sg)
                 else:
                     s_grad = sg.copy()
@@ -176,8 +199,11 @@ class TRStep(Step):
                 normalize(s_grad)
                 # if non-zero, add s_grad to subspace
                 if np.any(s_grad):
-                    self.subspace = np.vstack([s_newt, s_grad])
+                    self.subspace = np.vstack([s_newt, s_grad]).T
                     return
+                else:
+                    logger.debug('Singular subspace, continuing with 1D '
+                                 'subspace.')
 
             self.subspace = np.expand_dims(s_newt, 1)
 
@@ -194,31 +220,18 @@ class TRStepReflected(Step):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb)
 
-        self.s_br = tr_step.minbr * tr_step.og_s
-        self.ss_br = tr_step.minbr * tr_step.og_ss
-        # update x and g_hat at breakpoint
-        self.x = x + self.s_br
-        self.g_hat = scaling.dot((hess.dot(self.s_br) + sg)) \
-            + g_dscaling.dot(self.ss_br)
+        self.s0 = tr_step.minbr * tr_step.og_s
+        self.ss0 = tr_step.minbr * tr_step.og_ss
+        # update x and at breakpoint
+        self.x = x + self.s0
 
         # reflect the transformed step at the boundary
         nss = tr_step.og_ss.copy()
         nss[tr_step.ipt] *= -1
-        self.nss = nss.copy()
         normalize(nss)
         self.subspace = np.expand_dims(nss, 1)
 
-        self.ss_br = tr_step.minbr * tr_step.og_ss
-        sc_br = tr_step.minbr * tr_step.og_sc
-
-        self.qpval0 = tr_step.cg.T.dot(sc_br) \
-            + .5*sc_br.T.dot(tr_step.chess).dot(sc_br)
-
-    def compute_transformed_step(self):
-        self.ss, tau = quad1d(self.nss, self.ss_br, self.delta)
-        self.sc = tau / norm(self.nss)
-
-        self.ss = self.subspace.dot(self.sc)
+        self.qpval0 = tr_step.qpval
 
 
 class GradientStep(Step):
@@ -245,10 +258,15 @@ def trust_region_reflective(x: np.ndarray,
                             ub: np.ndarray):
     sg = scaling.dot(g)
     g_dscaling = csc_matrix(np.diag(np.abs(g) * dv))
-    hess = csc_matrix(hess)
 
-    tr_step = TRStep(x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb,
-                     tr_subspace)
+    if hess.shape[0] > 100:
+        tr_step = TRStep2D(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, tr_subspace
+        )
+    else:
+        tr_step = TRStepFull(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb,
+        )
     tr_step.calculate()
 
     # in case of truncation, we hit the boundary and we check both the
@@ -278,18 +296,17 @@ def trust_region_reflective(x: np.ndarray,
     return step.s, step.ss, step.qpval, tr_step.subspace, step.type
 
 
-def quad1d(x, ss, delta):
+def quad1d(hess, grad, s, delta):
 
-    a = x.dot(x)
-    b = 2*(ss.dot(x))
-    c = ss.dot(ss)-delta ** 2
+    a = 0.5 * hess.dot(s).dot(s)[0, 0]
+    b = s.T.dot(grad)
 
-    numer = -(b + np.sign(b)*np.sqrt(b**2-4*a*c))
-    r1 = numer/(2*a)
-    r2 = c/(a*r1)
+    minq = - b / (2 * a)
+    if a > 0 and minq < delta:
+        # interior solution
+        tau = minq
+    else:
+        tau = - delta * np.sign(b)
 
-    tau = max(r1, r2)
-    tau = min(1, tau)
-    nx = tau*x
-    return nx, tau * np.ones((1,))
+    return tau * np.ones((1,))
 
