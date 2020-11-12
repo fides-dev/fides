@@ -21,7 +21,7 @@ class HessianApproximation:
         self._hess = hess_init.copy()
 
     def update(self, s, y):
-        raise NotImplementedError()
+        raise NotImplementedError()  # pragma : no cover
 
     def get_mat(self) -> np.ndarray:
         return self._hess

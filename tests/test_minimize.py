@@ -24,11 +24,19 @@ def rosenboth(x):
     return f, g, h
 
 
-def finite_bounds_and_init():
+def finite_bounds_include_optimum():
     lb = np.array([-2, -1.5])
     ub = np.array([1.5, 2])
 
-    x0 = np.zeros(lb.shape)
+    x0 = (lb + ub) / 2
+    return lb, ub, x0
+
+
+def finite_bounds_exlude_optimum():
+    lb = np.array([-2, -1.5])
+    ub = np.array([0.99, 0.99])
+
+    x0 = (lb + ub) / 2
     return lb, ub, x0
 
 
@@ -42,8 +50,9 @@ def unbounded_and_init():
 
 @pytest.mark.parametrize("subspace_dim", [SubSpaceDim.FULL,
                                           SubSpaceDim.TWO])
-@pytest.mark.parametrize("bounds_and_init", [finite_bounds_and_init(),
-                                             unbounded_and_init()])
+@pytest.mark.parametrize("bounds_and_init", [finite_bounds_include_optimum(),
+                                             unbounded_and_init(),
+                                             finite_bounds_exlude_optimum()])
 @pytest.mark.parametrize("fun, happ", [
     (rosenboth, None),
     (rosenboth, None),
@@ -61,5 +70,6 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim):
                  fides.Options.SUBSPACE_DIM: subspace_dim}
     )
     opt.minimize(x0)
-    assert np.isclose(opt.x, [1, 1]).all()
-    assert np.isclose(opt.grad, np.zeros(opt.x.shape), atol=1e-6).all()
+    if np.all(ub > 1):
+        assert np.isclose(opt.x, [1, 1]).all()
+        assert np.isclose(opt.grad, np.zeros(opt.x.shape), atol=1e-6).all()
