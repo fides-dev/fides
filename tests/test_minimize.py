@@ -55,7 +55,9 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ):
 
     opt = Optimizer(
         fun, ub=ub, lb=lb, verbose=logging.INFO,
-        hessian_update=happ(len(x0)) if happ is not None else None)
+        hessian_update=happ(len(x0)) if happ is not None else None,
+        options={'fatol': 0}
+    )
     opt.minimize(x0)
     assert np.isclose(opt.x, [1, 1]).all()
     assert np.isclose(opt.grad, np.zeros(opt.x.shape), atol=1e-6).all()
