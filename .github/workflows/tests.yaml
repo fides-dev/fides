@@ -26,7 +26,8 @@ jobs:
       run: |
         pip install pytest pytest-cov
         pip install .
-        pytest ./fides --cov=fides --cov-report xml:coverage.xml --cov-report term
+        python -m pytest --cov=fides --cov-report xml:coverage.xml
+        --cov-report term ./tests
 
     - name: Codecov
       uses: codecov/codecov-action@v1
