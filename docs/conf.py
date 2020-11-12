@@ -8,16 +8,14 @@
 
 import os
 import sys
-import re
 
 # -- Path setup --------------------------------------------------------------
+sys.path.insert(0, os.path.abspath('..'))
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-
-amici_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # -- RTD custom build --------------------------------------------------------
 
@@ -48,9 +46,6 @@ title = 'Fides Documentation'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'readthedocs_ext.readthedocs',
-    # Required, e.g. for PEtab-derived classes where the base class has non-rst
-    #  docstrings
     'sphinx.ext.napoleon',
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
@@ -101,7 +96,6 @@ exclude_patterns = [
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
-# If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
 # sphinx-autodoc-typehints
