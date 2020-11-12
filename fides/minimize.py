@@ -347,12 +347,12 @@ class Optimizer:
     def log_step(self, accepted: bool, steptype: str, normdx: float):
         """
         Prints diagnostic information about the current step to the log
-        :param accepted: 
+        :param accepted:
             flag indicating whether the current step was accepted
-        :param steptype: 
+        :param steptype:
             identifier how the current step was computed
         :param normdx:
-            norm of the current step 
+            norm of the current step
         """
         iterspaces = max(len(str(self.options.get('maxiter', MAXITER))), 5) - \
             len(str(self.iteration))

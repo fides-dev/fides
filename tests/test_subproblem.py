@@ -93,5 +93,3 @@ def test_hard_hard_subproblem(subproblem):
     assert np.isclose(norm(s), delta, atol=1e-6, rtol=0)
     assert case == 'hard'
     assert is_bound_quad_min(s, subproblem['B'], subproblem['g'])
-
-

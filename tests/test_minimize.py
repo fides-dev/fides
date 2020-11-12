@@ -1,8 +1,6 @@
 from fides import Optimizer, BFGS, SR1, DFP
 import numpy as np
 
-from scipy import linalg
-
 import logging
 import pytest
 
@@ -61,4 +59,3 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ):
     opt.minimize(x0)
     assert np.isclose(opt.x, [1, 1]).all()
     assert np.isclose(opt.grad, np.zeros(opt.x.shape), atol=1e-6).all()
-

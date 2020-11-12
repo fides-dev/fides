@@ -372,4 +372,3 @@ def quad1d(hess, grad, s, delta):
         tau = - delta * np.sign(b)
 
     return tau * np.ones((1,))
-
