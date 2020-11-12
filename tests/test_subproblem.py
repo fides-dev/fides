@@ -1,4 +1,4 @@
-from fides.subproblem import solve_trust_region_subproblem
+from fides.subproblem import solve_nd_trust_region_subproblem
 from scipy.spatial.transform import Rotation as R
 
 import numpy as np
@@ -52,8 +52,8 @@ def is_bound_quad_min(s, B, g):
 
 def test_convex_subproblem(subproblem):
     delta = 1.151
-    s, case = solve_trust_region_subproblem(subproblem['B'], subproblem['g'],
-                                            delta)
+    s, case = solve_nd_trust_region_subproblem(subproblem['B'],
+                                               subproblem['g'], delta)
     assert np.all(np.real(linalg.eig(subproblem['B'])[0]) > 0)
     assert norm(s) < delta
     assert case == 'posdef'
@@ -63,8 +63,8 @@ def test_convex_subproblem(subproblem):
 def test_nonconvex_subproblem(subproblem):
     subproblem['B'][0, 0] = -1
     delta = 1.151
-    s, case = solve_trust_region_subproblem(subproblem['B'], subproblem['g'],
-                                            delta)
+    s, case = solve_nd_trust_region_subproblem(subproblem['B'],
+                                               subproblem['g'], delta)
     assert np.any(np.real(linalg.eig(subproblem['B'])[0]) < 0)
     assert np.isclose(norm(s), delta, atol=1e-6, rtol=0)
     assert case == 'indef'
@@ -75,8 +75,8 @@ def test_hard_indef_subproblem(subproblem):
     subproblem['B'][0, 0] = -1
     subproblem['g'][0] = 0
     delta = 0.1
-    s, case = solve_trust_region_subproblem(subproblem['B'], subproblem['g'],
-                                            delta)
+    s, case = solve_nd_trust_region_subproblem(subproblem['B'],
+                                               subproblem['g'], delta)
     assert np.any(np.real(linalg.eig(subproblem['B'])[0]) < 0)
     assert np.isclose(norm(s), delta, atol=1e-6, rtol=0)
     assert case == 'indef'
@@ -87,8 +87,8 @@ def test_hard_hard_subproblem(subproblem):
     subproblem['B'][0, 0] = -1
     subproblem['g'][0] = 0
     delta = 0.5
-    s, case = solve_trust_region_subproblem(subproblem['B'], subproblem['g'],
-                                            delta)
+    s, case = solve_nd_trust_region_subproblem(subproblem['B'], subproblem['g'],
+                                               delta)
     assert np.any(np.real(linalg.eig(subproblem['B'])[0]) < 0)
     assert np.isclose(norm(s), delta, atol=1e-6, rtol=0)
     assert case == 'hard'
