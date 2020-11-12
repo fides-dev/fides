@@ -1,0 +1,11 @@
+# Requirements just for building the docs (used by readthedocs, but also
+# helpful for building docs locally).
+sphinx>=1.4
+numpydoc>=0.6
+nbsphinx>=0.5.1
+recommonmark>=0.6.0
+sphinx_rtd_theme>=0.4.3
+sphinx-autodoc-typehints>=1.10.3
+git+https://github.com/readthedocs/sphinx-hoverxref@master
+sphinxcontrib-napoleon
+pygments==2.4.1
