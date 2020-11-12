@@ -7,9 +7,6 @@ jobs:
 
     runs-on: ubuntu-20.04
 
-    env:
-      AMICI_SKIP_CMAKE_TESTS: "TRUE"
-
     strategy:
       matrix:
         python-version: [3.7, 3.8, 3.9]
@@ -27,6 +24,15 @@ jobs:
 
     - name: Python tests
       run: |
-        pip3 install pytest
-        pip3 install .
-        python3 -m pytest ./tests
+        pip install pytest pytest-cov
+        pip install .
+        pytest ./tests --cov fides --cov-report=xml
+
+    - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          env_vars: OS,PYTHON
+          name: codecov-umbrella
+          fail_ci_if_error: true

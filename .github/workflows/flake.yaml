@@ -1,0 +1,17 @@
+name: Python Tests
+on: [push]
+
+jobs:
+  build:
+    name: Python flake8 linting
+
+    runs-on: ubuntu-20.04
+
+    steps:
+
+    - name: Python tests
+      run: |
+        pip install flake8
+        pip install .
+        pytest ./tests --cov fides --cov-report=xml
+        python3 -m flake8 --exclude=tests,docs,examples
