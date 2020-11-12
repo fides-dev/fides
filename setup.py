@@ -28,4 +28,4 @@ setup(name='fides',
       tests_require=['pytest>=5.4.2',
                      'flake8>=3.7.2'],
       extras_require={},
-      python_requires='>=3.6')
+      python_requires='>=3.7')
