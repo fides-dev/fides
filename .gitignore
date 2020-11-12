@@ -4,3 +4,6 @@ venv/*
 *.pyc
 fides.egg-info/*
 .DS_Store
+_build/*
+docs/_build/*
+docs/generated/*

@@ -7,7 +7,9 @@ import scipy.linalg as linalg
 
 from typing import Tuple
 
-from .subproblem import solve_trust_region_subproblem
+from .subproblem import (
+    solve_1d_trust_region_subproblem, solve_nd_trust_region_subproblem
+)
 
 
 def normalize(v: np.ndarray) -> None:
@@ -144,11 +146,12 @@ class Step:
         :return:
         """
         if self.subspace.shape[1] > 1:
-            self.sc, _ = solve_trust_region_subproblem(self.chess, self.cg,
-                                                       self.delta)
+            self.sc, _ = solve_nd_trust_region_subproblem(self.chess, self.cg,
+                                                          self.delta)
         else:
-            self.sc = quad1d(self.shess, self.sg, self.subspace[:, 0],
-                             self.delta)
+            self.sc = solve_1d_trust_region_subproblem(self.shess, self.sg,
+                                                       self.subspace[:, 0],
+                                                       self.delta)
         self.ss = self.subspace.dot(np.real(self.sc)) + self.ss0
         self.s = self.scaling.dot(self.ss) + self.s0
 
@@ -357,18 +360,3 @@ def trust_region_reflective(x: np.ndarray,
         ]))
 
     return step.s, step.ss, step.qpval, tr_step.subspace, step.type
-
-
-def quad1d(hess, grad, s, delta):
-
-    a = 0.5 * hess.dot(s).dot(s)[0, 0]
-    b = s.T.dot(grad)
-
-    minq = - b / (2 * a)
-    if a > 0 and minq < delta:
-        # interior solution
-        tau = minq
-    else:
-        tau = - delta * np.sign(b)
-
-    return tau * np.ones((1,))

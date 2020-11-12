@@ -9,25 +9,61 @@ from typing import Tuple
 from .logging import logger
 
 
-def solve_trust_region_subproblem(B: np.ndarray,
-                                  g: np.ndarray,
-                                  delta: float) -> Tuple[np.ndarray, str]:
+def solve_1d_trust_region_subproblem(B: np.ndarray,
+                                     g: np.ndarray,
+                                     s: np.ndarray,
+                                     delta: float) -> np.ndarray:
     """
+    Solves the special case of a one-dimensional subproblem
+
+    :param B:
+        Hessian of the quadratic subproblem
+    :param g:
+        Gradient of the quadratic subproblem
+    :param s:
+        Vector defining the one-dimensional search direction
+    :param delta:
+        Norm boundary for the solution of the quadratic subproblem
+
+    :return:
+        Proposed step-length
+    """
+
+    a = 0.5 * B.dot(s).dot(s)[0, 0]
+    b = s.T.dot(g)
+
+    minq = - b / (2 * a)
+    if a > 0 and minq < delta:
+        # interior solution
+        tau = minq
+    else:
+        tau = - delta * np.sign(b)
+
+    return tau * np.ones((1,))
+
+
+def solve_nd_trust_region_subproblem(B: np.ndarray,
+                                     g: np.ndarray,
+                                     delta: float) -> Tuple[np.ndarray, str]:
+    r"""
     This function exactly solves the two dimensional subproblem.
-    $$ armgin_s{s^T B s + s^T g = 0, ||s|| <= \Delta, s in \mathbb{R}^2} $$
+
+    ..math:: argmin_s{s^T B s + s^T g = 0, ||s|| <= \Delta, s in \mathbb{R}^2}
 
     The  solution to is characterized by the equation
-    $-(B + \lamda I)s = g$. If B is positive definite, the solution can
-    be obtained by $\lambda = 0$ if $Bs = -g$ satisfies ||s|| <= \Delta$.
-    If B is indefinite or $Bs = -g$ satisfies ||s|| > delta$ and an
-    approppriate lambda has to be identified via 1D rootfinding of the
-    secular equation
-    $$\phi(\lambda) = \frac{1}{||s(\lambda)||} - \frac{1}{\Delta} = 0$$
-    with s(\lambda) computed according to an eigenvalue decomposition of B.
-    The eigenvalue decomposition, although being more expensive than a
+    :math:`-(B + \lamda I)s = g`. If B is positive definite, the solution can
+    be obtained by :math:`\lambda = 0`$` if :math:`Bs = -g` satisfies
+    :math:`||s|| <= \Delta`. If B is indefinite or :math:`Bs = -g`
+    satisfies :math:`||s|| > delta` and an approppriate lambda has to be
+    identified via 1D rootfinding of the secular equation
+
+    ..math:: \phi(\lambda) = \frac{1}{||s(\lambda)||} - \frac{1}{\Delta} = 0
+
+    with :math:`s(\lambda)` computed according to an eigenvalue decomposition
+    of B. The eigenvalue decomposition, although being more expensive than a
     cholesky decomposition, has the advantage that eigenvectors are
-    invariant to changes in \lambda and eigenvalues are linear in
-    \lambda, so factorization only has to be performed once. We perform
+    invariant to changes in :math:`\lambda` and eigenvalues are linear in
+    :math:`\lambda`, so factorization only has to be performed once. We perform
     the linesearch via Newton's algorithm and Brent-Q as fallback.
     The Hard case (B indefinite) is treated seperately and serves as general
     fallback.
@@ -35,13 +71,12 @@ def solve_trust_region_subproblem(B: np.ndarray,
     :param B:
         Hessian of the quadratic subproblem
     :param g:
-        gradient of the quadratic subproblem
+        Gradient of the quadratic subproblem
     :param delta:
-        norm boundary for the solution of the quadratic subproblem
+        Norm boundary for the solution of the quadratic subproblem
 
     :return:
-        s: selected step
-        soltype: type of solution that was obtained {'posdef','indef','hard'}
+        Selected step, Type of solution that was obtained
 
     """
     # See Nocedal & Wright 2006 for details
@@ -128,12 +163,15 @@ def slam(lam: float,
          w: np.ndarray,
          eigvals: np.ndarray,
          eigvecs: np.ndarray) -> np.ndarray:
-    """
-    Computes the solution s(lambda) as subproblem solution according to
-    $-(B + \lamba*I)*s = g$
+    r"""
+    Computes the solution :math:`s(\lambda)` as subproblem solution according
+    to
+
+    ..math::
+        -(B + \lamba*I)*s = g
 
     :param lam:
-        lambda
+        :math:`\lambda`
     :param w:
         precomputed eigenvector coefficients for -g
     :param eigvals:
@@ -142,7 +180,7 @@ def slam(lam: float,
         precomputed eigenvectors of B
 
     :return:
-        s
+        :math:`s(\lambda)`
     """
     c = w.copy()
     el = eigvals + lam
@@ -154,13 +192,15 @@ def dslam(lam: float,
           w: np.ndarray,
           eigvals: np.ndarray,
           eigvecs: np.ndarray):
-    """
-    Computes the derivative of the solution s(lambda) with respect to
-    lambda, where s is the ubproblem solution according to
-    $-(B + \lamba*I)*s = g$
+    r"""
+    Computes the derivative of the solution :math:`s(\lambda)` with respect to
+    lambda, where :math:`s` is the ubproblem solution according to
+
+    ..math::
+        -(B + \lambda*I)*s = g
 
     :param lam:
-        $\lambda$
+        :math:`\lambda`
     :param w:
         precomputed eigenvector coefficients for -g
     :param eigvals:
@@ -183,12 +223,16 @@ def secular(lam: float,
             eigvals: np.ndarray,
             eigvecs: np.ndarray,
             delta: float):
-    """
-    Secular equation $\phi(\lamba) = \frac{1}{||s||} - \frac{1}{\Delta}
+    r"""
+    Secular equation
+
+    ..math::
+        \phi(\lamba) = \frac{1}{||s||} - \frac{1}{\Delta}
+
     Subproblem solutions are given by the roots of this equation
 
     :param lam:
-        $\lambda$
+        :math:`\lambda`
     :param w:
         precomputed eigenvector coefficients for -g
     :param eigvals:
@@ -196,10 +240,10 @@ def secular(lam: float,
     :param eigvecs:
         precomputed eigenvectors of B
     :param delta:
-        trust region radius $\Delta$
+        trust region radius :math:`\Delta`
 
     :return:
-        $\phi(\lamba)$
+        :math:`\phi(\lamba)`
     """
     if lam < -np.min(eigvals):
         return np.inf  # safeguard to implement boundary
@@ -208,13 +252,17 @@ def secular(lam: float,
 
 
 def dsecular(lam: float, w: np.ndarray, eigvals: np.ndarray,
-             eigvecs: np.ndarray, _):
-    """
-    Derivative of the secular equation $\phi(\lamba) = \frac{1}{||s||} -
-    \frac{1}{\Delta} with respect to `\lambda`
+             eigvecs: np.ndarray, delta: float):
+    r"""
+    Derivative of the secular equation
+
+    ..math::
+        \phi(\lamba) = \frac{1}{||s||} - \frac{1}{\Delta}
+
+    with respect to :math:`\lambda`
 
     :param lam:
-        $\lambda$
+        :math:`\lambda`
     :param w:
         precomputed eigenvector coefficients for -g
     :param eigvals:
@@ -222,10 +270,10 @@ def dsecular(lam: float, w: np.ndarray, eigvals: np.ndarray,
     :param eigvecs:
         precomputed eigenvectors of B
     :param delta:
-        trust region radius $\Delta$
+        trust region radius :math:`\Delta`
 
     :return:
-        $\frac{\partial \phi(\lamba)}{\partial \lamba}$
+        derivative of secular equation
     """
     s = slam(lam, w, eigvals, eigvecs)
     ds = dslam(lam, w, eigvals, eigvecs)

@@ -100,29 +100,22 @@ class Optimizer:
         """
         Minimize the objective function the interior trust-region reflective
         algorithm described by [ColemanLi1994] and [ColemanLi1996]
-
         Convergence with respect to function value is achieved when
-        $|f_{k+1} - f_k_|$ < options[`fatol`] - $f_k$ options[`frtol`].
-
-        Similarly,  convergence with respect to optimization variables is
-        achieved when
-        $||x_{k+1} - x_k||$ < options[`xatol`] - $x_k$ options[`xrtol`]
-
-        Convergence with respect to the gradient is achieved when
-        $||\nabla f_{k}||$ < options[`gtol`]
-
-        Other than that, optimization can be terminated when iterations exceed
-        options[`maxiter`] or the elapsed time is expected to exceed
-        options[`maxtime`].
+        :math:`|f_{k+1} - f_k_|` < options[`fatol`] - :math:`f_k` options[
+        `frtol`]. Similarly,  convergence with respect to optimization
+        variables is achieved when :math:`||x_{k+1} - x_k||` < options[
+        `xatol`] - :math:`x_k` options[`xrtol`].  Convergence with respect
+        to the gradient is achieved when :math:`||g_k||` <
+        options[`gtol`].  Other than that, optimization can be terminated
+        when iterations exceed options[`maxiter`] or the elapsed time is
+        expected to exceed options[`maxtime`].
 
         :param x0:
             initial guess
 
-        :return:
-            fval: final function value
-            x: final optimization variable values
-            grad: final gradient
-            hess: final Hessian (approximation)
+        :returns:
+            final function value, final optimization variable values,
+            final gradient, final Hessian (approximation)
         """
         self.starttime = time.time()
         self.iteration = 0
@@ -272,6 +265,7 @@ class Optimizer:
         """
         Checks whether minimization should continue based on convergence,
         iteration count and remaining computational budget
+
         :return:
             flag indicating whether minimization should continue
         """
@@ -347,6 +341,7 @@ class Optimizer:
     def log_step(self, accepted: bool, steptype: str, normdx: float):
         """
         Prints diagnostic information about the current step to the log
+
         :param accepted:
             flag indicating whether the current step was accepted
         :param steptype:
