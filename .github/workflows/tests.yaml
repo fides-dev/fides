@@ -1,0 +1,32 @@
+name: Python Tests
+on: [push]
+
+jobs:
+  build:
+    name: Python Version Matrix
+
+    runs-on: ubuntu-20.04
+
+    env:
+      AMICI_SKIP_CMAKE_TESTS: "TRUE"
+
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9]
+
+    steps:
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - uses: actions/checkout@v1
+      with:
+        fetch-depth: 20
+
+    - name: Python tests
+      run: |
+        pip3 install pytest
+        pip3 install .
+        python3 -m pytest ./tests
