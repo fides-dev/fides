@@ -4,32 +4,45 @@ from numpy.linalg import norm
 from scipy import linalg
 from scipy.optimize import newton, brentq
 
+from typing import Tuple
+
 from .logging import logger
 
 
 def solve_trust_region_subproblem(B: np.ndarray,
                                   g: np.ndarray,
-                                  delta: float):
+                                  delta: float) -> Tuple[np.ndarray, str]:
     """
     This function exactly solves the two dimensional subproblem.
     $$ armgin_s{s^T B s + s^T g = 0, ||s|| <= \Delta, s in \mathbb{R}^2} $$
+
     The  solution to is characterized by the equation
     $-(B + \lamda I)s = g$. If B is positive definite, the solution can
     be obtained by $\lambda = 0$ if $Bs = -g$ satisfies ||s|| <= \Delta$.
-    If B is indefinite or $Bs = -g$ satisfies ||s|| > delta$, lambda has to
-    be identified by linesearch over the secular equation
+    If B is indefinite or $Bs = -g$ satisfies ||s|| > delta$ and an
+    approppriate lambda has to be identified via 1D rootfinding of the
+    secular equation
     $$\phi(\lambda) = \frac{1}{||s(\lambda)||} - \frac{1}{\Delta} = 0$$
     with s(\lambda) computed according to an eigenvalue decomposition of B.
     The eigenvalue decomposition, although being more expensive than a
     cholesky decomposition, has the advantage that eigenvectors are
     invariant to changes in \lambda and eigenvalues are linear in
     \lambda, so factorization only has to be performed once. We perform
-    the linesearch via Newtons equation. Hard case (B indefinite) is
-    treated seperately.
+    the linesearch via Newton's algorithm and Brent-Q as fallback.
+    The Hard case (B indefinite) is treated seperately and serves as general
+    fallback.
 
-    :param B: Hessian of the quadratic subproblem
-    :param g: gradient of the quadratic subproblem
-    :param delta: norm boundary for the solution of the quadratic subproblem
+    :param B:
+        Hessian of the quadratic subproblem
+    :param g:
+        gradient of the quadratic subproblem
+    :param delta:
+        norm boundary for the solution of the quadratic subproblem
+
+    :return:
+        s: selected step
+        soltype: type of solution that was obtained {'posdef','indef','hard'}
+
     """
     # See Nocedal & Wright 2006 for details
     # INITIALIZATION

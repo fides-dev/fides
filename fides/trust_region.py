@@ -5,10 +5,12 @@ from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 import scipy.linalg as linalg
 
+from typing import Tuple
+
 from .subproblem import solve_trust_region_subproblem
 
 
-def normalize(v: np.ndarray) -> Nones:
+def normalize(v: np.ndarray) -> None:
     """
     Inplace normalization of a vector
     :param v:
@@ -53,7 +55,7 @@ class Step:
     def __init__(self,
                  x: np.ndarray,
                  sg: np.ndarray,
-                 hess: csc_matrix,
+                 hess: np.ndarray,
                  scaling: csc_matrix,
                  g_dscaling: csc_matrix,
                  delta: float,
@@ -271,10 +273,52 @@ def trust_region_reflective(x: np.ndarray,
                             hess: np.ndarray,
                             scaling: csc_matrix,
                             tr_subspace: np.ndarray,
-                            delta, dv,
+                            delta: float,
+                            dv: np.ndarray,
                             theta: float,
                             lb: np.ndarray,
-                            ub: np.ndarray):
+                            ub: np.ndarray) -> Tuple[np.ndarray,
+                                                     np.ndarray,
+                                                     float,
+                                                     np.ndarray,
+                                                     str]:
+    """
+    Compute a step according to the solution of the trust-region subproblem.
+    If step-back is necessary, gradient and reflected trust region step are
+    also evaluated in terms of their performance according to the local
+    quadratic approximation
+
+    :param x:
+        Current values of the optimization variables
+    :param g:
+        Objective function gradient at x
+    :param hess:
+        (Approximate) objective function Hessian at x
+    :param scaling:
+        Scaling transformation according to distance to boundary
+    :param tr_subspace:
+        Precomputed subspace from previous iteration for reuse if proposed
+        step was not accepted
+    :param delta:
+        Trust region radius, note that this applies after scaling
+        transformation
+    :param dv:
+        derivative of scaling transformation
+    :param theta:
+        parameter regulating stepback
+    :param lb:
+        lower optimization variable boundaries
+    :param ub:
+        upper optimization variable boundaries
+
+    :return:
+        s: proposed step
+        ss: rescaled proposed step
+        qpval: expected function value according to local quadratic
+        approximation
+        subspace: computed subspace for reuse if proposed step is not accepted
+        steptype: type of step that was selected for proposal
+    """
     sg = scaling.dot(g)
     g_dscaling = csc_matrix(np.diag(np.abs(g) * dv))
 
