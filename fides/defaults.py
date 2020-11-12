@@ -1,1 +1,0 @@
-MAXITER = 1e3

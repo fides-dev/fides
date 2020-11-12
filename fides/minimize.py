@@ -12,7 +12,7 @@ from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from .trust_region import trust_region_reflective
 from .hessian_approximation import HessianApproximation
-from .defaults import MAXITER
+from .constants import Options, DEFAULT_OPTIONS
 from .logging import logger
 
 from typing import Callable, Dict, Optional, Tuple
@@ -80,6 +80,10 @@ class Optimizer:
         if options is None:
             options = {}
 
+        for option in options:
+            if option not in Options:
+                raise ValueError(f'{option} is not a valid options field.')
+
         self.options: Dict = options
 
         self.delta = 10
@@ -101,21 +105,24 @@ class Optimizer:
         Minimize the objective function the interior trust-region reflective
         algorithm described by [ColemanLi1994] and [ColemanLi1996]
         Convergence with respect to function value is achieved when
-        :math:`|f_{k+1} - f_k_|` < options[`fatol`] - :math:`f_k` options[
+        math:`|f_{k+1} - f_k|` < options[`fatol`] - :math:`f_k` options[
         `frtol`]. Similarly,  convergence with respect to optimization
         variables is achieved when :math:`||x_{k+1} - x_k||` < options[
         `xatol`] - :math:`x_k` options[`xrtol`].  Convergence with respect
         to the gradient is achieved when :math:`||g_k||` <
-        options[`gtol`].  Other than that, optimization can be terminated
-        when iterations exceed options[`maxiter`] or the elapsed time is
-        expected to exceed options[`maxtime`].
+        options[`gatol`] or `||g_k||` < options[`grtol`] * `f_k`.  Other than
+        that, optimization can be terminated when iterations exceed
+        options[ `maxiter`] or the elapsed time is expected to exceed
+        options[`maxtime`] on the next iteration.
 
         :param x0:
             initial guess
 
         :returns:
-            final function value, final optimization variable values,
-            final gradient, final Hessian (approximation)
+            fval: final function value,
+            x: final optimization variable values,
+            grad: final gradient,
+            hess: final Hessian (approximation)
         """
         self.starttime = time.time()
         self.iteration = 0
@@ -146,7 +153,8 @@ class Optimizer:
             step_x, step_sx, qppred, tr_space, step_type = \
                 trust_region_reflective(
                     self.x, self.grad, self.hess, scaling, tr_space,
-                    self.delta, dv, theta, self.lb, self.ub
+                    self.delta, dv, theta, self.lb, self.ub,
+                    self.get_option(Options.SUBSPACE_SOLVER)
                 )
 
             x_new = self.x + step_x
@@ -230,16 +238,17 @@ class Optimizer:
         """
         converged = False
 
-        fatol = self.options.get('fatol', 1e-6)
-        frtol = self.options.get('frtol', 0)
-        xatol = self.options.get('xatol', 0)
-        xrtol = self.options.get('xrtol', 0)
-        gtol = self.options.get('gtol', np.sqrt(np.spacing(1)))
+        fatol = self.get_option(Options.FATOL)
+        frtol = self.get_option(Options.FRTOL)
+        xatol = self.get_option(Options.XATOL)
+        xrtol = self.get_option(Options.XRTOL)
+        gatol = self.get_option(Options.GATOL)
+        grtol = self.get_option(Options.GRTOL)
         gnorm = norm(grad)
 
         if np.isclose(fval, self.fval, atol=fatol, rtol=frtol):
             logger.info(
-                f'Stopping as function difference '
+                'Stopping as function difference '
                 f'{np.abs(self.fval - fval)} was smaller than specified '
                 f'tolerances (atol={fatol:.2E}, rtol={frtol:.2E})'
             )
@@ -247,15 +256,22 @@ class Optimizer:
 
         elif np.isclose(x, self.x, atol=xatol, rtol=xrtol).all():
             logger.info(
-                f'Stopping as step was smaller than specified tolerances ('
+                'Stopping as step was smaller than specified tolerances ('
                 f'atol={xatol:.2E}, rtol={xrtol:.2E})'
             )
             converged = True
 
-        elif gnorm <= gtol:
+        elif gnorm <= gatol:
             logger.info(
-                f'Stopping as gradient norm satisfies convergence criteria: '
-                f'{gnorm:.2E} < {gtol:.2E}'
+                'Stopping as gradient norm satisfies absolute convergence '
+                f'criteria: {gnorm:.2E} < {gatol:.2E}'
+            )
+            converged = True
+
+        elif gnorm <= grtol * self.fval:
+            logger.info(
+                'Stopping as gradient norm satisfies relative convergence '
+                f'criteria: {gnorm:.2E} < {grtol:.2E} * {self.fval:.2E}'
             )
             converged = True
 
@@ -273,7 +289,7 @@ class Optimizer:
         if self.converged:
             return False
 
-        maxiter = self.options.get('maxiter', MAXITER)
+        maxiter = self.get_option(Options.MAXITER)
         if self.iteration > maxiter:
             logger.error(
                 f'Stopping as maximum number of iterations {maxiter} was '
@@ -282,7 +298,7 @@ class Optimizer:
             return False
 
         time_elapsed = time.time() - self.starttime
-        maxtime = self.options.get('maxtime', np.inf)
+        maxtime = self.get_option(Options.MAXTIME)
         time_remaining = maxtime - time_elapsed
         avg_iter_time = time_elapsed/(self.iteration + (self.iteration == 0))
         if time_remaining < avg_iter_time:
@@ -349,7 +365,7 @@ class Optimizer:
         :param normdx:
             norm of the current step
         """
-        iterspaces = max(len(str(self.options.get('maxiter', MAXITER))), 5) - \
+        iterspaces = max(len(str(self.get_option(Options.MAXITER))), 5) - \
             len(str(self.iteration))
         steptypespaces = 4 - len(steptype)
         logger.info(f'{" " * iterspaces}{self.iteration}'
@@ -365,7 +381,7 @@ class Optimizer:
         Prints the header for diagnostic information, should complement
         :py:func:`Optimizer.log_step`.
         """
-        iterspaces = len(str(self.options.get('maxiter', MAXITER))) - 5
+        iterspaces = len(str(self.get_option(Options.MAXITER))) - 5
         logger.info(f'{" " * iterspaces} iter '
                     f'|    fval    |  delta   | ||step|| |  ||g||   '
                     f'| step | '
@@ -425,3 +441,12 @@ class Optimizer:
                 ix = np.where(diff > 0)
                 raise RuntimeError(f'Exceeded upper bounds for indices {ix} by'
                                    f'{diff[ix]} {pointstr}')
+
+    def get_option(self, option):
+        if option not in Options:
+            raise ValueError(f'{option} is not a valid option name.')
+
+        if option not in DEFAULT_OPTIONS:
+            raise ValueError(f'{option} is missing its default option.')
+
+        return self.options.get(option, DEFAULT_OPTIONS.get(option))

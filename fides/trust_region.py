@@ -1,15 +1,16 @@
 import numpy as np
-from .logging import logger
+import scipy.linalg as linalg
 
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
-import scipy.linalg as linalg
 
 from typing import Tuple
 
+from .logging import logger
 from .subproblem import (
     solve_1d_trust_region_subproblem, solve_nd_trust_region_subproblem
 )
+from .constants import SubSpaceDim
 
 
 def normalize(v: np.ndarray) -> None:
@@ -280,11 +281,12 @@ def trust_region_reflective(x: np.ndarray,
                             dv: np.ndarray,
                             theta: float,
                             lb: np.ndarray,
-                            ub: np.ndarray) -> Tuple[np.ndarray,
-                                                     np.ndarray,
-                                                     float,
-                                                     np.ndarray,
-                                                     str]:
+                            ub: np.ndarray,
+                            subspace_dim: SubSpaceDim) -> Tuple[np.ndarray,
+                                                                np.ndarray,
+                                                                float,
+                                                                np.ndarray,
+                                                                str]:
     """
     Compute a step according to the solution of the trust-region subproblem.
     If step-back is necessary, gradient and reflected trust region step are
@@ -313,26 +315,32 @@ def trust_region_reflective(x: np.ndarray,
         lower optimization variable boundaries
     :param ub:
         upper optimization variable boundaries
+    :param subspace_dim:
+        Subspace dimension in which the subproblem will be solved. Larger
+        subspaces require more compute time but can yield higher quality step
+        proposals.
 
     :return:
-        s: proposed step
-        ss: rescaled proposed step
+        s: proposed step,
+        ss: rescaled proposed step,
         qpval: expected function value according to local quadratic
-        approximation
-        subspace: computed subspace for reuse if proposed step is not accepted
+        approximation,
+        subspace: computed subspace for reuse if proposed step is not accepted,
         steptype: type of step that was selected for proposal
     """
     sg = scaling.dot(g)
     g_dscaling = csc_matrix(np.diag(np.abs(g) * dv))
 
-    if hess.shape[0] > 100:
+    if subspace_dim == SubSpaceDim.TWO:
         tr_step = TRStep2D(
             x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, tr_subspace
         )
-    else:
+    elif subspace_dim == SubSpaceDim.FULL:
         tr_step = TRStepFull(
             x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb,
         )
+    else:
+        raise ValueError('Invalid choice of subspace dimension.')
     tr_step.calculate()
 
     # in case of truncation, we hit the boundary and we check both the
