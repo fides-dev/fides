@@ -87,8 +87,8 @@ def test_hard_hard_subproblem(subproblem):
     subproblem['B'][0, 0] = -1
     subproblem['g'][0] = 0
     delta = 0.5
-    s, case = solve_nd_trust_region_subproblem(subproblem['B'], subproblem['g'],
-                                               delta)
+    s, case = solve_nd_trust_region_subproblem(subproblem['B'],
+                                               subproblem['g'], delta)
     assert np.any(np.real(linalg.eig(subproblem['B'])[0]) < 0)
     assert np.isclose(norm(s), delta, atol=1e-6, rtol=0)
     assert case == 'hard'

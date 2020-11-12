@@ -51,11 +51,11 @@ def solve_nd_trust_region_subproblem(B: np.ndarray,
     ..math:: argmin_s{s^T B s + s^T g = 0, ||s|| <= \Delta, s in \mathbb{R}^2}
 
     The  solution to is characterized by the equation
-    :math:`-(B + \lamda I)s = g`. If B is positive definite, the solution can
+    :math:`-(B + \lambda I)s = g`. If B is positive definite, the solution can
     be obtained by :math:`\lambda = 0`$` if :math:`Bs = -g` satisfies
     :math:`||s|| <= \Delta`. If B is indefinite or :math:`Bs = -g`
-    satisfies :math:`||s|| > delta` and an approppriate lambda has to be
-    identified via 1D rootfinding of the secular equation
+    satisfies :math:`||s|| > \Delta` and an approppriate :math:`\lambda` has
+    to be  identified via 1D rootfinding of the secular equation
 
     ..math:: \phi(\lambda) = \frac{1}{||s(\lambda)||} - \frac{1}{\Delta} = 0
 
@@ -65,8 +65,7 @@ def solve_nd_trust_region_subproblem(B: np.ndarray,
     invariant to changes in :math:`\lambda` and eigenvalues are linear in
     :math:`\lambda`, so factorization only has to be performed once. We perform
     the linesearch via Newton's algorithm and Brent-Q as fallback.
-    The Hard case (B indefinite) is treated seperately and serves as general
-    fallback.
+    The hard case is treated seperately and serves as general fallback.
 
     :param B:
         Hessian of the quadratic subproblem

@@ -26,12 +26,10 @@ jobs:
       run: |
         pip install pytest pytest-cov
         pip install .
-        pytest ./tests --cov fides --cov-report=xml
+        pytest ./tests --cov-report=xml
 
-    - name: Codecov CPP
+    - name: Codecov
       uses: codecov/codecov-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.xml
-        flags: cpp
         fail_ci_if_error: true

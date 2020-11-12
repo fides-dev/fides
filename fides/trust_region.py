@@ -15,8 +15,9 @@ from .subproblem import (
 def normalize(v: np.ndarray) -> None:
     """
     Inplace normalization of a vector
+
     :param v:
-        vector to be normalizes
+        vector to be normalized
     """
     nv = norm(v)
     if nv > 0:
@@ -143,7 +144,6 @@ class Step:
         """
         Compute the step as solution to the trust region subproblem. Special
         code is used for the special case 1-dimensional subspace case
-        :return:
         """
         if self.subspace.shape[1] > 1:
             self.sc, _ = solve_nd_trust_region_subproblem(self.chess, self.cg,
