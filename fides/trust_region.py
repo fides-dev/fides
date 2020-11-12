@@ -1,3 +1,11 @@
+"""
+Trust Region Steps
+------------------
+This module provides the machinery to compute different trust-region(
+-reflective) step proposals and select among them based on to their
+performance according to the quadratic approximation of the objective function
+"""
+
 import numpy as np
 import scipy.linalg as linalg
 
@@ -66,6 +74,29 @@ class Step:
                  theta: float,
                  ub: np.ndarray,
                  lb: np.ndarray):
+        """
+
+        :param x:
+            Reference point
+        :param sg:
+            Gradient in rescaled coordinates
+        :param hess:
+            Hessian in unscaled coordinates
+        :param scaling:
+            Matrix that defines scaling transformation
+        :param g_dscaling:
+            Unscaled gradient multiplied by derivative of scaling
+            transformation
+        :param delta:
+            Trust region Radius in scaled coordinates
+        :param theta:
+            Stepback parameter that controls how close steps are allowed to
+            get to the boundary
+        :param ub:
+            Upper boundary
+        :param lb:
+            Lower boundary
+        """
         self.x = x
 
         self.s = None
@@ -193,6 +224,10 @@ class TRStep2D(Step):
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
                  ub, lb, subspace):
+        """
+        :param subspace:
+            Precomputed subspace
+        """
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb)
         self.subspace = subspace
@@ -239,6 +274,10 @@ class TRStepReflected(Step):
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
                  ub, lb, tr_step):
+        """
+        :param tr_step:
+            Trust-region step that is reflected
+        """
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb)
 

@@ -1,14 +1,11 @@
-{{ fullname | escape | underline }}
-
 .. automodule:: {{ fullname }}
 
 .. currentmodule:: {{ fullname }}
 
 {% if classes %}
-.. rubric:: Classes
+.. rubric:: Classes Summary
 
 .. autosummary::
-    :toctree: .
     {% for class in classes %}
     {{ class }}
     {% endfor %}
@@ -22,6 +19,17 @@
     {% for function in functions %}
     {{ function }}
     {% endfor %}
+
+{% endif %}
+
+{% if classes %}
+.. rubric:: Classes
+
+{% for class in classes %}
+.. autoclass:: {{ class }}
+    :members:
+    :special-members: __init__
+{% endfor %}
 
 {% endif %}
 

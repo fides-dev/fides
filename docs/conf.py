@@ -62,6 +62,7 @@ extensions = [
 intersphinx_mapping = {
     'numpy': ('https://numpy.org/devdocs/', None),
     'python': ('https://docs.python.org/3', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference', None)
 }
 
 # Add any paths that contain templates here, relative to this directory.

@@ -7,8 +7,12 @@ Fides Python API
    :toctree: generated
 
    fides
+   fides.minimize
+   fides.trust_region
+   fides.subproblem
    fides.hessian_approximation
    fides.logging
-   fides.minimize
-   fides.subproblem
-   fides.trust_region
+   fides.constants
+
+
+

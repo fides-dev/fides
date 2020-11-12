@@ -6,7 +6,7 @@ Welcome to Fides's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: API
+   :caption: API Reference
 
    api
 

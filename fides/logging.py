@@ -3,6 +3,9 @@ Logging
 -------
 This module provides the machinery that is used to display progress of the
 optimizer as well as debugging information
+
+:var logger:
+    logging.Logger instance that can be used throughout fides
 """
 
 import logging

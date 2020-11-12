@@ -66,8 +66,8 @@ class Optimizer:
             Additional keyword arguments that are to be passed to fun for
             evaluation
         :param hessian_update:
-            Subclass of :py:class:`HessianApproximation` that performs the
-            hessian update strategy.
+            Subclass of :py:class:`fides.hessian_update.HessianApproximation`
+            that performs the hessian updates in every iteration.
         """
         self.fun: Callable = fun
         if funargs is None:
