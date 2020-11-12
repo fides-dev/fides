@@ -81,7 +81,9 @@ class Optimizer:
             options = {}
 
         for option in options:
-            if option not in Options:
+            try:
+                Options(option)
+            except ValueError:
                 raise ValueError(f'{option} is not a valid options field.')
 
         self.options: Dict = options

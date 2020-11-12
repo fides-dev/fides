@@ -3,6 +3,7 @@ import numpy as np
 
 import logging
 import pytest
+import fides
 
 
 def rosengrad(x):
@@ -54,7 +55,7 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ):
     opt = Optimizer(
         fun, ub=ub, lb=lb, verbose=logging.INFO,
         hessian_update=happ(len(x0)) if happ is not None else None,
-        options={'fatol': 0}
+        options={fides.Options.FATOL: 0}
     )
     opt.minimize(x0)
     assert np.isclose(opt.x, [1, 1]).all()
