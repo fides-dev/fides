@@ -8,3 +8,4 @@ _build/*
 docs/_build/*
 docs/generated/*
 coverage.xml
+.coverage

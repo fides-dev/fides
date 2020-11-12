@@ -6,7 +6,8 @@
   <img src="https://codecov.io/gh/fides-dev/fides/branch/master/graph/badge.svg" alt="Code coverage"></a>
 <a href="https://fides-optimizer.readthedocs.io/en/latest/?badge=latest">
  <img src="https://readthedocs.org/projects/fides-optimizer/badge/?version=latest" alt="ReadTheDocs status"></a>
-
+<a href="https://zenodo.org/badge/latestdoi/312057973">
+ <img src="https://zenodo.org/badge/312057973.svg" alt="DOI"></a>
 
 Fides implements an Interior Trust Region Reflective optimizer based on
 the papers [ColemanLi1994] and [ColemanLi1996]. Accordingly, Fides is
