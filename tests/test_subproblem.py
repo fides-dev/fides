@@ -66,7 +66,7 @@ def test_nonconvex_subproblem(subproblem):
     s, case = solve_trust_region_subproblem(subproblem['B'], subproblem['g'],
                                             delta)
     assert np.any(np.real(linalg.eig(subproblem['B'])[0]) < 0)
-    assert norm(s) == delta
+    assert np.isclose(norm(s), delta, atol=1e-6, rtol=0)
     assert case == 'indef'
     assert is_bound_quad_min(s, subproblem['B'], subproblem['g'])
 
@@ -78,7 +78,7 @@ def test_hard_indef_subproblem(subproblem):
     s, case = solve_trust_region_subproblem(subproblem['B'], subproblem['g'],
                                             delta)
     assert np.any(np.real(linalg.eig(subproblem['B'])[0]) < 0)
-    assert np.isclose(norm(s), delta, 1e-6)
+    assert np.isclose(norm(s), delta, atol=1e-6, rtol=0)
     assert case == 'indef'
     assert is_bound_quad_min(s, subproblem['B'], subproblem['g'])
 
@@ -90,7 +90,7 @@ def test_hard_hard_subproblem(subproblem):
     s, case = solve_trust_region_subproblem(subproblem['B'], subproblem['g'],
                                             delta)
     assert np.any(np.real(linalg.eig(subproblem['B'])[0]) < 0)
-    assert norm(s) == delta
+    assert np.isclose(norm(s), delta, atol=1e-6, rtol=0)
     assert case == 'hard'
     assert is_bound_quad_min(s, subproblem['B'], subproblem['g'])
 
