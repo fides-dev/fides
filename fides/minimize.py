@@ -156,7 +156,7 @@ class Optimizer:
                 trust_region_reflective(
                     self.x, self.grad, self.hess, scaling, tr_space,
                     self.delta, dv, theta, self.lb, self.ub,
-                    self.get_option(Options.SUBSPACE_SOLVER)
+                    self.get_option(Options.SUBSPACE_DIM)
                 )
 
             x_new = self.x + step_x

@@ -40,7 +40,7 @@ def solve_1d_trust_region_subproblem(B: np.ndarray,
     b = s.T.dot(g)
 
     minq = - b / (2 * a)
-    if a > 0 and minq < delta:
+    if a > 0 and abs(minq) < delta:
         # interior solution
         tau = minq
     else:

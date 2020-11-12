@@ -22,7 +22,7 @@ class Options(str, enum.Enum):
     XRTOL = 'xrtol'
     GATOL = 'gatol'
     GRTOL = 'grtol'
-    SUBSPACE_SOLVER = 'subspace_solver'
+    SUBSPACE_DIM = 'subspace_solver'
 
 
 class SubSpaceDim(str, enum.Enum):
@@ -43,5 +43,5 @@ DEFAULT_OPTIONS = {
     Options.XRTOL: 0,
     Options.GATOL: 1e-6,
     Options.GRTOL: 0,
-    Options.SUBSPACE_SOLVER: SubSpaceDim.FULL,
+    Options.SUBSPACE_DIM: SubSpaceDim.FULL,
 }

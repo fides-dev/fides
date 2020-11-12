@@ -235,17 +235,17 @@ class TRStep2D(Step):
             n = len(sg)
 
             s_newt = linalg.solve(hess, sg)
-            posdef = s_newt.dot(hess.dot(s_newt)) <= 0
+            posdef = s_newt.dot(hess.dot(s_newt)) > 0
             normalize(s_newt)
 
             if n > 1:
-                if posdef:
+                if not posdef:
                     # in this case we are in Case 2 of Fig 12 in
                     # [Coleman-Li1994]
                     logger.debug('Newton direction did not have negative '
                                  'curvature adding scaling * np.sign(sg) to '
                                  '2D subspace.')
-                    s_grad = scaling * np.sign(sg)
+                    s_grad = scaling * np.sign(sg) + (sg == 0)
                 else:
                     s_grad = sg.copy()
 
@@ -254,7 +254,7 @@ class TRStep2D(Step):
                 s_grad = s_grad - s_newt * (s_newt.dot(s_grad))
                 normalize(s_grad)
                 # if non-zero, add s_grad to subspace
-                if np.any(s_grad):
+                if np.any(s_grad != 0):
                     self.subspace = np.vstack([s_newt, s_grad]).T
                     return
                 else:

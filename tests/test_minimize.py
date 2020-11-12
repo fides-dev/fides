@@ -1,4 +1,4 @@
-from fides import Optimizer, BFGS, SR1, DFP
+from fides import Optimizer, BFGS, SR1, DFP, SubSpaceDim
 import numpy as np
 
 import logging
@@ -40,6 +40,8 @@ def unbounded_and_init():
     return lb, ub, x0
 
 
+@pytest.mark.parametrize("subspace_dim", [SubSpaceDim.FULL,
+                                          SubSpaceDim.TWO])
 @pytest.mark.parametrize("bounds_and_init", [finite_bounds_and_init(),
                                              unbounded_and_init()])
 @pytest.mark.parametrize("fun, happ", [
@@ -49,13 +51,14 @@ def unbounded_and_init():
     (rosengrad, BFGS),
     (rosengrad, DFP),
 ])
-def test_minimize_hess_approx(bounds_and_init, fun, happ):
+def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim):
     lb, ub, x0 = bounds_and_init
 
     opt = Optimizer(
         fun, ub=ub, lb=lb, verbose=logging.INFO,
         hessian_update=happ(len(x0)) if happ is not None else None,
-        options={fides.Options.FATOL: 0}
+        options={fides.Options.FATOL: 0,
+                 fides.Options.SUBSPACE_DIM: subspace_dim}
     )
     opt.minimize(x0)
     assert np.isclose(opt.x, [1, 1]).all()
