@@ -28,11 +28,10 @@ jobs:
         pip install .
         pytest ./tests --cov fides --cov-report=xml
 
-    - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v1
-        with:
-          file: ./coverage.xml
-          flags: unittests
-          env_vars: OS,PYTHON
-          name: codecov-umbrella
-          fail_ci_if_error: true
+    - name: Codecov CPP
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.xml
+        flags: cpp
+        fail_ci_if_error: true
