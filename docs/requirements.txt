@@ -8,6 +8,5 @@ nbsphinx>=0.5.1
 recommonmark>=0.6.0
 sphinx_rtd_theme>=0.4.3
 sphinx-autodoc-typehints>=1.10.3
-git+https://github.com/readthedocs/sphinx-hoverxref@master
 sphinxcontrib-napoleon
 pygments==2.4.1

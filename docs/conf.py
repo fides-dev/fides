@@ -57,7 +57,6 @@ extensions = [
     'sphinx.ext.mathjax',
     'recommonmark',
     'sphinx_autodoc_typehints',
-    'hoverxref.extension',
 ]
 
 intersphinx_mapping = {
@@ -104,20 +103,6 @@ typehints_fully_qualified = True
 typehints_document_rtype = True
 set_type_checking_flag = True
 
-# hoverxref
-hoverxref_auto_ref = True
-hoverxref_roles = ['term']
-hoverxref_domains = ['py']
-hoverxref_role_types = {
-    'hoverxref': 'tooltip',
-    'ref': 'tooltip',
-    'term': 'tooltip',
-    'obj': 'tooltip',
-    'func': 'tooltip',
-    'mod': 'tooltip',
-    'meth': 'tooltip',
-    'class': 'tooltip',
-}
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
