@@ -12,8 +12,6 @@ import scipy.linalg as linalg
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 
-from typing import Tuple
-
 from .logging import logger
 from .subproblem import (
     solve_1d_trust_region_subproblem, solve_nd_trust_region_subproblem
