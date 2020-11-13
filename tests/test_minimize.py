@@ -67,7 +67,8 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim):
         fun, ub=ub, lb=lb, verbose=logging.INFO,
         hessian_update=happ(len(x0)) if happ is not None else None,
         options={fides.Options.FATOL: 0,
-                 fides.Options.SUBSPACE_DIM: subspace_dim}
+                 fides.Options.SUBSPACE_DIM: subspace_dim,
+                 fides.Options.MAXITER: 1e4}
     )
     opt.minimize(x0)
     if np.all(ub > 1):

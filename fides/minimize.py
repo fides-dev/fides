@@ -10,7 +10,7 @@ import numpy as np
 import logging
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
-from .trust_region import trust_region_reflective
+from .trust_region import trust_region_reflective, Step
 from .hessian_approximation import HessianApproximation
 from .constants import Options, DEFAULT_OPTIONS
 from .logging import logger
@@ -88,7 +88,7 @@ class Optimizer:
 
         self.options: Dict = options
 
-        self.delta = 10
+        self.delta: float = 1
 
         self.x: np.ndarray = np.empty(ub.shape)
         self.fval: float = np.nan
@@ -140,8 +140,6 @@ class Optimizer:
 
         self.check_finite()
 
-        tr_space = None
-
         self.converged = False
 
         while self.check_continue():
@@ -152,32 +150,31 @@ class Optimizer:
             scaling = csc_matrix(np.diag(np.sqrt(np.abs(v))))
             theta = max(.95, 1 - norm(v * self.grad, np.inf))
 
-            step_x, step_sx, qppred, tr_space, step_type = \
+            step = \
                 trust_region_reflective(
-                    self.x, self.grad, self.hess, scaling, tr_space,
+                    self.x, self.grad, self.hess, scaling,
                     self.delta, dv, theta, self.lb, self.ub,
                     self.get_option(Options.SUBSPACE_DIM)
                 )
 
-            x_new = self.x + step_x
+            x_new = self.x + step.s + step.s0
 
             if self.hessian_update is None:
                 fval_new, grad_new, hess_new = self.fun(x_new, **self.funargs)
             else:
                 fval_new, grad_new = self.fun(x_new, **self.funargs)
 
-            accepted = self.update_tr_radius(
-                fval_new, grad_new, step_sx, dv, qppred
-            )
+            accepted = self.update_tr_radius(fval_new, grad_new, step, dv)
 
             if (self.iteration - 1) % 10 == 0:
                 self.log_header()
-            self.log_step(accepted, step_type, norm(step_x))
+            self.log_step(accepted, step.type, norm(step.s + step.s0))
             self.check_convergence(fval_new, x_new, grad_new)
 
             if accepted:
                 if self.hessian_update is not None:
-                    self.hessian_update.update(step_x, grad_new - self.grad)
+                    self.hessian_update.update(step.s + step.s0, grad_new -
+                                               self.grad)
                     self.hess = self.hessian_update.get_mat()
                 else:
                     self.hess = hess_new
@@ -188,11 +185,13 @@ class Optimizer:
                 self.check_finite()
                 self.make_non_degenerate()
 
-                tr_space = None
-
         return self.fval, self.x, self.grad, self.hess
 
-    def update_tr_radius(self, fval, grad, step_sx, dv, qppred) -> bool:
+    def update_tr_radius(self,
+                         fval: float,
+                         grad: np.ndarray,
+                         step: Step,
+                         dv: np.ndarray) -> bool:
         """
         Update the trust region radius
 
@@ -200,24 +199,23 @@ class Optimizer:
             new function value if step defined by step_sx is taken
         :param grad:
             new gradient value if step defined by step_sx is taken
-        :param step_sx:
-            proposed scaled step
+        :param step:
+            step
         :param dv:
             derivative of scaling vector v wrt x
-        :param qppred:
-            predicted objective function value according to the quadratic
-            approximation
 
         :return:
             flag indicating whether the proposed step should be accepted
         """
+        step_sx = step.ss + step.ss0
         nsx = norm(step_sx)
         if not np.isfinite(fval):
             self.delta = np.min([self.delta / 4, nsx / 4])
             return False
         else:
-            qpval = 0.5 * step_sx.dot(dv * np.abs(grad) * step_sx)
-            ratio = (fval + qpval - self.fval) / qppred
+            # m_k(0) = 0
+            ratio = (fval - self.fval) / step.qpval
+            logger.debug(f'trust region ratio: {ratio}')
 
             # values as proposed in algorithm 4.1 in Nocedal & Wright
             if ratio >= 0.75 and nsx > self.delta * 0.9:

@@ -40,7 +40,9 @@ def solve_1d_trust_region_subproblem(B: np.ndarray,
         Proposed step-length
     """
 
-    a = 0.5 * B.dot(s).dot(s)[0, 0]
+    a = 0.5 * B.dot(s).dot(s)
+    if not isinstance(a, float):
+        a = a[0, 0]
     b = s.T.dot(g)
 
     minq = - b / (2 * a)
@@ -55,7 +57,7 @@ def solve_1d_trust_region_subproblem(B: np.ndarray,
             tau = 0
         else:
             tau = brentq(lambda q: 1/norm(q * s + s0) - 1/delta,
-                         a=0, b=minq, xtol=12, maxiter=100)
+                         a=0, b=2*delta, xtol=1e-12, maxiter=100)
 
     return tau * np.ones((1,))
 

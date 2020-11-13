@@ -228,45 +228,39 @@ class TRStep2D(Step):
     type = 'tr2d'
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb, subspace):
-        """
-        :param subspace:
-            Precomputed subspace
-        """
+                 ub, lb):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb)
-        self.subspace = subspace
-        if self.subspace is None:
-            n = len(sg)
+        n = len(sg)
 
-            s_newt = linalg.solve(hess, sg)
-            posdef = s_newt.dot(hess.dot(s_newt)) > 0
-            normalize(s_newt)
+        s_newt = linalg.solve(hess, sg)
+        posdef = s_newt.dot(hess.dot(s_newt)) > 0
+        normalize(s_newt)
 
-            if n > 1:
-                if not posdef:
-                    # in this case we are in Case 2 of Fig 12 in
-                    # [Coleman-Li1994]
-                    logger.debug('Newton direction did not have negative '
-                                 'curvature adding scaling * np.sign(sg) to '
-                                 '2D subspace.')
-                    s_grad = scaling * np.sign(sg) + (sg == 0)
-                else:
-                    s_grad = sg.copy()
+        if n > 1:
+            if not posdef:
+                # in this case we are in Case 2 of Fig 12 in
+                # [Coleman-Li1994]
+                logger.debug('Newton direction did not have negative '
+                             'curvature adding scaling * np.sign(sg) to '
+                             '2D subspace.')
+                s_grad = scaling * np.sign(sg) + (sg == 0)
+            else:
+                s_grad = sg.copy()
 
-                # orthonormalize, this ensures that S.T.dot(S) = I and we
-                # can use S/S.T for transformation
-                s_grad = s_grad - s_newt * (s_newt.dot(s_grad))
-                normalize(s_grad)
-                # if non-zero, add s_grad to subspace
-                if np.any(s_grad != 0):
-                    self.subspace = np.vstack([s_newt, s_grad]).T
-                    return
-                else:
-                    logger.debug('Singular subspace, continuing with 1D '
-                                 'subspace.')
+            # orthonormalize, this ensures that S.T.dot(S) = I and we
+            # can use S/S.T for transformation
+            s_grad = s_grad - s_newt * (s_newt.dot(s_grad))
+            normalize(s_grad)
+            # if non-zero, add s_grad to subspace
+            if np.any(s_grad != 0):
+                self.subspace = np.vstack([s_newt, s_grad]).T
+                return
+            else:
+                logger.debug('Singular subspace, continuing with 1D '
+                             'subspace.')
 
-            self.subspace = np.expand_dims(s_newt, 1)
+        self.subspace = np.expand_dims(s_newt, 1)
 
 
 class TRStepReflected(Step):
@@ -287,8 +281,8 @@ class TRStepReflected(Step):
                          ub, lb)
 
         full_alpha = min(step.minbr, 1)
-        self.s0 = full_alpha * step.og_s
-        self.ss0 = full_alpha * step.og_ss
+        self.s0 = full_alpha * step.og_s + step.s0
+        self.ss0 = full_alpha * step.og_ss + step.ss0
         # update x and at breakpoint
         self.x = x + self.s0
 
@@ -323,17 +317,12 @@ def trust_region_reflective(x: np.ndarray,
                             g: np.ndarray,
                             hess: np.ndarray,
                             scaling: csc_matrix,
-                            tr_subspace: np.ndarray,
                             delta: float,
                             dv: np.ndarray,
                             theta: float,
                             lb: np.ndarray,
                             ub: np.ndarray,
-                            subspace_dim: SubSpaceDim) -> Tuple[np.ndarray,
-                                                                np.ndarray,
-                                                                float,
-                                                                np.ndarray,
-                                                                str]:
+                            subspace_dim: SubSpaceDim) -> Step:
     """
     Compute a step according to the solution of the trust-region subproblem.
     If step-back is necessary, gradient and reflected trust region step are
@@ -348,9 +337,6 @@ def trust_region_reflective(x: np.ndarray,
         (Approximate) objective function Hessian at x
     :param scaling:
         Scaling transformation according to distance to boundary
-    :param tr_subspace:
-        Precomputed subspace from previous iteration for reuse if proposed
-        step was not accepted
     :param delta:
         Trust region radius, note that this applies after scaling
         transformation
@@ -380,7 +366,7 @@ def trust_region_reflective(x: np.ndarray,
 
     if subspace_dim == SubSpaceDim.TWO:
         tr_step = TRStep2D(
-            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, tr_subspace
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb
         )
     elif subspace_dim == SubSpaceDim.FULL:
         tr_step = TRStepFull(
@@ -400,14 +386,14 @@ def trust_region_reflective(x: np.ndarray,
                               theta, ub, lb)
         g_step.calculate()
 
-        steps.append(tr_step)
+        steps.append(g_step)
 
         rtr_step = TRStepReflected(x, g, hess, scaling, g_dscaling, delta,
                                    theta, ub, lb, tr_step)
         rtr_step.calculate()
         steps.append(rtr_step)
         for ireflection in range(len(x)-1):
-            if rtr_step.alpha < 1 or norm(rtr_step.ss) > delta * 0.9:
+            if rtr_step.alpha == 1 or norm(rtr_step.ss) > delta * 0.9:
                 break
             # recursively add more reflections
             rtr_old = rtr_step
@@ -430,5 +416,4 @@ def trust_region_reflective(x: np.ndarray,
     qpvals = [step.qpval for step in steps]
     step = steps[np.argmin(qpvals)]
 
-    return step.s + step.s0, step.ss + step.ss0, step.qpval, \
-        tr_step.subspace, step.type
+    return step

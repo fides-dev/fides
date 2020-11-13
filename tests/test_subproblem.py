@@ -1,4 +1,7 @@
-from fides.subproblem import solve_nd_trust_region_subproblem
+from fides.subproblem import (
+    solve_nd_trust_region_subproblem, solve_1d_trust_region_subproblem,
+)
+from fides.trust_region import normalize
 from scipy.spatial.transform import Rotation as R
 
 import numpy as np
@@ -70,6 +73,13 @@ def test_nonconvex_subproblem(subproblem):
     assert case == 'indef'
     assert is_bound_quad_min(s, subproblem['B'], subproblem['g'])
 
+    snorm = s.copy()
+    normalize(snorm)
+    for alpha in [0, 0.5, -0.5]:
+        assert np.isclose(solve_1d_trust_region_subproblem(
+            subproblem['B'], subproblem['g'], snorm, delta, alpha * s
+        )[0], (1 - alpha)*delta)
+
 
 def test_hard_indef_subproblem(subproblem):
     subproblem['B'][0, 0] = -1
@@ -82,6 +92,13 @@ def test_hard_indef_subproblem(subproblem):
     assert case == 'indef'
     assert is_bound_quad_min(s, subproblem['B'], subproblem['g'])
 
+    snorm = s.copy()
+    normalize(snorm)
+    for alpha in [0, 0.5, -0.5]:
+        assert np.isclose(solve_1d_trust_region_subproblem(
+            subproblem['B'], subproblem['g'], snorm, delta, alpha * s
+        )[0], (1 - alpha) * delta)
+
 
 def test_hard_hard_subproblem(subproblem):
     subproblem['B'][0, 0] = -1
@@ -93,3 +110,10 @@ def test_hard_hard_subproblem(subproblem):
     assert np.isclose(norm(s), delta, atol=1e-6, rtol=0)
     assert case == 'hard'
     assert is_bound_quad_min(s, subproblem['B'], subproblem['g'])
+
+    snorm = s.copy()
+    normalize(snorm)
+    for alpha in [0, 0.5, -0.5]:
+        assert np.isclose(solve_1d_trust_region_subproblem(
+            subproblem['B'], subproblem['g'], snorm, delta, alpha * s
+        )[0], (1 - alpha)*delta)
