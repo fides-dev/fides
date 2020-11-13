@@ -23,15 +23,32 @@ class Options(str, enum.Enum):
     GATOL = 'gatol'
     GRTOL = 'grtol'
     SUBSPACE_DIM = 'subspace_solver'
+    STEPBACK_STRAT = 'stepback_strategy'
 
 
 class SubSpaceDim(str, enum.Enum):
-    """
+    r"""
     Defines the possible choices of subspace dimension in which the
-    subproblem will be solved
+    subproblem will be solved.
+
+    `2D`: Two dimensional subspace spanned by gradient and Newton search
+    direction
+    `full`: Full :math:`\mathbb{R}^n`
     """
     TWO = '2D'
     FULL = 'full'
+
+
+class StepBackStrategy(str, enum.Enum):
+    """
+    Defines the possible choices of search refinement if proposed step
+    reaches optimization boundary
+
+    `reflect`: reflect step at boundary
+    `reduce`: truncate step at boundary and search remaining subspace
+    """
+    REFLECT = 'reflect'
+    TRUNCATE = 'reduce'
 
 
 DEFAULT_OPTIONS = {
@@ -44,4 +61,5 @@ DEFAULT_OPTIONS = {
     Options.GATOL: 1e-6,
     Options.GRTOL: 0,
     Options.SUBSPACE_DIM: SubSpaceDim.FULL,
+    Options.STEPBACK_STRAT: StepBackStrategy.TRUNCATE,
 }

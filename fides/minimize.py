@@ -12,7 +12,7 @@ from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from .trust_region import trust_region_reflective, Step
 from .hessian_approximation import HessianApproximation
-from .constants import Options, DEFAULT_OPTIONS
+from .constants import Options, StepBackStrategy, DEFAULT_OPTIONS
 from .logging import logger
 
 from typing import Callable, Dict, Optional, Tuple
@@ -27,7 +27,8 @@ class Optimizer:
     :ivar lb: lower optimization boundaries
     :ivar ub: upper optimization boundaries
     :ivar options: options that configure convergence checks
-    :ivar delta: trust region radius
+    :ivar delta_iter: trust region radius that was used for the current step
+    :ivar delta: updated trust region radius
     :ivar x: current optimization variables
     :ivar fval: objective function value at x
     :ivar grad: objective function gradient at x
@@ -88,7 +89,9 @@ class Optimizer:
 
         self.options: Dict = options
 
+        self.delta_iter: float = 1
         self.delta: float = 1
+        self.tr_ratio: float = 1
 
         self.x: np.ndarray = np.empty(ub.shape)
         self.fval: float = np.nan
@@ -137,6 +140,8 @@ class Optimizer:
         else:
             self.fval, self.grad = self.fun(self.x, **self.funargs)
             self.hess = self.hessian_update.get_mat()
+        self.log_header()
+        self.log_step_initial()
 
         self.check_finite()
 
@@ -144,6 +149,7 @@ class Optimizer:
 
         while self.check_continue():
             self.iteration += 1
+            self.delta_iter = self.delta
 
             v, dv = self.get_affine_scaling()
 
@@ -154,7 +160,8 @@ class Optimizer:
                 trust_region_reflective(
                     self.x, self.grad, self.hess, scaling,
                     self.delta, dv, theta, self.lb, self.ub,
-                    self.get_option(Options.SUBSPACE_DIM)
+                    self.get_option(Options.SUBSPACE_DIM),
+                    self.get_option(Options.STEPBACK_STRAT)
                 )
 
             x_new = self.x + step.s + step.s0
@@ -166,15 +173,15 @@ class Optimizer:
 
             accepted = self.update_tr_radius(fval_new, grad_new, step, dv)
 
-            if (self.iteration - 1) % 10 == 0:
+            if (self.iteration) % 10 == 0:
                 self.log_header()
-            self.log_step(accepted, step.type, norm(step.s + step.s0))
+            self.log_step(accepted, step, theta, fval_new)
             self.check_convergence(fval_new, x_new, grad_new)
 
             if accepted:
                 if self.hessian_update is not None:
-                    self.hessian_update.update(step.s + step.s0, grad_new -
-                                               self.grad)
+                    self.hessian_update.update(step.s + step.s0,
+                                               grad_new - self.grad)
                     self.hess = self.hessian_update.get_mat()
                 else:
                     self.hess = hess_new
@@ -207,23 +214,22 @@ class Optimizer:
         :return:
             flag indicating whether the proposed step should be accepted
         """
-        step_sx = step.ss + step.ss0
-        nsx = norm(step_sx)
+        stepsx = step.ss + step.ss0
+        nsx = norm(stepsx)
         if not np.isfinite(fval):
             self.delta = np.min([self.delta / 4, nsx / 4])
             return False
         else:
-            # m_k(0) = 0
-            ratio = (fval - self.fval) / step.qpval
-            logger.debug(f'trust region ratio: {ratio}')
+            qpval = 0.5 * stepsx.dot(dv * np.abs(grad) * stepsx)
+            self.tr_ratio = (fval + qpval - self.fval) / step.qpval
 
             # values as proposed in algorithm 4.1 in Nocedal & Wright
-            if ratio >= 0.75 and nsx > self.delta * 0.9:
+            if self.tr_ratio >= 0.75 and nsx > self.delta * 0.9:
                 self.delta = 2 * self.delta
-            elif ratio <= .25 or nsx < self.delta * 0.9 \
+            elif self.tr_ratio <= .25 or nsx < self.delta * 0.9 \
                     or fval > self.fval * 1.1:
                 self.delta = np.min([self.delta / 4, nsx / 4])
-            return ratio >= .25 and fval < self.fval * 1.1
+            return self.tr_ratio >= .25 and fval < self.fval * 1.1
 
     def check_convergence(self, fval, x, grad) -> None:
         """
@@ -354,27 +360,63 @@ class Optimizer:
         dv[bounded] = 1
         return v, dv
 
-    def log_step(self, accepted: bool, steptype: str, normdx: float):
+    def log_step(self, accepted: bool, step: Step, theta: float, fval: float):
         """
         Prints diagnostic information about the current step to the log
 
         :param accepted:
             flag indicating whether the current step was accepted
-        :param steptype:
-            identifier how the current step was computed
-        :param normdx:
-            norm of the current step
+        :param step:
+            proposal step
+        :param theta:
+            value of the theta parameter
+        :param fval:
+            new fval if step is accepted
         """
+        normdx = norm(step.s + step.s0)
+
         iterspaces = max(len(str(self.get_option(Options.MAXITER))), 5) - \
             len(str(self.iteration))
-        steptypespaces = 4 - len(steptype)
+        steptypespaces = 4 - len(step.type)
+        if self.get_option(Options.STEPBACK_STRAT) == StepBackStrategy.REFLECT:
+            count = step.reflection_count
+        else:
+            count = step.truncation_count
+        stepbackspaces = 4 - len(str(count))
         logger.info(f'{" " * iterspaces}{self.iteration}'
-                    f' | {self.fval:.4E}'
-                    f' | {self.delta:.2E}'
+                    f' | {fval if accepted else self.fval:.3E}'
+                    f' | {(fval - self.fval)*accepted:+.2E}'
+                    f' | {step.qpval:+.2E}'
+                    f' | {self.tr_ratio:+.2E}'
+                    f' | {self.delta_iter:.2E}'
                     f' | {norm(self.grad):.2E}'
                     f' | {normdx:.2E}'
-                    f' | {steptype}{" " * steptypespaces}'
+                    f' | {theta:.2E}'
+                    f' | {step.alpha:.2E}'
+                    f' | {step.type}{" " * steptypespaces}'
+                    f' | {" " * stepbackspaces}{count}'
                     f' | {int(accepted)}')
+
+    def log_step_initial(self):
+        """
+        Prints diagnostic information about the initial step to the log
+        """
+
+        iterspaces = max(len(str(self.get_option(Options.MAXITER))), 5) - \
+                     len(str(self.iteration))
+        logger.info(f'{" " * iterspaces}{self.iteration}'
+                    f' | {self.fval:.3E}'
+                    f' |    NaN   '
+                    f' |    NaN   '
+                    f' |    NaN   '
+                    f' | {self.delta:.2E}'
+                    f' | {norm(self.grad):.2E}'
+                    f' |   NaN   '
+                    f' |   NaN   '
+                    f' |   NaN   '
+                    f' | NaN '
+                    f' | NaN '
+                    f' | {int(np.isfinite(self.fval))}')
 
     def log_header(self):
         """
@@ -382,10 +424,16 @@ class Optimizer:
         :py:func:`Optimizer.log_step`.
         """
         iterspaces = len(str(self.get_option(Options.MAXITER))) - 5
+
+        if self.get_option(Options.STEPBACK_STRAT) == StepBackStrategy.REFLECT:
+            countheader = 'refl'
+        else:
+            countheader = 'trun'
+
         logger.info(f'{" " * iterspaces} iter '
-                    f'|    fval    |  delta   |  ||g||   | ||step|| '
-                    f'| step | '
-                    f'accept')
+                    f'|   fval    | fval diff | pred diff | tr ratio  '
+                    f'|  delta   |  ||g||   | ||step|| |  theta   |  alpha   '
+                    f'| step | {countheader} | accept')
 
     def check_finite(self):
         """
@@ -438,8 +486,8 @@ class Optimizer:
                                    ['upper bounds', 'lower bounds']):
             diff = sign * (ref - x)
             if not np.all(diff <= 0):
-                ix = np.where(diff > 0)
-                raise RuntimeError(f'Exceeded upper bounds for indices {ix} by'
+                ix = np.where(diff > 0)[0]
+                raise RuntimeError(f'Exceeded {name} for indices {ix} by '
                                    f'{diff[ix]} {pointstr}')
 
     def get_option(self, option):
