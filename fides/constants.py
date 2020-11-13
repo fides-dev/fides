@@ -13,8 +13,6 @@ class Options(str, enum.Enum):
     """
     Defines all the fields that can be specified in Options to
     :py:class:`Optimizer`
-
-    `maxiter`: maximum number of
     """
     MAXITER = 'maxiter'  #: maximum number of allowed iterations
     MAXTIME = 'maxtime'  #: maximum amount of walltime in seconds
