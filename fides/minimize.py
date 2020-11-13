@@ -217,7 +217,7 @@ class Optimizer:
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
         if not np.isfinite(fval):
-            self.delta = np.min([self.delta / 4, nsx / 4])
+            self.delta = np.nanmin([self.delta / 4, nsx / 4])
             return False
         else:
             qpval = 0.5 * stepsx.dot(dv * np.abs(grad) * stepsx)
@@ -228,7 +228,7 @@ class Optimizer:
                 self.delta = 2 * self.delta
             elif self.tr_ratio <= .25 or nsx < self.delta * 0.9 \
                     or fval > self.fval * 1.1:
-                self.delta = np.min([self.delta / 4, nsx / 4])
+                self.delta = np.nanmin([self.delta / 4, nsx / 4])
             return self.tr_ratio >= .25 and fval < self.fval * 1.1
 
     def check_convergence(self, fval, x, grad) -> None:
@@ -383,6 +383,8 @@ class Optimizer:
         else:
             count = step.truncation_count
         stepbackspaces = 4 - len(str(count))
+        if np.isnan(fval):
+            fval = self.fval
         logger.info(f'{" " * iterspaces}{self.iteration}'
                     f' | {fval if accepted else self.fval:.3E}'
                     f' | {(fval - self.fval)*accepted:+.2E}'

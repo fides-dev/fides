@@ -187,7 +187,7 @@ class Step:
         if self.subspace.shape[1] > 1:
             self.sc, _ = solve_nd_trust_region_subproblem(
                 self.chess, self.cg,
-                np.sqrt(self.delta ** 2 - norm(self.ss0) **2)
+                np.sqrt(max(self.delta ** 2 - norm(self.ss0) ** 2, 0.0))
             )
         else:
             self.sc = solve_1d_trust_region_subproblem(
@@ -495,7 +495,7 @@ def stepback_reflect(tr_step: Step,
 
     steps = [g_step]
 
-    rtr_step = TRStepReflected(x, g, hess, scaling, g_dscaling, delta,
+    rtr_step = TRStepReflected(x, sg, hess, scaling, g_dscaling, delta,
                                theta, ub, lb, tr_step)
     rtr_step.calculate()
     steps.append(rtr_step)
@@ -504,7 +504,7 @@ def stepback_reflect(tr_step: Step,
             break
         # recursively add more reflections
         rtr_old = rtr_step
-        rtr_step = TRStepReflected(x, g, hess, scaling, g_dscaling, delta,
+        rtr_step = TRStepReflected(x, sg, hess, scaling, g_dscaling, delta,
                                    theta, ub, lb, rtr_old)
         rtr_step.calculate()
         steps.append(rtr_step)
