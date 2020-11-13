@@ -96,6 +96,8 @@ class Step:
             Upper boundary
         :param lb:
             Lower boundary
+        :param reflection_count:
+            Number of reflections that were applied to obtain this step
         """
         self.x = x
 
@@ -131,6 +133,8 @@ class Step:
 
         self.s0 = np.zeros((hess.shape[0],))
         self.ss0 = np.zeros((hess.shape[0],))
+
+        self.reflection_count = 0
 
     def step_back(self):
         """
@@ -183,7 +187,8 @@ class Step:
         else:
             self.sc = solve_1d_trust_region_subproblem(self.shess, self.sg,
                                                        self.subspace[:, 0],
-                                                       self.delta)
+                                                       self.delta,
+                                                       self.ss0)
         self.ss = self.subspace.dot(np.real(self.sc))
         self.s = self.scaling.dot(self.ss)
 
@@ -273,26 +278,29 @@ class TRStepReflected(Step):
     type = 'trr'
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb, tr_step):
+                 ub, lb, step: Step):
         """
-        :param tr_step:
+        :param step:
             Trust-region step that is reflected
         """
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb)
 
-        self.s0 = tr_step.minbr * tr_step.og_s
-        self.ss0 = tr_step.minbr * tr_step.og_ss
+        full_alpha = min(step.minbr, 1)
+        self.s0 = full_alpha * step.og_s
+        self.ss0 = full_alpha * step.og_ss
         # update x and at breakpoint
         self.x = x + self.s0
 
         # reflect the transformed step at the boundary
-        nss = tr_step.og_ss.copy()
-        nss[tr_step.ipt] *= -1
+        nss = step.og_ss.copy()
+        nss[step.ipt] *= -1
         normalize(nss)
         self.subspace = np.expand_dims(nss, 1)
 
-        self.qpval0 = tr_step.qpval
+        self.qpval0 = step.qpval
+
+        self.reflection_count = step.reflection_count + 1
 
 
 class GradientStep(Step):
@@ -386,25 +394,41 @@ def trust_region_reflective(x: np.ndarray,
     # gradient and the reflected step, either of which could be better than the
     # TR step
 
-    step = tr_step
+    steps = [tr_step]
     if tr_step.alpha < 1 and len(g) > 1:
-        rtr_step = TRStepReflected(x, g, hess, scaling, g_dscaling, delta,
-                                   theta, ub, lb, tr_step)
-        rtr_step.calculate()
-
         g_step = GradientStep(x, sg, hess, scaling, g_dscaling, delta,
                               theta, ub, lb)
         g_step.calculate()
 
-        if g_step.qpval < min(tr_step.qpval, rtr_step.qpval):
-            step = g_step
-        elif rtr_step.qpval < min(g_step.qpval, tr_step.qpval):
-            step = rtr_step
+        steps.append(tr_step)
 
+        rtr_step = TRStepReflected(x, g, hess, scaling, g_dscaling, delta,
+                                   theta, ub, lb, tr_step)
+        rtr_step.calculate()
+        steps.append(rtr_step)
+        for ireflection in range(len(x)-1):
+            if rtr_step.alpha < 1 or norm(rtr_step.ss) > self.delta * 0.9:
+                break
+            # recursively add more reflections
+            rtr_old = rtr_step
+            rtr_step = TRStepReflected(x, g, hess, scaling, g_dscaling, delta,
+                                       theta, ub, lb, rtr_old)
+            rtr_step.calculate()
+            steps.append(rtr_step)
+
+    if len(steps) > 1:
+        rcountstrs = [str(step.reflection_count)
+                      * int(step.reflection_count > 0)
+                      for step in steps]
         logger.debug(' | '.join([
-            f'{step.type}: [qp: {step.qpval:.2E}, a: {step.alpha:.2E}]'
-            for step in [tr_step, g_step, rtr_step]
+            f'{step.type + rcountstr}: [qp:'
+            f' {step.qpval:.2E}, '
+            f'a: {step.alpha:.2E}]'
+            for rcountstr, step in zip(rcountstrs, steps)
         ]))
 
+    qpvals = [step.qpval for step in steps]
+    step = steps[np.argmin(qpvals)]
+
     return step.s + step.s0, step.ss + step.ss0, step.qpval, \
-           tr_step.subspace, step.type
+        tr_step.subspace, step.type

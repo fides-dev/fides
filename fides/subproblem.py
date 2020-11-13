@@ -19,7 +19,8 @@ from .logging import logger
 def solve_1d_trust_region_subproblem(B: np.ndarray,
                                      g: np.ndarray,
                                      s: np.ndarray,
-                                     delta: float) -> np.ndarray:
+                                     delta: float,
+                                     s0: np.ndarray) -> np.ndarray:
     """
     Solves the special case of a one-dimensional subproblem
 
@@ -31,6 +32,9 @@ def solve_1d_trust_region_subproblem(B: np.ndarray,
         Vector defining the one-dimensional search direction
     :param delta:
         Norm boundary for the solution of the quadratic subproblem
+    :param s0:
+        reference point from where search is started, also counts towards
+        norm of step
 
     :return:
         Proposed step-length
@@ -40,11 +44,18 @@ def solve_1d_trust_region_subproblem(B: np.ndarray,
     b = s.T.dot(g)
 
     minq = - b / (2 * a)
-    if a > 0 and abs(minq) < delta:
+    if a > 0 and norm(minq * s + s0) <= delta:
         # interior solution
         tau = minq
     else:
-        tau = - delta * np.sign(b)
+        nrms0 = norm(s0)
+        if nrms0 == 0:
+            tau = - delta * np.sign(b)
+        elif nrms0 >= delta:
+            tau = 0
+        else:
+            tau = brentq(lambda q: 1/norm(q * s + s0) - 1/delta,
+                         a=0, b=minq, xtol=12, maxiter=100)
 
     return tau * np.ones((1,))
 
