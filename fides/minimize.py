@@ -93,8 +93,9 @@ class Optimizer:
 
         self.options: Dict = options
 
-        self.delta_iter: float = 1
-        self.delta: float = 1
+        self.delta: float = self.get_option(Options.DELTA_INIT)
+        self.delta_iter: float = self.delta
+
         self.tr_ratio: float = 1
 
         self.x: np.ndarray = np.empty(ub.shape)
@@ -162,7 +163,8 @@ class Optimizer:
             v, dv = self.get_affine_scaling()
 
             scaling = csc_matrix(np.diag(np.sqrt(np.abs(v))))
-            theta = max(.95, 1 - norm(v * self.grad, np.inf))
+            theta = max(self.get_option(Options.THETA_MAX),
+                        1 - norm(v * self.grad, np.inf))
 
             step = \
                 trust_region_reflective(
@@ -269,19 +271,28 @@ class Optimizer:
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
         if not np.isfinite(fval):
-            self.delta = np.nanmin([self.delta / 4, nsx / 4])
+            self.delta = np.nanmin([
+                self.delta * self.get_option(Options.GAMMA1),
+                nsx / 4
+            ])
             return False
         else:
             qpval = 0.5 * stepsx.dot(dv * np.abs(grad) * stepsx)
             self.tr_ratio = (fval + qpval - self.fval) / step.qpval
 
             # values as proposed in algorithm 4.1 in Nocedal & Wright
-            if self.tr_ratio >= 0.75 and nsx > self.delta * 0.9:
-                self.delta = 2 * self.delta
-            elif self.tr_ratio <= .25 or nsx < self.delta * 0.9 \
-                    or fval > self.fval * 1.1:
-                self.delta = np.nanmin([self.delta / 4, nsx / 4])
-            return self.tr_ratio >= .25 and fval < self.fval * 1.1
+            if self.tr_ratio >= self.get_option(Options.ETA) \
+                    and nsx > self.delta * 0.9:
+                # increase radius
+                self.delta = self.get_option(Options.GAMMA2) * self.delta
+            elif self.tr_ratio <= self.get_option(Options.MU) \
+                    or nsx < self.delta * 0.9:
+                # decrease radius
+                self.delta = np.nanmin([
+                    self.delta * self.get_option(Options.GAMMA1),
+                    nsx / 4
+                ])
+            return self.tr_ratio >= self.get_option(Options.MU)
 
     def check_convergence(self, fval, x, grad) -> None:
         """

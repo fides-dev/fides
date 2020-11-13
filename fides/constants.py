@@ -13,42 +13,43 @@ class Options(str, enum.Enum):
     """
     Defines all the fields that can be specified in Options to
     :py:class:`Optimizer`
+
+    `maxiter`: maximum number of
     """
-    MAXITER = 'maxiter'
-    MAXTIME = 'maxtime'
-    FATOL = 'fatol'
-    FRTOL = 'frtol'
-    XATOL = 'xatol'
-    XRTOL = 'xrtol'
-    GATOL = 'gatol'
-    GRTOL = 'grtol'
-    SUBSPACE_DIM = 'subspace_solver'
-    STEPBACK_STRAT = 'stepback_strategy'
+    MAXITER = 'maxiter'  #: maximum number of allowed iterations
+    MAXTIME = 'maxtime'  #: maximum amount of walltime in seconds
+    FATOL = 'fatol'  #: absolute tolerance for convergence based on fval
+    FRTOL = 'frtol'  #: relative tolerance for convergence based on fval
+    XATOL = 'xatol'  #: absolute tolerance for convergence based on x
+    XRTOL = 'xrtol'  #: relative tolerance for convergence based on x
+    GATOL = 'gatol'  #: absolute tolerance for convergence based on grad
+    GRTOL = 'grtol'  #: relative tolerance for convergence based on grad
+    SUBSPACE_DIM = 'subspace_solver'  #: trust region subproblem subspace
+    STEPBACK_STRAT = 'stepback_strategy'  #: method to use for stepback
+    THETA_MAX = 'theta_max'  #: maximal fraction of step that would hit bounds
+    DELTA_INIT = 'delta_init'  #: initial trust region radius
+    MU = 'mu'  # acceptance threshold for trust region ratio
+    ETA = 'eta'  # trust region increase threshold for trust region ratio
+    GAMMA1 = 'gamma1'  # factor by which trust region radius will be decreased
+    GAMMA2 = 'gamma2'  # factor by which trust region radius will be increased
 
 
 class SubSpaceDim(str, enum.Enum):
     r"""
     Defines the possible choices of subspace dimension in which the
     subproblem will be solved.
-
-    `2D`: Two dimensional subspace spanned by gradient and Newton search
-    direction
-    `full`: Full :math:`\mathbb{R}^n`
     """
-    TWO = '2D'
-    FULL = 'full'
+    TWO = '2D'  #: Two dimensional Newton/Gradient subspace
+    FULL = 'full'  #: Full :math:`\mathbb{R}^n`
 
 
 class StepBackStrategy(str, enum.Enum):
     """
     Defines the possible choices of search refinement if proposed step
     reaches optimization boundary
-
-    `reflect`: reflect step at boundary
-    `reduce`: truncate step at boundary and search remaining subspace
     """
-    REFLECT = 'reflect'
-    TRUNCATE = 'reduce'
+    REFLECT = 'reflect'  #: reflect step at boundary
+    TRUNCATE = 'truncate'  #: truncate step at boundary and resolve subproblem
 
 
 DEFAULT_OPTIONS = {
@@ -62,6 +63,12 @@ DEFAULT_OPTIONS = {
     Options.GRTOL: 0,
     Options.SUBSPACE_DIM: SubSpaceDim.FULL,
     Options.STEPBACK_STRAT: StepBackStrategy.TRUNCATE,
+    Options.THETA_MAX: 0.95,
+    Options.DELTA_INIT: 1.0,
+    Options.MU: 0.25,  # [NodedalWright2006]
+    Options.ETA: 0.75,  # [NodedalWright2006]
+    Options.GAMMA1: 1/4,  # [NodedalWright2006]
+    Options.GAMMA2: 2,  # [NodedalWright2006]
 }
 
 
@@ -71,12 +78,12 @@ class ExitFlag(int, enum.Enum):
     optimization exited. Negative value indicate errors while positive
     values indicate convergence.
     """
-    DID_NOT_RUN = 0
-    MAXITER = -1
-    MAXTIME = -2
-    NOT_FINITE = -3
-    EXCEEDED_BOUNDARY = -4
-    FTOL = 1
-    XTOL = 2
-    GTOL = 3
-    SMALL_DELTA = 4
+    DID_NOT_RUN = 0  #: Optimizer did not run
+    MAXITER = -1  #: Reached maximum number of allowed iterations
+    MAXTIME = -2  #: Expected to reach maximum allowed time in next iteration
+    NOT_FINITE = -3  #: Encountered non-finite fval/grad/hess
+    EXCEEDED_BOUNDARY = -4  #: Exceeded specified boundaries
+    FTOL = 1  #: Converged according to fval difference
+    XTOL = 2  #: Converged according to x difference
+    GTOL = 3  #: Converged according to gradient norm
+    SMALL_DELTA = 4  #: Converged due to too small trust region radius
