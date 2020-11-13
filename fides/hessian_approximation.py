@@ -64,7 +64,7 @@ class DFP(HessianApproximation):
         curv = y.T.dot(s)
         if curv <= 0:
             return
-        z = y - self._hess.dot(s)
+        mat1 = np.eye(self._hess.shape[0]) - np.outer(y, s.T) / curv
+        mat2 = np.eye(self._hess.shape[0]) - np.outer(s, y.T) / curv
 
-        self._hess += np.outer(z, y.T)/curv + np.outer(y, z.T)/curv \
-            - z.T.dot(s)/(curv ** 2) * np.outer(y, y.T)
+        self._hess = mat1.dot(self._hess).dot(mat2) + np.outer(y, y.T)/curv

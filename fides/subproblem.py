@@ -19,7 +19,8 @@ from .logging import logger
 def solve_1d_trust_region_subproblem(B: np.ndarray,
                                      g: np.ndarray,
                                      s: np.ndarray,
-                                     delta: float) -> np.ndarray:
+                                     delta: float,
+                                     s0: np.ndarray) -> np.ndarray:
     """
     Solves the special case of a one-dimensional subproblem
 
@@ -31,20 +32,34 @@ def solve_1d_trust_region_subproblem(B: np.ndarray,
         Vector defining the one-dimensional search direction
     :param delta:
         Norm boundary for the solution of the quadratic subproblem
+    :param s0:
+        reference point from where search is started, also counts towards
+        norm of step
 
     :return:
         Proposed step-length
     """
+    if delta == 0.0:
+        return delta * np.ones((1,))
 
-    a = 0.5 * B.dot(s).dot(s)[0, 0]
+    a = 0.5 * B.dot(s).dot(s)
+    if not isinstance(a, float):
+        a = a[0, 0]
     b = s.T.dot(g)
 
     minq = - b / (2 * a)
-    if a > 0 and abs(minq) < delta:
+    if a > 0 and norm(minq * s + s0) <= delta:
         # interior solution
         tau = minq
     else:
-        tau = - delta * np.sign(b)
+        nrms0 = norm(s0)
+        if nrms0 == 0:
+            tau = - delta * np.sign(b)
+        elif nrms0 >= delta:
+            tau = 0
+        else:
+            tau = brentq(lambda q: 1/norm(q * s + s0) - 1/delta,
+                         a=0, b=2*delta, xtol=1e-12, maxiter=100)
 
     return tau * np.ones((1,))
 
@@ -87,6 +102,9 @@ def solve_nd_trust_region_subproblem(B: np.ndarray,
         step_type: Type of solution that was obtained
 
     """
+    if delta == 0:
+        return np.zeros(g.shape), 'zero'
+
     # See Nocedal & Wright 2006 for details
     # INITIALIZATION
 
@@ -136,14 +154,16 @@ def solve_nd_trust_region_subproblem(B: np.ndarray,
         except RuntimeError:
             pass
         try:
-            xf = (laminit + np.sqrt(np.spacing(1))) * 10
+            xa = laminit
+            xb = (laminit + np.sqrt(np.spacing(1))) * 10
             # search to the right for a change of sign
-            while secular(xf, w, eigvals, eigvecs, delta) < 0 and \
+            while secular(xb, w, eigvals, eigvecs, delta) < 0 and \
                     maxiter > 0:
-                xf = xf * 10
+                xa = xb
+                xb = xb * 10
                 maxiter -= 1
             if maxiter > 0:
-                r = brentq(secular, xf/10, xf, xtol=1e-12, maxiter=maxiter,
+                r = brentq(secular, xa, xb, xtol=1e-12, maxiter=maxiter,
                            args=(w, eigvals, eigvecs, delta))
                 s = slam(r, w, eigvals, eigvecs)
                 if norm(s) <= delta + np.sqrt(np.spacing(1)):
@@ -253,7 +273,11 @@ def secular(lam: float,
     if lam < -np.min(eigvals):
         return np.inf  # safeguard to implement boundary
     s = slam(lam, w, eigvals, eigvecs)
-    return 1 / norm(s) - 1 / delta
+    sn = norm(s)
+    if sn > 0:
+        return 1 / sn - 1 / delta
+    else:
+        return np.inf
 
 
 def dsecular(lam: float, w: np.ndarray, eigvals: np.ndarray,
@@ -281,4 +305,8 @@ def dsecular(lam: float, w: np.ndarray, eigvals: np.ndarray,
     """
     s = slam(lam, w, eigvals, eigvecs)
     ds = dslam(lam, w, eigvals, eigvecs)
-    return - s.T.dot(ds) / (norm(s) ** 3)
+    sn = norm(s)
+    if sn > 0:
+        return - s.T.dot(ds) / (norm(s) ** 3)
+    else:
+        return np.inf
