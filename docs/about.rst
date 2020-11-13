@@ -10,7 +10,7 @@ reliability. In contrast to other optimizers, Fides solves the full trust
 is computationally more expensive. This makes Fides particularly attractive
 for optimization problems with objective functions that are computationally
 expensive to evaluate and the computational cost of solving the trust
- -region subproblem is negligible.
+-region subproblem is negligible.
 
 Features
 ========
