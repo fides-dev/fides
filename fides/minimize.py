@@ -405,7 +405,7 @@ class Optimizer:
         """
 
         iterspaces = max(len(str(self.get_option(Options.MAXITER))), 5) - \
-                     len(str(self.iteration))
+            len(str(self.iteration))
         logger.info(f'{" " * iterspaces}{self.iteration}'
                     f' | {self.fval:.3E}'
                     f' |    NaN   '

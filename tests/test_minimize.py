@@ -47,6 +47,7 @@ def unbounded_and_init():
     x0 = np.zeros(lb.shape)
     return lb, ub, x0
 
+
 @pytest.mark.parametrize("stepback", [StepBackStrategy.REFLECT,
                                       StepBackStrategy.TRUNCATE])
 @pytest.mark.parametrize("subspace_dim", [SubSpaceDim.FULL,
