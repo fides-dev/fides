@@ -244,7 +244,6 @@ class Optimizer:
         self.check_finite()
         self.make_non_degenerate()
 
-
     def update_tr_radius(self,
                          fval: float,
                          grad: np.ndarray,
