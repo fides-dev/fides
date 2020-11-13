@@ -152,7 +152,7 @@ class Step:
                 (self.ub[nonzero] - self.x[nonzero])/self.s[nonzero],
                 (self.lb[nonzero] - self.x[nonzero])/self.s[nonzero]
             ]), axis=0)
-             self.ipt = np.where(br == np.min(br))[0]
+            self.ipt = np.where(br == np.min(br))[0]
             if np.isscalar(br):
                 self.minbr = br
             else:
