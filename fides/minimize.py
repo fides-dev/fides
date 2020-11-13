@@ -12,7 +12,7 @@ from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from .trust_region import trust_region_reflective, Step
 from .hessian_approximation import HessianApproximation
-from .constants import Options, StepBackStrategy, DEFAULT_OPTIONS
+from .constants import Options, StepBackStrategy, ExitFlag, DEFAULT_OPTIONS
 from .logging import logger
 
 from typing import Callable, Dict, Optional, Tuple
@@ -22,24 +22,25 @@ class Optimizer:
     """
     Performs optimization
 
-    :ivar fun: objective function
-    :ivar funargs: keyword arguments that are passed to the function
-    :ivar lb: lower optimization boundaries
-    :ivar ub: upper optimization boundaries
-    :ivar options: options that configure convergence checks
-    :ivar delta_iter: trust region radius that was used for the current step
-    :ivar delta: updated trust region radius
-    :ivar x: current optimization variables
-    :ivar fval: objective function value at x
-    :ivar grad: objective function gradient at x
-    :ivar x_min: optimal optimization variables
-    :ivar fval_min: objective function value at x_min
-    :ivar grad_min: objective function gradient at x_min
-    :ivar hess: objective function Hessian (approximation) at x
-    :ivar hessian_update: object that performs hessian updates
-    :ivar starttime: time at which optimization was started
-    :ivar iteration: current iteration
-    :ivar converged: flag indicating whether optimization has converged
+    :ivar fun: Objective function
+    :ivar funargs: Keyword arguments that are passed to the function
+    :ivar lb: Lower optimization boundaries
+    :ivar ub: Upper optimization boundaries
+    :ivar options: Options that configure convergence checks
+    :ivar delta_iter: Trust region radius that was used for the current step
+    :ivar delta: Updated trust region radius
+    :ivar x: Current optimization variables
+    :ivar fval: Objective function value at x
+    :ivar grad: Objective function gradient at x
+    :ivar x_min: Optimal optimization variables
+    :ivar fval_min: Objective function value at x_min
+    :ivar grad_min: Objective function gradient at x_min
+    :ivar hess: Objective function Hessian (approximation) at x
+    :ivar hessian_update: Object that performs hessian updates
+    :ivar starttime: Time at which optimization was started
+    :ivar iteration: Current iteration
+    :ivar converged: Flag indicating whether optimization has converged
+    :ivar exitflag:
     """
     def __init__(self, fun: Callable,
                  ub: np.ndarray,
@@ -109,6 +110,7 @@ class Optimizer:
         self.starttime: float = np.nan
         self.iteration: int = 0
         self.converged: bool = False
+        self.exitflag: ExitFlag = ExitFlag.DID_NOT_RUN
         logger.setLevel(verbose)
 
     def minimize(self, x0: np.ndarray):
@@ -303,6 +305,7 @@ class Optimizer:
         gnorm = norm(grad)
 
         if np.isclose(fval, self.fval, atol=fatol, rtol=frtol):
+            self.exitflag = ExitFlag.FTOL
             logger.info(
                 'Stopping as function difference '
                 f'{np.abs(self.fval - fval)} was smaller than specified '
@@ -311,6 +314,7 @@ class Optimizer:
             converged = True
 
         elif np.isclose(x, self.x, atol=xatol, rtol=xrtol).all():
+            self.exitflag = ExitFlag.XTOL
             logger.info(
                 'Stopping as step was smaller than specified tolerances ('
                 f'atol={xatol:.2E}, rtol={xrtol:.2E})'
@@ -318,6 +322,7 @@ class Optimizer:
             converged = True
 
         elif gnorm <= gatol:
+            self.exitflag = ExitFlag.GTOL
             logger.info(
                 'Stopping as gradient norm satisfies absolute convergence '
                 f'criteria: {gnorm:.2E} < {gatol:.2E}'
@@ -325,6 +330,7 @@ class Optimizer:
             converged = True
 
         elif gnorm <= grtol * self.fval:
+            self.exitflag = ExitFlag.GTOL
             logger.info(
                 'Stopping as gradient norm satisfies relative convergence '
                 f'criteria: {gnorm:.2E} < {grtol:.2E} * {self.fval:.2E}'
@@ -347,6 +353,7 @@ class Optimizer:
 
         maxiter = self.get_option(Options.MAXITER)
         if self.iteration > maxiter:
+            self.exitflag = ExitFlag.MAXITER
             logger.error(
                 f'Stopping as maximum number of iterations {maxiter} was '
                 f'exceeded.'
@@ -358,6 +365,7 @@ class Optimizer:
         time_remaining = maxtime - time_elapsed
         avg_iter_time = time_elapsed/(self.iteration + (self.iteration == 0))
         if time_remaining < avg_iter_time:
+            self.exitflag = ExitFlag.MAXTIME
             logger.error(
                 f'Stopping as maximum runtime {maxtime} is expected to be '
                 f'exceeded in the next iteration.'
@@ -365,6 +373,7 @@ class Optimizer:
             return False
 
         if self.delta < np.spacing(1):
+            self.exitflag = ExitFlag.SMALL_DELTA
             logger.error(
                 'Stopping as trust region radius is smaller that machine '
                 'precision.'
@@ -502,16 +511,19 @@ class Optimizer:
             pointstr = f'at iteration {self.iteration}.'
 
         if not np.isfinite(self.fval):
+            self.exitflag = ExitFlag.NOT_FINITE
             raise RuntimeError(f'Encountered non-finite function {self.fval} '
                                f'value {pointstr}')
 
         if not np.isfinite(self.grad).all():
+            self.exitflag = ExitFlag.NOT_FINITE
             ix = np.where(np.logical_not(np.isfinite(self.grad)))
             raise RuntimeError('Encountered non-finite gradient entries'
                                f' {self.grad[ix]} for indices {ix} '
                                f'{pointstr}')
 
         if not np.isfinite(self.hess).all():
+            self.exitflag = ExitFlag.NOT_FINITE
             ix = np.where(np.logical_not(np.isfinite(self.hess)))
             raise RuntimeError('Encountered non-finite gradient hessian'
                                f' {self.hess[ix]} for indices {ix} '
@@ -539,6 +551,7 @@ class Optimizer:
             diff = sign * (ref - x)
             if not np.all(diff <= 0):
                 ix = np.where(diff > 0)[0]
+                self.exitflag = ExitFlag.EXCEEDED_BOUNDARY
                 raise RuntimeError(f'Exceeded {name} for indices {ix} by '
                                    f'{diff[ix]} {pointstr}')
 

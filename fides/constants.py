@@ -63,3 +63,20 @@ DEFAULT_OPTIONS = {
     Options.SUBSPACE_DIM: SubSpaceDim.FULL,
     Options.STEPBACK_STRAT: StepBackStrategy.TRUNCATE,
 }
+
+
+class ExitFlag(int, enum.Enum):
+    """
+    Defines possible exitflag values for the optimizer to indicate why
+    optimization exited. Negative value indicate errors while positive
+    values indicate convergence.
+    """
+    DID_NOT_RUN = 0
+    MAXITER = -1
+    MAXTIME = -2
+    NOT_FINITE = -3
+    EXCEEDED_BOUNDARY = -4
+    FTOL = 1
+    XTOL = 2
+    GTOL = 3
+    SMALL_DELTA = 4

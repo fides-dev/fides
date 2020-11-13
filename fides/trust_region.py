@@ -71,7 +71,7 @@ class Step:
     :cvar type: Identifier that allows identification of subclasses
     """
     type = 'step'
-    
+
     def __init__(self,
                  x: np.ndarray,
                  sg: np.ndarray,
