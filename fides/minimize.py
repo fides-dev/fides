@@ -32,6 +32,9 @@ class Optimizer:
     :ivar x: current optimization variables
     :ivar fval: objective function value at x
     :ivar grad: objective function gradient at x
+    :ivar x_min: optimal optimization variables
+    :ivar fval_min: objective function value at x_min
+    :ivar grad_min: objective function gradient at x_min
     :ivar hess: objective function Hessian (approximation) at x
     :ivar hessian_update: object that performs hessian updates
     :ivar starttime: time at which optimization was started
@@ -94,9 +97,12 @@ class Optimizer:
         self.tr_ratio: float = 1
 
         self.x: np.ndarray = np.empty(ub.shape)
-        self.fval: float = np.nan
+        self.fval: float = np.inf
         self.grad: np.ndarray = np.empty(ub.shape)
         self.hess: np.ndarray = np.empty((ub.shape[0], ub.shape[0]))
+        self.x_min = self.x
+        self.fval_min = self.fval
+        self.grad_min = self.grad
 
         self.hessian_update: HessianApproximation = hessian_update
 
@@ -170,29 +176,74 @@ class Optimizer:
                 fval_new, grad_new, hess_new = self.fun(x_new, **self.funargs)
             else:
                 fval_new, grad_new = self.fun(x_new, **self.funargs)
+                hess_new = None
 
             accepted = self.update_tr_radius(fval_new, grad_new, step, dv)
 
-            if (self.iteration) % 10 == 0:
+            if self.iteration % 10 == 0:
                 self.log_header()
             self.log_step(accepted, step, theta, fval_new)
             self.check_convergence(fval_new, x_new, grad_new)
 
+            # track minimum independently of whether we accept the step or not
+            self.track_minimum(x_new, fval_new, grad_new)
+
             if accepted:
-                if self.hessian_update is not None:
-                    self.hessian_update.update(step.s + step.s0,
-                                               grad_new - self.grad)
-                    self.hess = self.hessian_update.get_mat()
-                else:
-                    self.hess = hess_new
-                self.check_in_bounds(x_new)
-                self.fval = fval_new
-                self.x = x_new
-                self.grad = grad_new
-                self.check_finite()
-                self.make_non_degenerate()
+                self.update(step, x_new, fval_new, grad_new, hess_new)
 
         return self.fval, self.x, self.grad, self.hess
+
+    def track_minimum(self,
+                      x_new: np.ndarray,
+                      fval_new: float,
+                      grad_new: np.ndarray) -> None:
+        """
+        Function that tracks the optimization variables that have minimal
+        function value independent of whether the step is accepted or not.
+
+        :param x_new:
+        :param fval_new:
+        :param grad_new:
+        :return:
+        """
+        if np.isfinite(fval_new) and self.fval < fval_new:
+            self.x_min = x_new
+            self.fval_min = fval_new
+            self.grad_min = grad_new
+
+    def update(self,
+               step: Step,
+               x_new: np.ndarray,
+               fval_new: float,
+               grad_new: np.ndarray,
+               hess_new: Optional[np.ndarray] = None) -> None:
+        """
+        Update self according to employed step
+
+        :param step:
+            Employed step
+        :param x_new:
+            New optimization variable values
+        :param fval_new:
+            Objective function value at x_new
+        :param grad_new:
+            Objective function gradient at x_new
+        :param hess_new:
+            (Approximate) objective function Hessian at x_new
+        """
+        if self.hessian_update is not None:
+            self.hessian_update.update(step.s + step.s0,
+                                       grad_new - self.grad)
+            self.hess = self.hessian_update.get_mat()
+        else:
+            self.hess = hess_new
+        self.check_in_bounds(x_new)
+        self.fval = fval_new
+        self.x = x_new
+        self.grad = grad_new
+        self.check_finite()
+        self.make_non_degenerate()
+
 
     def update_tr_radius(self,
                          fval: float,
