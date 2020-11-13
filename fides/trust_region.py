@@ -407,7 +407,7 @@ def trust_region_reflective(x: np.ndarray,
         rtr_step.calculate()
         steps.append(rtr_step)
         for ireflection in range(len(x)-1):
-            if rtr_step.alpha < 1 or norm(rtr_step.ss) > self.delta * 0.9:
+            if rtr_step.alpha < 1 or norm(rtr_step.ss) > delta * 0.9:
                 break
             # recursively add more reflections
             rtr_old = rtr_step
