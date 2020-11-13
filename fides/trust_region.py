@@ -152,11 +152,11 @@ class Step:
                 (self.ub[nonzero] - self.x[nonzero])/self.s[nonzero],
                 (self.lb[nonzero] - self.x[nonzero])/self.s[nonzero]
             ]), axis=0)
-            self.ipt = np.argmin(br)
+             self.ipt = np.where(br == np.min(br))[0]
             if np.isscalar(br):
                 self.minbr = br
             else:
-                self.minbr = br[self.ipt]
+                self.minbr = br[self.ipt][0]
             # compute the minimum of the step
             self.alpha = np.min([1, self.theta * self.minbr])
 
@@ -184,8 +184,8 @@ class Step:
             self.sc = solve_1d_trust_region_subproblem(self.shess, self.sg,
                                                        self.subspace[:, 0],
                                                        self.delta)
-        self.ss = self.subspace.dot(np.real(self.sc)) + self.ss0
-        self.s = self.scaling.dot(self.ss) + self.s0
+        self.ss = self.subspace.dot(np.real(self.sc))
+        self.s = self.scaling.dot(self.ss)
 
     def calculate(self):
         """
@@ -406,4 +406,5 @@ def trust_region_reflective(x: np.ndarray,
             for step in [tr_step, g_step, rtr_step]
         ]))
 
-    return step.s, step.ss, step.qpval, tr_step.subspace, step.type
+    return step.s + step.s0, step.ss + step.ss0, step.qpval, \
+           tr_step.subspace, step.type
