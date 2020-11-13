@@ -65,9 +65,13 @@ class Step:
     :ivar chess: Projection of the B to the subspace
     :ivar reflection_count: Number of reflections that were applied to
         obtain this step
-    :ivar reduction_count: Number of reflections that were applied to
+    :ivar truncation_count: Number of reflections that were applied to
         obtain this step
+
+    :cvar type: Identifier that allows identification of subclasses
     """
+    type = 'step'
+    
     def __init__(self,
                  x: np.ndarray,
                  sg: np.ndarray,
