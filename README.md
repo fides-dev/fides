@@ -9,14 +9,15 @@
 <a href="https://zenodo.org/badge/latestdoi/312057973">
  <img src="https://zenodo.org/badge/312057973.svg" alt="DOI"></a>
 
-Fides implements an Interior Trust Region Reflective optimizer based on
-the papers [ColemanLi1994] and [ColemanLi1996]. Accordingly, Fides is
-named after the Roman goddess of trust and reliability. In contrast to other
-optimizers, the trust-region subproblem can be solved exactly, which
-yields higher quality proposal steps, but is computationally more expensive.
-This makes Fides particularly attractive for optimization problems with
-objective functions that are computationally expensive to evaluate and the
-computational cost of solving the trust-region subproblem is negligible.
+Fides implements an Interior Trust Region Reflective for boundary costrained
+optimization problems based on the papers [ColemanLi1994] and [ColemanLi1996
+]. Accordingly, Fides is named after the Roman goddess of trust and
+reliability. In contrast to other optimizers, Fides solves the full trust
+-region subproblem exactly, which can yields higher quality proposal steps, but
+is computationally more expensive. This makes Fides particularly attractive
+for optimization problems with objective functions that are computationally
+expensive to evaluate and the computational cost of solving the trust
+ -region subproblem is negligible.
 
 Fides can be installed via `pip install fides`. Further documentation is
  avaliable at [Read the Docs](fides-optimizer.readthedocs.io).
