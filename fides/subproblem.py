@@ -39,6 +39,8 @@ def solve_1d_trust_region_subproblem(B: np.ndarray,
     :return:
         Proposed step-length
     """
+    if delta == 0.0:
+        return delta * np.ones((1,))
 
     a = 0.5 * B.dot(s).dot(s)
     if not isinstance(a, float):
@@ -100,6 +102,9 @@ def solve_nd_trust_region_subproblem(B: np.ndarray,
         step_type: Type of solution that was obtained
 
     """
+    if delta == 0:
+        return np.zeros(g.shape), 'zero'
+
     # See Nocedal & Wright 2006 for details
     # INITIALIZATION
 
@@ -268,7 +273,11 @@ def secular(lam: float,
     if lam < -np.min(eigvals):
         return np.inf  # safeguard to implement boundary
     s = slam(lam, w, eigvals, eigvecs)
-    return 1 / norm(s) - 1 / delta
+    sn = norm(s)
+    if sn > 0:
+        return 1 / sn - 1 / delta
+    else:
+        return np.inf
 
 
 def dsecular(lam: float, w: np.ndarray, eigvals: np.ndarray,
@@ -296,4 +305,8 @@ def dsecular(lam: float, w: np.ndarray, eigvals: np.ndarray,
     """
     s = slam(lam, w, eigvals, eigvecs)
     ds = dslam(lam, w, eigvals, eigvecs)
-    return - s.T.dot(ds) / (norm(s) ** 3)
+    sn = norm(s)
+    if sn > 0:
+        return - s.T.dot(ds) / (norm(s) ** 3)
+    else:
+        return np.inf
