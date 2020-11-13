@@ -385,7 +385,7 @@ class Optimizer:
         """
         iterspaces = len(str(self.get_option(Options.MAXITER))) - 5
         logger.info(f'{" " * iterspaces} iter '
-                    f'|    fval    |  delta   | ||step|| |  ||g||   '
+                    f'|    fval    |  delta   |  ||g||   | ||step|| '
                     f'| step | '
                     f'accept')
 
