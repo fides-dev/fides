@@ -149,14 +149,16 @@ def solve_nd_trust_region_subproblem(B: np.ndarray,
         except RuntimeError:
             pass
         try:
-            xf = (laminit + np.sqrt(np.spacing(1))) * 10
+            xa = laminit
+            xb = (laminit + np.sqrt(np.spacing(1))) * 10
             # search to the right for a change of sign
-            while secular(xf, w, eigvals, eigvecs, delta) < 0 and \
+            while secular(xb, w, eigvals, eigvecs, delta) < 0 and \
                     maxiter > 0:
-                xf = xf * 10
+                xa = xb
+                xb = xb * 10
                 maxiter -= 1
             if maxiter > 0:
-                r = brentq(secular, xf/10, xf, xtol=1e-12, maxiter=maxiter,
+                r = brentq(secular, xa, xb, xtol=1e-12, maxiter=maxiter,
                            args=(w, eigvals, eigvecs, delta))
                 s = slam(r, w, eigvals, eigvecs)
                 if norm(s) <= delta + np.sqrt(np.spacing(1)):
