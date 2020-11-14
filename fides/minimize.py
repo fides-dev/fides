@@ -11,7 +11,7 @@ import logging
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from .trust_region import trust_region_reflective, Step
-from .hessian_approximation import HessianApproximation
+from .hessian_approximation import HessianApproximation, DFP
 from .constants import Options, StepBackStrategy, ExitFlag, DEFAULT_OPTIONS
 from .logging import logger
 
@@ -114,6 +114,14 @@ class Optimizer:
         self.exitflag: ExitFlag = ExitFlag.DID_NOT_RUN
         logger.setLevel(verbose)
 
+    def _reset(self):
+        self.starttime = time.time()
+        self.iteration = 0
+        self.converged: bool = False
+        self.delta: float = self.get_option(Options.DELTA_INIT)
+        self.delta_iter: float = self.delta
+        self.fval_min = np.inf
+
     def minimize(self, x0: np.ndarray):
         """
         Minimize the objective function the interior trust-region reflective
@@ -138,8 +146,7 @@ class Optimizer:
             grad: final gradient,
             hess: final Hessian (approximation)
         """
-        self.starttime = time.time()
-        self.iteration = 0
+        self._reset()
 
         self.x = np.array(x0).copy()
         self.make_non_degenerate()
@@ -148,7 +155,9 @@ class Optimizer:
             self.fval, self.grad, self.hess = self.fun(self.x, **self.funargs)
         else:
             self.fval, self.grad = self.fun(self.x, **self.funargs)
+            self.hessian_update.init_mat(len(self.x))
             self.hess = self.hessian_update.get_mat()
+        self.track_minimum(self.x, self.fval, self.grad)
         self.log_header()
         self.log_step_initial()
 
@@ -210,7 +219,7 @@ class Optimizer:
         :param grad_new:
         :return:
         """
-        if np.isfinite(fval_new) and self.fval < fval_new:
+        if np.isfinite(fval_new) and fval_new < self.fval_min:
             self.x_min = x_new
             self.fval_min = fval_new
             self.grad_min = grad_new
