@@ -58,9 +58,9 @@ def unbounded_and_init():
 @pytest.mark.parametrize("fun, happ", [
     (rosenboth, None),
     (rosenboth, None),
-    (rosengrad, SR1),
-    (rosengrad, BFGS),
-    (rosengrad, DFP),
+    (rosengrad, SR1()),
+    (rosengrad, BFGS()),
+    (rosengrad, DFP()),
 ])
 def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
                               stepback):
@@ -68,13 +68,17 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
 
     opt = Optimizer(
         fun, ub=ub, lb=lb, verbose=logging.INFO,
-        hessian_update=happ(len(x0)) if happ is not None else None,
+        hessian_update=happ if happ is not None else None,
         options={fides.Options.FATOL: 0,
                  fides.Options.SUBSPACE_DIM: subspace_dim,
                  fides.Options.STEPBACK_STRAT: stepback,
                  fides.Options.MAXITER: 1e3}
     )
     opt.minimize(x0)
+    assert opt.fval >= opt.fval_min
+    if opt.fval == opt.fval_min:
+        assert np.isclose(opt.grad, opt.grad_min).all()
+        assert np.isclose(opt.x, opt.x_min).all()
     if np.all(ub > 1):
         assert np.isclose(opt.x, [1, 1]).all()
         assert np.isclose(opt.grad, np.zeros(opt.x.shape), atol=1e-6).all()

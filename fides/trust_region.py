@@ -188,6 +188,11 @@ class Step:
         Compute the step as solution to the trust region subproblem. Special
         code is used for the special case 1-dimensional subspace case
         """
+        if self.subspace.shape[1] == 0:
+            self.sc = np.empty((0, 0))
+            self.ss = np.zeros(self.ss.shape)
+            self.s = np.zeros(self.s.shape)
+            return
         if self.subspace.shape[1] > 1:
             self.sc, _ = solve_nd_trust_region_subproblem(
                 self.chess, self.cg,

@@ -15,15 +15,54 @@ class HessianApproximation:
     """
     Abstract class from which Hessian update strategies should subclass
     """
-    def __init__(self, dim, hess_init: Optional[np.ndarray] = None):
-        if hess_init is None:
-            hess_init = np.eye(dim)
-        self._hess = hess_init.copy()
+    def __init__(self, hess_init: Optional[np.ndarray] = None):
+        """
+        Creata Hessian update strategy instance
+
+        :param hess_init:
+            Inital guess for the Hessian, if empty Identity matrix will be used
+        """
+        if hess_init is not None:
+            if not isinstance(hess_init, np.ndarray):
+                raise ValueError('Cannot initialize with hess_init of type'
+                                 f'{type(hess_init)}, needs np.ndarray.')
+
+            if not hess_init.ndim == 2:
+                raise ValueError('hess_init needs to be a matrix with'
+                                 f'hess_init.ndim == 2, was {hess_init.ndim}')
+
+            if not hess_init.shape[0] == hess_init.shape[1]:
+                raise ValueError('hess_init needs to be a square matrix!')
+
+            hess_init = hess_init.copy()
+
+        self.hess_init: np.ndarray = hess_init
+        self._hess = None
+
+    def init_mat(self, dim: int):
+        """
+        Initializes this approximation instance and checks the dimensionality
+
+        :param dim:
+            dimension of optimization variables
+        """
+        if self.hess_init is None:
+            self._hess = np.eye(dim)
+        else:
+            self._hess = self.hess_init.copy()
+            if self._hess.shape[0] != dim:
+                raise ValueError('Inital approximation had inconsistent '
+                                 f'dimension, was {self._hess.shape[0]}, '
+                                 f'but should be {dim}.')
 
     def update(self, s, y):
         raise NotImplementedError()  # pragma : no cover
 
     def get_mat(self) -> np.ndarray:
+        """
+        Getter for the Hessian approximation
+        :return:
+        """
         return self._hess
 
 
