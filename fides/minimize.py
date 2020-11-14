@@ -11,7 +11,7 @@ import logging
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from .trust_region import trust_region_reflective, Step
-from .hessian_approximation import HessianApproximation, DFP
+from .hessian_approximation import HessianApproximation
 from .constants import Options, StepBackStrategy, ExitFlag, DEFAULT_OPTIONS
 from .logging import logger
 
@@ -149,6 +149,8 @@ class Optimizer:
         self._reset()
 
         self.x = np.array(x0).copy()
+        if self.x.ndim > 1:
+            raise ValueError('x0 must be a vector with x.ndim == 1!')
         self.make_non_degenerate()
         self.check_in_bounds()
         if self.hessian_update is None:
@@ -157,6 +159,42 @@ class Optimizer:
             self.fval, self.grad = self.fun(self.x, **self.funargs)
             self.hessian_update.init_mat(len(self.x))
             self.hess = self.hessian_update.get_mat()
+
+        if not np.isscalar(self.fval):
+            raise ValueError('Provided objective function must return a '
+                             'scalar!')
+        if not self.grad.ndim == 1:
+            raise ValueError('Provided objective function must return a '
+                             'gradient vector with x.ndim == 1, was '
+                             f'{self.grad.ndim}!')
+        if not len(self.grad) == len(self.x):
+            raise ValueError('Provided objective function must return a '
+                             'gradient vector of the same shape as x, '
+                             f'x has {len(self.x)} entries but gradient has '
+                             f'{len(self.grad)}!')
+
+        if not len(self.grad) == len(self.x):
+            raise ValueError('Provided objective function must return a '
+                             'gradient vector of the same shape as x, '
+                             f'x has {len(self.x)} entries but gradient has '
+                             f'{len(self.grad)}!')
+
+        # hessian approximation would error on these earlier
+        if not self.hess.ndim == 2:
+            raise ValueError('Provided objective function must return a '
+                             'Hessian matrix with x.ndim == 2, was '
+                             f'{self.hess.ndim}!')
+
+        if not self.hess.shape[0] == self.hess.shape[1]:
+            raise ValueError('Provided objective function must return a '
+                             'square Hessian matrix!')
+
+        if not self.hess.shape[0] == len(self.x):
+            raise ValueError('Provided objective function must return a '
+                             'square Hessian matrix with same dimension'
+                             f'x has {len(self.x)} entries but Hessian has '
+                             f'{self.hess.shape[0]}!')
+
         self.track_minimum(self.x, self.fval, self.grad)
         self.log_header()
         self.log_step_initial()
