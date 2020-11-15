@@ -2,7 +2,6 @@ from fides import Optimizer, BFGS, SR1, DFP, SubSpaceDim, StepBackStrategy
 import numpy as np
 
 import logging
-import random
 import pytest
 import fides
 
@@ -16,7 +15,16 @@ def rosengrad(x):
     return f, g
 
 
-def rosenboth_randomfail(x):
+def rosenboth(x):
+    f, g = rosengrad(x)
+
+    h = np.array([[1200 * x[0] ** 2 - 400 * x[1] + 2, -400 * x[0]],
+                  [-400 * x[0], 200]])
+
+    return f, g, h
+
+
+def rosenrandomfail(x):
     f, g, h = rosenboth(x)
 
     p = 1/4  # elementwise probability for nan
@@ -31,13 +39,40 @@ def rosenboth_randomfail(x):
     return f, g, h
 
 
-def rosenboth(x):
-    f, g = rosengrad(x)
+def rosenwrongf(x):
+    f, g, h = rosenboth(x)
 
-    h = np.array([[1200 * x[0] ** 2 - 400 * x[1] + 2, -400 * x[0]],
-                  [-400 * x[0], 200]])
+    return np.ones((1, 1)) * f, g, h
 
-    return f, g, h
+
+def rosentransg(x):
+    f, g, h = rosenboth(x)
+
+    return f, np.expand_dims(g, 1).T, h
+
+
+def rosenexpandg(x):
+    f, g, h = rosenboth(x)
+
+    return f, np.expand_dims(g, 1), h
+
+
+def rosenshortg(x):
+    f, g, h = rosenboth(x)
+
+    return f, g[0], h
+
+
+def rosenshorth(x):
+    f, g, h = rosenboth(x)
+
+    return f, g, h[0, 0] * np.ones((1, 1))
+
+
+def rosennonsquarh(x):
+    f, g, h = rosenboth(x)
+
+    return f, g, h[0, :]
 
 
 def finite_bounds_include_optimum():
@@ -129,7 +164,7 @@ def test_multistart(subspace_dim, stepback):
 
 def test_multistart_randomfail():
     lb, ub, x0 = finite_bounds_exlude_optimum()
-    fun = rosenboth_randomfail
+    fun = rosenrandomfail
 
     opt = Optimizer(
         fun, ub=ub, lb=lb, verbose=logging.INFO,
@@ -141,3 +176,19 @@ def test_multistart_randomfail():
         with pytest.raises(RuntimeError):
             x0 = np.random.random(x0.shape) * (ub - lb) + lb
             opt.minimize(x0)
+
+
+@pytest.mark.parametrize("fun", [rosennonsquarh, rosenwrongf, rosenshorth,
+                                 rosentransg, rosenshortg, rosenexpandg])
+def test_wrong_dim(fun):
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+
+    opt = Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={fides.Options.FATOL: 0,
+                 fides.Options.MAXITER: 1e3}
+    )
+
+    with pytest.raises(ValueError):
+        x0 = np.random.random(x0.shape) * (ub - lb) + lb
+        opt.minimize(x0)
