@@ -229,6 +229,9 @@ class Optimizer:
                 fval_new, grad_new = self.fun(x_new, **self.funargs)
                 hess_new = None
 
+            if np.isfinite(fval_new):
+                self.check_finite(grad_new, hess_new)
+
             accepted = self.update_tr_radius(fval_new, grad_new, step, dv)
 
             if self.iteration % 10 == 0:
@@ -318,6 +321,7 @@ class Optimizer:
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
         if not np.isfinite(fval):
+            self.tr_ratio = 0
             self.delta = np.nanmin([
                 self.delta * self.get_option(Options.GAMMA1),
                 nsx / 4
@@ -556,10 +560,20 @@ class Optimizer:
                     f'|  delta   |  ||g||   | ||step|| |  theta   |  alpha   '
                     f'| step | {countheader} | accept')
 
-    def check_finite(self):
+    def check_finite(self,
+                     grad: Optional[np.ndarray] = None,
+                     hess: Optional[np.ndarray] = None):
         """
         Checks whether objective function value, gradient and Hessian (
         approximation) have finite values and optimization can continue.
+
+        :param grad:
+            gradient to be checked for finiteness, if not provided, current
+            one will be checked
+
+        :param hess:
+            Hessian (approximation) to be checked for finiteness, if not
+            provided, current one will be checked
 
         :raises:
             RuntimeError if any of the variables have non-finite entries
@@ -570,23 +584,29 @@ class Optimizer:
         else:
             pointstr = f'at iteration {self.iteration}.'
 
+        if grad is None:
+            grad = self.grad
+
+        if hess is None:
+            hess = self.hess
+
         if not np.isfinite(self.fval):
             self.exitflag = ExitFlag.NOT_FINITE
             raise RuntimeError(f'Encountered non-finite function {self.fval} '
                                f'value {pointstr}')
 
-        if not np.isfinite(self.grad).all():
+        if not np.isfinite(grad).all():
             self.exitflag = ExitFlag.NOT_FINITE
-            ix = np.where(np.logical_not(np.isfinite(self.grad)))
+            ix = np.where(np.logical_not(np.isfinite(grad)))
             raise RuntimeError('Encountered non-finite gradient entries'
-                               f' {self.grad[ix]} for indices {ix} '
+                               f' {grad[ix]} for indices {ix} '
                                f'{pointstr}')
 
-        if not np.isfinite(self.hess).all():
+        if not np.isfinite(hess).all():
             self.exitflag = ExitFlag.NOT_FINITE
-            ix = np.where(np.logical_not(np.isfinite(self.hess)))
+            ix = np.where(np.logical_not(np.isfinite(hess)))
             raise RuntimeError('Encountered non-finite gradient hessian'
-                               f' {self.hess[ix]} for indices {ix} '
+                               f' {hess[ix]} for indices {ix} '
                                f'{pointstr}')
 
     def check_in_bounds(self, x: Optional[np.ndarray] = None):

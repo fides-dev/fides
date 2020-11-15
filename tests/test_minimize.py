@@ -2,6 +2,7 @@ from fides import Optimizer, BFGS, SR1, DFP, SubSpaceDim, StepBackStrategy
 import numpy as np
 
 import logging
+import random
 import pytest
 import fides
 
@@ -13,6 +14,21 @@ def rosengrad(x):
                   200 * (x[1] - x[0] ** 2)])
 
     return f, g
+
+
+def rosenboth_randomfail(x):
+    f, g, h = rosenboth(x)
+
+    p = 1/4  # elementwise probability for nan
+
+    if np.random.choice(a=[True, False], p=[p, 1-p]):
+        f = np.nan
+
+    g[np.random.choice(a=[True, False], size=g.shape, p=[p, 1-p])] = np.nan
+
+    h[np.random.choice(a=[True, False], size=h.shape, p=[p, 1-p])] = np.nan
+
+    return f, g, h
 
 
 def rosenboth(x):
@@ -109,3 +125,19 @@ def test_multistart(subspace_dim, stepback):
         if np.all(ub > 1):
             assert np.isclose(opt.x, [1, 1]).all()
             assert np.isclose(opt.grad, np.zeros(opt.x.shape), atol=1e-6).all()
+
+
+def test_multistart_randomfail():
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    fun = rosenboth_randomfail
+
+    opt = Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={fides.Options.FATOL: 0,
+                 fides.Options.MAXITER: 1e3}
+    )
+
+    for _ in range(int(1e2)):
+        with pytest.raises(RuntimeError):
+            x0 = np.random.random(x0.shape) * (ub - lb) + lb
+            opt.minimize(x0)
