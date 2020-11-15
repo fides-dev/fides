@@ -229,6 +229,20 @@ def test_no_grad():
         opt.minimize(x0)
 
 
+def test_wrong_x():
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    fun = rosen
+
+    opt = Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={fides.Options.FATOL: 0},
+        hessian_update=DFP()
+    )
+
+    with pytest.raises(ValueError):
+        opt.minimize(np.expand_dims(x0, 1))
+
+
 def test_maxiter_maxtime():
     lb, ub, x0 = finite_bounds_exlude_optimum()
     fun = rosengrad
