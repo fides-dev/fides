@@ -10,7 +10,7 @@ import numpy as np
 import logging
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
-from .trust_region import trust_region_reflective, Step
+from .trust_region import trust_region, Step
 from .hessian_approximation import HessianApproximation
 from .constants import Options, StepBackStrategy, ExitFlag, DEFAULT_OPTIONS
 from .logging import logger
@@ -214,7 +214,7 @@ class Optimizer:
                         1 - norm(v * self.grad, np.inf))
 
             step = \
-                trust_region_reflective(
+                trust_region(
                     self.x, self.grad, self.hess, scaling,
                     self.delta, dv, theta, self.lb, self.ub,
                     self.get_option(Options.SUBSPACE_DIM),
@@ -327,13 +327,15 @@ class Optimizer:
             qpval = 0.5 * stepsx.dot(dv * np.abs(grad) * stepsx)
             self.tr_ratio = (fval + qpval - self.fval) / step.qpval
 
+            interior_solution = nsx < self.delta * 0.9
+
             # values as proposed in algorithm 4.1 in Nocedal & Wright
             if self.tr_ratio >= self.get_option(Options.ETA) \
-                    and nsx > self.delta * 0.9:
+                    and not interior_solution:
                 # increase radius
                 self.delta = self.get_option(Options.GAMMA2) * self.delta
             elif self.tr_ratio <= self.get_option(Options.MU) \
-                    or nsx < self.delta * 0.9:
+                    or interior_solution:
                 # decrease radius
                 self.delta = np.nanmin([
                     self.delta * self.get_option(Options.GAMMA1),
