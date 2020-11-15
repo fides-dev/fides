@@ -65,7 +65,7 @@ def test_convex_subproblem(subproblem):
 
 def test_nonconvex_subproblem(subproblem):
     subproblem['B'][0, 0] = -1
-    delta = 1.151
+    delta = 1.0
     s, case = solve_nd_trust_region_subproblem(subproblem['B'],
                                                subproblem['g'], delta)
     assert np.any(np.real(linalg.eig(subproblem['B'])[0]) < 0)
