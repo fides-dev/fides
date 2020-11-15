@@ -275,7 +275,7 @@ def test_wrong_options():
     fun = rosenboth
 
     with pytest.raises(ValueError):
-        opt = Optimizer(
+        Optimizer(
             fun, ub=ub, lb=lb, verbose=logging.INFO,
             options={'option_doesnt_exist': 1}
         )
