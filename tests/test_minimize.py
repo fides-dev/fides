@@ -4,10 +4,17 @@ import numpy as np
 import logging
 import pytest
 import fides
+import time
+
+
+def rosen(x):
+    f = 100 * (x[1] - x[0] ** 2) ** 2 + (1 - x[0]) ** 2
+
+    return f
 
 
 def rosengrad(x):
-    f = 100 * (x[1] - x[0] ** 2) ** 2 + (1 - x[0]) ** 2
+    f = rosen(x)
 
     g = np.array([-400 * (x[1] - x[0] ** 2) * x[0] - 2 * (1 - x[0]),
                   200 * (x[1] - x[0] ** 2)])
@@ -192,3 +199,69 @@ def test_wrong_dim(fun):
     with pytest.raises(ValueError):
         x0 = np.random.random(x0.shape) * (ub - lb) + lb
         opt.minimize(x0)
+
+
+def test_hess_and_hessian_update():
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    fun = rosenboth
+
+    opt = Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={fides.Options.FATOL: 0},
+        hessian_update=DFP()
+    )
+
+    with pytest.raises(ValueError):
+        opt.minimize(x0)
+
+
+def test_no_grad():
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    fun = rosen
+
+    opt = Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={fides.Options.FATOL: 0},
+        hessian_update=DFP()
+    )
+
+    with pytest.raises(ValueError):
+        opt.minimize(x0)
+
+
+def test_maxiter_maxtime():
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    fun = rosengrad
+
+    opt = Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={fides.Options.FATOL: 0},
+        hessian_update=DFP()
+    )
+    tstart = time.time()
+    opt.minimize(x0)
+    t_elapsed = time.time() - tstart
+
+    maxiter = opt.iteration - 1
+    maxtime = t_elapsed/10
+
+    opt.options[fides.Options.MAXITER] = maxiter
+    opt.minimize(x0)
+    assert opt.exitflag == fides.ExitFlag.MAXITER
+    del opt.options[fides.Options.MAXITER]
+
+    opt.options[fides.Options.MAXTIME] = maxtime
+    opt.minimize(x0)
+    assert opt.exitflag == fides.ExitFlag.MAXTIME
+    del opt.options[fides.Options.MAXTIME]
+
+
+def test_wrong_options():
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    fun = rosenboth
+
+    with pytest.raises(ValueError):
+        opt = Optimizer(
+            fun, ub=ub, lb=lb, verbose=logging.INFO,
+            options={'option_doesnt_exist': 1}
+        )

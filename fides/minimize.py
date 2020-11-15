@@ -153,10 +153,22 @@ class Optimizer:
             raise ValueError('x0 must be a vector with x.ndim == 1!')
         self.make_non_degenerate()
         self.check_in_bounds()
+
+        funout = self.fun(self.x, **self.funargs)
+        if len(funout) not in [2, 3]:
+            raise ValueError('Function must either return two or three '
+                             'outputs (depending on whether Hessian '
+                             'update strategy is used), but returned '
+                             f'{len(funout)}')
+
         if self.hessian_update is None:
-            self.fval, self.grad, self.hess = self.fun(self.x, **self.funargs)
+            self.fval, self.grad, self.hess = funout
         else:
-            self.fval, self.grad = self.fun(self.x, **self.funargs)
+            if len(funout) == 3:
+                raise ValueError('Cannot use Hessian update with a '
+                                 'function that returns 3 outputs.')
+
+            self.fval, self.grad = funout
             self.hessian_update.init_mat(len(self.x))
             self.hess = self.hessian_update.get_mat()
 
@@ -223,10 +235,12 @@ class Optimizer:
 
             x_new = self.x + step.s + step.s0
 
+            funout = self.fun(x_new, **self.funargs)
+
             if self.hessian_update is None:
-                fval_new, grad_new, hess_new = self.fun(x_new, **self.funargs)
+                fval_new, grad_new, hess_new = funout
             else:
-                fval_new, grad_new = self.fun(x_new, **self.funargs)
+                fval_new, grad_new = funout
                 hess_new = None
 
             if np.isfinite(fval_new):
@@ -416,7 +430,7 @@ class Optimizer:
             return False
 
         maxiter = self.get_option(Options.MAXITER)
-        if self.iteration > maxiter:
+        if self.iteration >= maxiter:
             self.exitflag = ExitFlag.MAXITER
             logger.error(
                 f'Stopping as maximum number of iterations {maxiter} was '
