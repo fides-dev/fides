@@ -49,14 +49,14 @@ def unbounded_and_init():
 
 
 @pytest.mark.parametrize("stepback", [StepBackStrategy.REFLECT,
-                                      StepBackStrategy.TRUNCATE])
+                                      StepBackStrategy.TRUNCATE_GREEDY,
+                                      StepBackStrategy.TRUNCATE_FULL])
 @pytest.mark.parametrize("subspace_dim", [SubSpaceDim.FULL,
                                           SubSpaceDim.TWO])
 @pytest.mark.parametrize("bounds_and_init", [finite_bounds_include_optimum(),
                                              unbounded_and_init(),
                                              finite_bounds_exlude_optimum()])
 @pytest.mark.parametrize("fun, happ", [
-    (rosenboth, None),
     (rosenboth, None),
     (rosengrad, SR1()),
     (rosengrad, BFGS()),
@@ -82,3 +82,30 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
     if np.all(ub > 1):
         assert np.isclose(opt.x, [1, 1]).all()
         assert np.isclose(opt.grad, np.zeros(opt.x.shape), atol=1e-6).all()
+
+
+@pytest.mark.parametrize("stepback", [StepBackStrategy.REFLECT,
+                                      StepBackStrategy.TRUNCATE_GREEDY])
+@pytest.mark.parametrize("subspace_dim", [SubSpaceDim.FULL,
+                                          SubSpaceDim.TWO])
+def test_multistart(subspace_dim, stepback):
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    fun = rosenboth
+
+    opt = Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={fides.Options.FATOL: 0,
+                 fides.Options.SUBSPACE_DIM: subspace_dim,
+                 fides.Options.STEPBACK_STRAT: stepback,
+                 fides.Options.MAXITER: 1e3}
+    )
+    for _ in range(int(1e2)):
+        x0 = np.random.random(x0.shape) * (ub-lb) + lb
+        opt.minimize(x0)
+        assert opt.fval >= opt.fval_min
+        if opt.fval == opt.fval_min:
+            assert np.isclose(opt.grad, opt.grad_min).all()
+            assert np.isclose(opt.x, opt.x_min).all()
+        if np.all(ub > 1):
+            assert np.isclose(opt.x, [1, 1]).all()
+            assert np.isclose(opt.grad, np.zeros(opt.x.shape), atol=1e-6).all()
