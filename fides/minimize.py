@@ -155,11 +155,11 @@ class Optimizer:
         self.check_in_bounds()
 
         funout = self.fun(self.x, **self.funargs)
-        if len(funout) not in [2, 3]:
+        if not isinstance(funout, tuple) or len(funout) not in [2, 3]:
             raise ValueError('Function must either return two or three '
                              'outputs (depending on whether Hessian '
                              'update strategy is used), but returned '
-                             f'{len(funout)}')
+                             f'{funout}')
 
         if self.hessian_update is None:
             self.fval, self.grad, self.hess = funout
