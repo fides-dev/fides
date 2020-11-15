@@ -12,11 +12,11 @@ def test_wrong_dim():
         BFGS(hess_init=np.ones(2,))
 
     with pytest.raises(ValueError):
-        BFGS(hess_init=np.ones(2, 3, 2))
+        BFGS(hess_init=np.ones((2, 3, 2)))
 
     with pytest.raises(ValueError):
-        BFGS(hess_init=np.ones(2, 3))
+        BFGS(hess_init=np.ones((2, 3)))
 
     with pytest.raises(ValueError):
-        h = BFGS(hess_init=np.ones(2, 2))
+        h = BFGS(hess_init=np.ones((2, 2)))
         h.init_mat(3)
