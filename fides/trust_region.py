@@ -19,7 +19,7 @@ from .subproblem import (
 )
 from .constants import SubSpaceDim, StepBackStrategy
 
-from typing import List, Optional, Sequence
+from typing import List, Sequence
 
 
 def normalize(v: np.ndarray) -> None:
