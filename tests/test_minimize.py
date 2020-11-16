@@ -107,8 +107,8 @@ def unbounded_and_init():
 
 
 @pytest.mark.parametrize("stepback", [StepBackStrategy.REFLECT,
-                                      StepBackStrategy.TRUNCATE_GREEDY,
-                                      StepBackStrategy.TRUNCATE_FULL])
+                                      StepBackStrategy.TRUNCATE])
+@pytest.mark.parametrize("refine", [True, False])
 @pytest.mark.parametrize("subspace_dim", [SubSpaceDim.FULL,
                                           SubSpaceDim.TWO])
 @pytest.mark.parametrize("bounds_and_init", [finite_bounds_include_optimum(),
@@ -121,7 +121,7 @@ def unbounded_and_init():
     (rosengrad, DFP()),
 ])
 def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
-                              stepback):
+                              stepback, refine):
     lb, ub, x0 = bounds_and_init
 
     opt = Optimizer(
@@ -130,7 +130,8 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
         options={fides.Options.FATOL: 0,
                  fides.Options.SUBSPACE_DIM: subspace_dim,
                  fides.Options.STEPBACK_STRAT: stepback,
-                 fides.Options.MAXITER: 1e3}
+                 fides.Options.MAXITER: 1e3,
+                 fides.Options.REFINE_STEPBACK: refine,}
     )
     opt.minimize(x0)
     assert opt.fval >= opt.fval_min
@@ -143,7 +144,7 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
 
 
 @pytest.mark.parametrize("stepback", [StepBackStrategy.REFLECT,
-                                      StepBackStrategy.TRUNCATE_GREEDY])
+                                      StepBackStrategy.TRUNCATE])
 @pytest.mark.parametrize("subspace_dim", [SubSpaceDim.FULL,
                                           SubSpaceDim.TWO])
 def test_multistart(subspace_dim, stepback):

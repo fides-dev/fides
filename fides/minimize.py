@@ -229,8 +229,9 @@ class Optimizer:
                 trust_region(
                     self.x, self.grad, self.hess, scaling,
                     self.delta, dv, theta, self.lb, self.ub,
-                    self.get_option(Options.SUBSPACE_DIM),
-                    self.get_option(Options.STEPBACK_STRAT)
+                    subspace_dim=self.get_option(Options.SUBSPACE_DIM),
+                    stepback_strategy=self.get_option(Options.STEPBACK_STRAT),
+                    refine_stepback=self.get_option(Options.REFINE_STEPBACK),
                 )
 
             x_new = self.x + step.s + step.s0
@@ -250,7 +251,7 @@ class Optimizer:
 
             if self.iteration % 10 == 0:
                 self.log_header()
-            self.log_step(accepted, step, theta, fval_new)
+            self.log_step(accepted, step, fval_new)
             self.check_convergence(fval_new, x_new, grad_new)
 
             # track minimum independently of whether we accept the step or not
@@ -453,7 +454,7 @@ class Optimizer:
         if self.delta < np.spacing(1):
             self.exitflag = ExitFlag.SMALL_DELTA
             logger.error(
-                'Stopping as trust region radius is smaller that machine '
+                'Stopping as trust region radius is smaller than machine '
                 'precision.'
             )
             return False
@@ -497,7 +498,7 @@ class Optimizer:
         dv[bounded] = 1
         return v, dv
 
-    def log_step(self, accepted: bool, step: Step, theta: float, fval: float):
+    def log_step(self, accepted: bool, step: Step, fval: float):
         """
         Prints diagnostic information about the current step to the log
 
@@ -505,8 +506,6 @@ class Optimizer:
             flag indicating whether the current step was accepted
         :param step:
             proposal step
-        :param theta:
-            value of the theta parameter
         :param fval:
             new fval if step is accepted
         """
@@ -515,11 +514,11 @@ class Optimizer:
         iterspaces = max(len(str(self.get_option(Options.MAXITER))), 5) - \
             len(str(self.iteration))
         steptypespaces = 4 - len(step.type)
-        if self.get_option(Options.STEPBACK_STRAT) == StepBackStrategy.REFLECT:
-            count = step.reflection_count
-        else:
-            count = step.truncation_count
-        stepbackspaces = 4 - len(str(count))
+        reflspaces, trunspaces = [
+            4 - len(str(count))
+            for count in [step.reflection_count, step.truncation_count]
+        ]
+
         if np.isnan(fval):
             fval = self.fval
         logger.info(f'{" " * iterspaces}{self.iteration}'
@@ -530,10 +529,11 @@ class Optimizer:
                     f' | {self.delta_iter:.2E}'
                     f' | {norm(self.grad):.2E}'
                     f' | {normdx:.2E}'
-                    f' | {theta:.2E}'
+                    f' | {step.theta:.2E}'
                     f' | {step.alpha:.2E}'
                     f' | {step.type}{" " * steptypespaces}'
-                    f' | {" " * stepbackspaces}{count}'
+                    f' | {" " * reflspaces}{step.reflection_count}'
+                    f' | {" " * trunspaces}{step.truncation_count}'
                     f' | {int(accepted)}')
 
     def log_step_initial(self):
@@ -555,6 +555,7 @@ class Optimizer:
                     f' |   NaN   '
                     f' | NaN '
                     f' | NaN '
+                    f' | NaN '
                     f' | {int(np.isfinite(self.fval))}')
 
     def log_header(self):
@@ -564,15 +565,10 @@ class Optimizer:
         """
         iterspaces = len(str(self.get_option(Options.MAXITER))) - 5
 
-        if self.get_option(Options.STEPBACK_STRAT) == StepBackStrategy.REFLECT:
-            countheader = 'refl'
-        else:
-            countheader = 'trun'
-
         logger.info(f'{" " * iterspaces} iter '
                     f'|   fval    | fval diff | pred diff | tr ratio  '
                     f'|  delta   |  ||g||   | ||step|| |  theta   |  alpha   '
-                    f'| step | {countheader} | accept')
+                    f'| step | refl | trun | accept')
 
     def check_finite(self,
                      grad: Optional[np.ndarray] = None,

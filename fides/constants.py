@@ -30,6 +30,7 @@ class Options(str, enum.Enum):
     ETA = 'eta'  # trust region increase threshold for trust region ratio
     GAMMA1 = 'gamma1'  # factor by which trust region radius will be decreased
     GAMMA2 = 'gamma2'  # factor by which trust region radius will be increased
+    REFINE_STEPBACK = 'refine_stepback'  # whether
 
 
 class SubSpaceDim(str, enum.Enum):
@@ -47,10 +48,8 @@ class StepBackStrategy(str, enum.Enum):
     reaches optimization boundary
     """
     REFLECT = 'reflect'  #: reflect step at boundary
-    TRUNCATE_GREEDY = 'truncate_greedy'  #: truncate step at boundary and
-    # resolve subproblem
-    MIXED = 'mixed'  #: mix greedy reflections and truncations
-    TRUNCATE_FULL = 'truncate_full'
+    TRUNCATE = 'truncate'  #: truncate step at boundary and resolve subproblem
+    MIXED = 'mixed'  #: mix reflections and truncations
 
 
 DEFAULT_OPTIONS = {
@@ -63,13 +62,14 @@ DEFAULT_OPTIONS = {
     Options.GATOL: 1e-6,
     Options.GRTOL: 0,
     Options.SUBSPACE_DIM: SubSpaceDim.FULL,
-    Options.STEPBACK_STRAT: StepBackStrategy.TRUNCATE_GREEDY,
+    Options.STEPBACK_STRAT: StepBackStrategy.MIXED,
     Options.THETA_MAX: 0.95,
     Options.DELTA_INIT: 1.0,
     Options.MU: 0.25,  # [NodedalWright2006]
     Options.ETA: 0.75,  # [NodedalWright2006]
     Options.GAMMA1: 1/4,  # [NodedalWright2006]
     Options.GAMMA2: 2,  # [NodedalWright2006]
+    Options.REFINE_STEPBACK: True,
 }
 
 
