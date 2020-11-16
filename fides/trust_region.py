@@ -120,43 +120,44 @@ class Step:
             Lower boundary
 
         """
-        self.x = x
+        self.x: np.ndarray = x
 
-        self.s = None
-        self.sc = None
-        self.ss = None
+        self.s: np.ndarray = None
+        self.sc: np.ndarray = None
+        self.ss: np.ndarray = None
 
-        self.og_s = None
-        self.og_sc = None
-        self.og_ss = None
+        self.og_s: np.ndarray = None
+        self.og_sc: np.ndarray = None
+        self.og_ss: np.ndarray = None
 
-        self.sg = sg
-        self.scaling = scaling
+        self.sg: np.ndarray = sg
+        self.scaling: csc_matrix = scaling
 
-        self.delta = delta
-        self.theta = theta
+        self.delta: float = delta
+        self.theta: float = theta
 
-        self.lb = lb
-        self.ub = ub
+        self.lb: np.ndarray = lb
+        self.ub: np.ndarray = ub
 
-        self.br = np.ones(sg.shape)
-        self.minbr = 1.0
-        self.alpha = 1.0
-        self.iminbr = 0
+        self.br: np.ndarray = np.ones(sg.shape)
+        self.minbr: float = 1.0
+        self.alpha: float = 1.0
+        self.iminbr: np.ndarray = np.array([])
 
-        self.qpval = 0.0
+        self.qpval: float = 0.0
 
-        self.shess = np.asarray(scaling * hess * scaling + g_dscaling)
+        self.shess: np.ndarray = np.asarray(scaling * hess * scaling
+                                            + g_dscaling)
 
-        self.cg = None
-        self.chess = None
-        self.subspace = None
+        self.cg: np.ndarray = None
+        self.chess: np.ndarray = None
+        self.subspace: np.ndarray = None
 
-        self.s0 = np.zeros(sg.shape)
-        self.ss0 = np.zeros(sg.shape)
+        self.s0: np.ndarray = np.zeros(sg.shape)
+        self.ss0: np.ndarray = np.zeros(sg.shape)
 
-        self.reflection_count = 0
-        self.truncation_count = 0
+        self.reflection_count: int = 0
+        self.truncation_count: int = 0
 
     def step_back(self):
         """
@@ -496,6 +497,18 @@ def trust_region(x: np.ndarray,
 
     steps = [tr_step]
     if tr_step.alpha < 1.0 and len(g) > 1:
+        g_step = GradientStep(x, sg, hess, scaling, g_dscaling, delta,
+                              theta, ub, lb)
+        g_step.calculate()
+
+        steps = [g_step]
+
+        if stepback_strategy == StepBackStrategy.SINGLE_REFLECT:
+            rtr_step = TRStepReflected(x, sg, hess, scaling, g_dscaling, delta,
+                                       theta, ub, lb, tr_step)
+            rtr_step.calculate()
+            steps.append(rtr_step)
+
         if stepback_strategy in [StepBackStrategy.REFLECT,
                                  StepBackStrategy.MIXED]:
             steps.extend(stepback_reflect(
@@ -526,7 +539,7 @@ def trust_region(x: np.ndarray,
         ]))
 
     qpvals = [step.qpval for step in steps]
-    return steps[np.argmin(qpvals)]
+    return steps[np.argmin(qpvals)[0]]
 
 
 def stepback_reflect(tr_step: Step,
@@ -568,16 +581,10 @@ def stepback_reflect(tr_step: Step,
     :return:
         New proposal steps
     """
-    g_step = GradientStep(x, sg, hess, scaling, g_dscaling, delta,
-                          theta, ub, lb)
-    g_step.calculate()
-
-    steps = [g_step]
-
     rtr_step = TRStepReflected(x, sg, hess, scaling, g_dscaling, delta,
                                theta, ub, lb, tr_step)
     rtr_step.calculate()
-    steps.append(rtr_step)
+    steps = [rtr_step]
     for ireflection in range(len(x) - 1):
         if rtr_step.alpha == 1.0:
             break

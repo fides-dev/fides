@@ -47,7 +47,8 @@ class StepBackStrategy(str, enum.Enum):
     Defines the possible choices of search refinement if proposed step
     reaches optimization boundary
     """
-    REFLECT = 'reflect'  #: reflect step at boundary
+    SINGLE_REFLECT = 'reflect_single'  #: single reflection at boundary
+    REFLECT = 'reflect'  #: recursive reflections at boundary
     TRUNCATE = 'truncate'  #: truncate step at boundary and resolve subproblem
     MIXED = 'mixed'  #: mix reflections and truncations
 
