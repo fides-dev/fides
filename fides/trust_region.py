@@ -41,7 +41,7 @@ def quadratic_form(Q: np.ndarray, p: np.ndarray, x: np.ndarray) -> float:
     :param Q: Matrix
     :param p: Vector
     :param x: Input
-    
+
     :return:
         Value of form
     """
