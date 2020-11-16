@@ -433,7 +433,7 @@ class Optimizer:
         maxiter = self.get_option(Options.MAXITER)
         if self.iteration >= maxiter:
             self.exitflag = ExitFlag.MAXITER
-            logger.error(
+            logger.warning(
                 f'Stopping as maximum number of iterations {maxiter} was '
                 f'exceeded.'
             )
@@ -445,7 +445,7 @@ class Optimizer:
         avg_iter_time = time_elapsed/(self.iteration + (self.iteration == 0))
         if time_remaining < avg_iter_time:
             self.exitflag = ExitFlag.MAXTIME
-            logger.error(
+            logger.warning(
                 f'Stopping as maximum runtime {maxtime} is expected to be '
                 f'exceeded in the next iteration.'
             )
