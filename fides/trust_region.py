@@ -539,7 +539,7 @@ def trust_region(x: np.ndarray,
         ]))
 
     qpvals = [step.qpval for step in steps]
-    return steps[np.argmin(qpvals)[0]]
+    return steps[int(np.argmin(qpvals))]
 
 
 def stepback_reflect(tr_step: Step,
