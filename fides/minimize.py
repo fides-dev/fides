@@ -387,7 +387,7 @@ class Optimizer:
             self.exitflag = ExitFlag.FTOL
             logger.warning(
                 'Stopping as function difference '
-                f'{np.abs(self.fval - fval)} was smaller than specified '
+                f'{np.abs(self.fval - fval):.2E} was smaller than specified '
                 f'tolerances (atol={fatol:.2E}, rtol={frtol:.2E})'
             )
             converged = True
