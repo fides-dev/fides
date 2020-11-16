@@ -87,4 +87,3 @@ class ExitFlag(int, enum.Enum):
     FTOL = 1  #: Converged according to fval difference
     XTOL = 2  #: Converged according to x difference
     GTOL = 3  #: Converged according to gradient norm
-    SMALL_DELTA = 4  #: Converged due to too small trust region radius
