@@ -19,7 +19,7 @@ from .subproblem import (
 )
 from .constants import SubSpaceDim, StepBackStrategy
 
-from typing import List, Sequence
+from typing import List, Sequence, Union
 
 
 def normalize(v: np.ndarray) -> None:
@@ -122,13 +122,13 @@ class Step:
         """
         self.x: np.ndarray = x
 
-        self.s: np.ndarray = None
-        self.sc: np.ndarray = None
-        self.ss: np.ndarray = None
+        self.s: Union[np.ndarray, None] = None
+        self.sc: Union[np.ndarray, None] = None
+        self.ss: Union[np.ndarray, None] = None
 
-        self.og_s: np.ndarray = None
-        self.og_sc: np.ndarray = None
-        self.og_ss: np.ndarray = None
+        self.og_s: Union[np.ndarray, None] = None
+        self.og_sc: Union[np.ndarray, None] = None
+        self.og_ss: Union[np.ndarray, None] = None
 
         self.sg: np.ndarray = sg
         self.scaling: csc_matrix = scaling
@@ -149,9 +149,9 @@ class Step:
         self.shess: np.ndarray = np.asarray(scaling * hess * scaling
                                             + g_dscaling)
 
-        self.cg: np.ndarray = None
-        self.chess: np.ndarray = None
-        self.subspace: np.ndarray = None
+        self.cg: Union[np.ndarray, None] = None
+        self.chess: Union[np.ndarray, None] = None
+        self.subspace: Union[np.ndarray, None] = None
 
         self.s0: np.ndarray = np.zeros(sg.shape)
         self.ss0: np.ndarray = np.zeros(sg.shape)
