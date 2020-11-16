@@ -156,6 +156,7 @@ def test_multistart(subspace_dim, stepback):
         options={fides.Options.FATOL: 0,
                  fides.Options.SUBSPACE_DIM: subspace_dim,
                  fides.Options.STEPBACK_STRAT: stepback,
+                 fides.Options.REFINE_STEPBACK: False,
                  fides.Options.MAXITER: 1e3}
     )
     for _ in range(int(1e2)):
