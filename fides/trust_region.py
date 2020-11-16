@@ -37,9 +37,11 @@ def normalize(v: np.ndarray) -> None:
 def quadratic_form(Q: np.ndarray, p: np.ndarray, x: np.ndarray) -> float:
     """
     Computes the quadratic form :math:`x^TQx + x^Tp`
+
     :param Q: Matrix
     :param p: Vector
     :param x: Input
+    
     :return:
         Value of form
     """
