@@ -127,7 +127,7 @@ def solve_nd_trust_region_subproblem(B: np.ndarray,
     # \phi'(lam) = - s(lam).T*ds(lam)/||s(lam)||^3
 
     # POSITIVE DEFINITE
-    if mineig > np.sqrt(np.spacing(1)):  # positive definite
+    if mineig > 0:  # positive definite
         s = np.real(slam(0, w, eigvals, eigvecs))  # s = - self.cB\self.cg_hat
         if norm(s) <= delta + np.sqrt(np.spacing(1)):  # CASE 0
             logger.debug('Interior subproblem solution')
@@ -135,10 +135,9 @@ def solve_nd_trust_region_subproblem(B: np.ndarray,
         else:
             laminit = 0
     else:
-        # add a little wiggle room so we don't end up at the pole
-        laminit = -mineig + np.sqrt(np.spacing(1))
+        laminit = -mineig
 
-    # INDEFINITE CASE (
+    # INDEFINITE CASE
     # note that this includes what Nocedal calls the "hard case" but with
     # ||s|| > delta, so the provided formula is not applicable,
     # the respective w should be close to 0 anyways

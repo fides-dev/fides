@@ -11,6 +11,7 @@ import scipy.linalg as linalg
 
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
+from scipy.optimize import Bounds, NonlinearConstraint, minimize
 
 from .logging import logger
 from .subproblem import (
@@ -18,7 +19,7 @@ from .subproblem import (
 )
 from .constants import SubSpaceDim, StepBackStrategy
 
-from typing import List
+from typing import List, Sequence
 
 
 def normalize(v: np.ndarray) -> None:
@@ -31,6 +32,20 @@ def normalize(v: np.ndarray) -> None:
     nv = norm(v)
     if nv > 0:
         v[:] = v/nv  # change inplace
+
+
+def quadratic_form(Q: np.ndarray, p: np.ndarray, x: np.ndarray) -> float:
+    """
+    Computes the quadratic form :math:`x^TQx + x^Tp`
+
+    :param Q: Matrix
+    :param p: Vector
+    :param x: Input
+
+    :return:
+        Value of form
+    """
+    return 0.5 * x.T.dot(Q).dot(x) + p.T.dot(x)
 
 
 class Step:
@@ -56,9 +71,8 @@ class Step:
     :ivar ub: Upper boundaries for x
     :ivar minbr: Maximal fraction of step s that can be taken to reach
         first breakpoint
-    :ivar ipt: Index of x that specifies the variable that will hit the
+    :ivar iminbr: Index of x that specifies the variable that will hit the
         breakpoint if a step minbr * s is taken
-    :ivar qpval0: Value to the quadratic subproblem at x
     :ivar qpval: Value of the quadratic subproblem for the proposed step
     :ivar shess: Matrix of the full quadratic problem
     :ivar cg: Projection of the g_hat to the subspace
@@ -128,12 +142,11 @@ class Step:
         self.br = np.ones(sg.shape)
         self.minbr = 1.0
         self.alpha = 1.0
-        self.ipt = 0
+        self.iminbr = 0
 
-        self.qpval0 = 0.0
         self.qpval = 0.0
 
-        self.shess = scaling * hess * scaling + g_dscaling
+        self.shess = np.asarray(scaling * hess * scaling + g_dscaling)
 
         self.cg = None
         self.chess = None
@@ -167,7 +180,7 @@ class Step:
                 (self.lb[nonzero] - self.x[nonzero])/self.s[nonzero]
             ]), axis=0)
         self.minbr = np.min(self.br)
-        self.ipt = np.where(self.br == self.minbr)[0]
+        self.iminbr = np.where(self.br == self.minbr)[0]
         # compute the minimum of the step
         self.alpha = np.min([1, self.theta * self.minbr])
 
@@ -190,8 +203,8 @@ class Step:
         """
         if self.subspace.shape[1] == 0:
             self.sc = np.empty((0, 0))
-            self.ss = np.zeros(self.ss.shape)
-            self.s = np.zeros(self.s.shape)
+            self.ss = np.zeros(self.ss0.shape)
+            self.s = np.zeros(self.s0.shape)
             return
         if self.subspace.shape[1] > 1:
             self.sc, _ = solve_nd_trust_region_subproblem(
@@ -213,8 +226,7 @@ class Step:
         self.reduce_to_subspace()
         self.compute_step()
         self.step_back()
-        self.qpval = self.qpval0 + self.sg.dot(self.ss) + \
-            .5 * (self.ss.dot(self.shess).dot(self.ss))[0, 0]
+        self.qpval = quadratic_form(self.shess, self.sg, self.ss + self.ss0)
 
 
 class TRStepFull(Step):
@@ -301,11 +313,9 @@ class TRStepReflected(Step):
 
         # reflect the transformed step at the boundary
         nss = step.og_ss.copy()
-        nss[step.ipt] *= -1
+        nss[step.iminbr] *= -1
         normalize(nss)
         self.subspace = np.expand_dims(nss, 1)
-
-        self.qpval0 = step.qpval
         self.reflection_count = step.reflection_count + 1
 
 
@@ -328,13 +338,14 @@ class TRStepTruncated(Step):
 
         self.s0 = step.s0.copy()
         self.ss0 = step.ss0.copy()
-        self.s0[step.ipt] += step.s[step.ipt]
-        self.ss0[step.ipt] += step.ss[step.ipt]
+        iminbr = step.iminbr
+        self.s0[iminbr] += step.theta * step.br[iminbr] * step.og_s[iminbr]
+        self.ss0[iminbr] += step.theta * step.br[iminbr] * step.og_ss[iminbr]
         # update x and at breakpoint
         self.x = x + self.s0
 
         subspace = step.subspace.copy()
-        subspace[step.ipt, :] = 0
+        subspace[iminbr, :] = 0
         # reduce subspace
         subspace = subspace[:, (subspace != 0).any(axis=0)]
         # normalize subspace
@@ -342,8 +353,7 @@ class TRStepTruncated(Step):
             normalize(subspace[:, ix])
         self.subspace = subspace
 
-        self.qpval0 = step.qpval
-        self.truncation_count = step.truncation_count + 1
+        self.truncation_count = step.truncation_count + len(iminbr)
 
 
 class GradientStep(Step):
@@ -362,17 +372,65 @@ class GradientStep(Step):
         self.subspace = np.expand_dims(s_grad, 1)
 
 
-def trust_region_reflective(x: np.ndarray,
-                            g: np.ndarray,
-                            hess: np.ndarray,
-                            scaling: csc_matrix,
-                            delta: float,
-                            dv: np.ndarray,
-                            theta: float,
-                            lb: np.ndarray,
-                            ub: np.ndarray,
-                            subspace_dim: SubSpaceDim,
-                            stepback_strategy: StepBackStrategy) -> Step:
+class RefinedStep(Step):
+    """
+    This class provides the machinery to refine a step based on interior
+    point optimization
+    """
+
+    type = 'ref'
+
+    def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
+                 ub, lb, step):
+        super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
+                         ub, lb)
+        s_grad = sg.copy()
+        normalize(s_grad)
+        self.subspace = np.expand_dims(s_grad, 1)
+        self.constraints = [
+            NonlinearConstraint(
+                fun=lambda xs: (norm(xs) - delta) * np.ones((1,)),
+                jac=lambda xs: np.expand_dims(xs, 1).T / norm(xs),
+                lb=np.zeros((1,)),
+                ub=np.ones((1,)) * np.inf,
+            )
+        ]
+        self.guess = step.ss + step.ss0
+        self.bounds = Bounds(
+            step.theta * (lb - x) / scaling.diagonal(),
+            step.theta * (ub - x) / scaling.diagonal()
+        )
+        self.reflection_count = step.reflection_count
+        self.truncation_count = step.truncation_count
+
+    def calculate(self):
+        res = minimize(fun=lambda s: quadratic_form(self.shess, self.sg, s),
+                       jac=lambda s: self.shess.dot(s) + self.sg,
+                       hess=lambda s: self.shess,
+                       x0=self.guess,
+                       method='trust-constr',
+                       bounds=self.bounds,
+                       constraints=self.constraints,
+                       options={'verbose': 0, 'maxiter': 10})
+        self.ss = res.x
+        self.s = self.scaling.dot(res.x)
+        self.sc = self.ss
+        self.step_back()
+        self.qpval = quadratic_form(self.shess, self.sg, self.ss)
+
+
+def trust_region(x: np.ndarray,
+                 g: np.ndarray,
+                 hess: np.ndarray,
+                 scaling: csc_matrix,
+                 delta: float,
+                 dv: np.ndarray,
+                 theta: float,
+                 lb: np.ndarray,
+                 ub: np.ndarray,
+                 subspace_dim: SubSpaceDim,
+                 stepback_strategy: StepBackStrategy,
+                 refine_stepback: bool) -> Step:
     """
     Compute a step according to the solution of the trust-region subproblem.
     If step-back is necessary, gradient and reflected trust region step are
@@ -405,6 +463,9 @@ def trust_region_reflective(x: np.ndarray,
     :param stepback_strategy:
         Strategy that is applied when the proposed step exceeds the
         optimization boundary.
+    :param refine_stepback:
+        If set to True, proposed steps that are computed via the specified
+        stepback_strategy will be refined via optimization.
 
     :return:
         s: proposed step,
@@ -434,15 +495,24 @@ def trust_region_reflective(x: np.ndarray,
     # TR step
 
     steps = [tr_step]
-    if tr_step.alpha < 1 and len(g) > 1:
-        if stepback_strategy == StepBackStrategy.REFLECT:
-            steps.extend(stepback_reflect(tr_step, x, sg, hess, scaling,
-                                          g_dscaling, delta, theta, ub, lb))
-        elif stepback_strategy == StepBackStrategy.TRUNCATE:
-            steps.extend(stepback_truncate(tr_step, x, sg, hess, scaling,
-                                           g_dscaling, delta, theta, ub, lb))
-        else:
-            ValueError('Invalid value for stepback_strategy!')
+    if tr_step.alpha < 1.0 and len(g) > 1:
+        if stepback_strategy in [StepBackStrategy.REFLECT,
+                                 StepBackStrategy.MIXED]:
+            steps.extend(stepback_reflect(
+                tr_step, x, sg, hess, scaling, g_dscaling, delta, theta, ub,
+                lb
+            ))
+        if stepback_strategy in [StepBackStrategy.TRUNCATE,
+                                 StepBackStrategy.MIXED]:
+            steps.extend(stepback_truncate(
+                tr_step, x, sg, hess, scaling, g_dscaling, delta, theta, ub,
+                lb
+            ))
+        if refine_stepback:
+            steps.extend(stepback_refine(
+                steps, x, sg, hess, scaling, g_dscaling, delta, theta, ub,
+                lb
+            ))
 
     if len(steps) > 1:
         rcountstrs = [str(step.reflection_count)
@@ -509,7 +579,7 @@ def stepback_reflect(tr_step: Step,
     rtr_step.calculate()
     steps.append(rtr_step)
     for ireflection in range(len(x) - 1):
-        if rtr_step.alpha == 1:
+        if rtr_step.alpha == 1.0:
             break
         # recursively add more reflections
         rtr_old = rtr_step
@@ -562,11 +632,10 @@ def stepback_truncate(tr_step: Step,
     """
     rtt_step = TRStepTruncated(x, sg, hess, scaling, g_dscaling, delta,
                                theta, ub, lb, tr_step)
-    steps = [rtt_step]
     rtt_step.calculate()
-    steps.append(rtt_step)
-    for itruncation in range(len(x) - 1):
-        if rtt_step.alpha == 1:
+    steps = [rtt_step]
+    while rtt_step.subspace.shape[1] > 0:
+        if rtt_step.alpha == 1.0:
             break
         rtt_step = TRStepTruncated(x, sg, hess, scaling, g_dscaling, delta,
                                    theta, ub, lb, rtt_step)
@@ -574,3 +643,56 @@ def stepback_truncate(tr_step: Step,
         steps.append(rtt_step)
 
     return steps
+
+
+def stepback_refine(steps: Sequence[Step],
+                    x: np.ndarray,
+                    sg: np.ndarray,
+                    hess: np.ndarray,
+                    scaling: csc_matrix,
+                    g_dscaling: csc_matrix,
+                    delta: float,
+                    theta: float,
+                    ub: np.ndarray,
+                    lb: np.ndarray) -> List[Step]:
+    """
+    Refine a promising subset of the provided steps based on trust-constr
+    optimization
+
+    :param steps:
+        Reference trust region step that will be reflect
+    :param x:
+        Current values of the optimization variables
+    :param sg:
+        Rescaled objective function gradient at x
+    :param hess:
+        (Approximate) objective function Hessian at x
+    :param g_dscaling:
+        Unscaled gradient multiplied by derivative of scaling
+        transformation
+    :param scaling:
+        Scaling transformation according to distance to boundary
+    :param delta:
+        Trust region radius, note that this applies after scaling
+        transformation
+    :param theta:
+        parameter regulating stepback
+    :param lb:
+        lower optimization variable boundaries
+    :param ub:
+        upper optimization variable boundaries
+
+    :return:
+        New proposal steps
+    """
+    min_qpval = np.nanmin([step.qpval for step in steps])
+    ref_steps = [
+        RefinedStep(x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb,
+                    step)
+        for step in steps
+        if ((step.alpha == 1.0 and step.type not in ['trnd', 'tr2d', 'grad'])
+            or (step.alpha < 1.0 and step.qpval < min_qpval / 2))
+    ]
+    for step in ref_steps:
+        step.calculate()
+    return ref_steps

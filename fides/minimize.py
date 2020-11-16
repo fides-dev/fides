@@ -10,9 +10,9 @@ import numpy as np
 import logging
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
-from .trust_region import trust_region_reflective, Step
+from .trust_region import trust_region, Step
 from .hessian_approximation import HessianApproximation
-from .constants import Options, StepBackStrategy, ExitFlag, DEFAULT_OPTIONS
+from .constants import Options, ExitFlag, DEFAULT_OPTIONS
 from .logging import logger
 
 from typing import Callable, Dict, Optional, Tuple
@@ -153,10 +153,22 @@ class Optimizer:
             raise ValueError('x0 must be a vector with x.ndim == 1!')
         self.make_non_degenerate()
         self.check_in_bounds()
+
+        funout = self.fun(self.x, **self.funargs)
+        if not isinstance(funout, tuple) or len(funout) not in [2, 3]:
+            raise ValueError('Function must either return two or three '
+                             'outputs (depending on whether Hessian '
+                             'update strategy is used), but returned '
+                             f'{funout}')
+
         if self.hessian_update is None:
-            self.fval, self.grad, self.hess = self.fun(self.x, **self.funargs)
+            self.fval, self.grad, self.hess = funout
         else:
-            self.fval, self.grad = self.fun(self.x, **self.funargs)
+            if len(funout) == 3:
+                raise ValueError('Cannot use Hessian update with a '
+                                 'function that returns 3 outputs.')
+
+            self.fval, self.grad = funout
             self.hessian_update.init_mat(len(self.x))
             self.hess = self.hessian_update.get_mat()
 
@@ -214,26 +226,32 @@ class Optimizer:
                         1 - norm(v * self.grad, np.inf))
 
             step = \
-                trust_region_reflective(
+                trust_region(
                     self.x, self.grad, self.hess, scaling,
                     self.delta, dv, theta, self.lb, self.ub,
-                    self.get_option(Options.SUBSPACE_DIM),
-                    self.get_option(Options.STEPBACK_STRAT)
+                    subspace_dim=self.get_option(Options.SUBSPACE_DIM),
+                    stepback_strategy=self.get_option(Options.STEPBACK_STRAT),
+                    refine_stepback=self.get_option(Options.REFINE_STEPBACK),
                 )
 
             x_new = self.x + step.s + step.s0
 
+            funout = self.fun(x_new, **self.funargs)
+
             if self.hessian_update is None:
-                fval_new, grad_new, hess_new = self.fun(x_new, **self.funargs)
+                fval_new, grad_new, hess_new = funout
             else:
-                fval_new, grad_new = self.fun(x_new, **self.funargs)
+                fval_new, grad_new = funout
                 hess_new = None
+
+            if np.isfinite(fval_new):
+                self.check_finite(grad_new, hess_new)
 
             accepted = self.update_tr_radius(fval_new, grad_new, step, dv)
 
             if self.iteration % 10 == 0:
                 self.log_header()
-            self.log_step(accepted, step, theta, fval_new)
+            self.log_step(accepted, step, fval_new)
             self.check_convergence(fval_new, x_new, grad_new)
 
             # track minimum independently of whether we accept the step or not
@@ -318,6 +336,7 @@ class Optimizer:
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
         if not np.isfinite(fval):
+            self.tr_ratio = 0
             self.delta = np.nanmin([
                 self.delta * self.get_option(Options.GAMMA1),
                 nsx / 4
@@ -327,13 +346,15 @@ class Optimizer:
             qpval = 0.5 * stepsx.dot(dv * np.abs(grad) * stepsx)
             self.tr_ratio = (fval + qpval - self.fval) / step.qpval
 
+            interior_solution = nsx < self.delta * 0.9
+
             # values as proposed in algorithm 4.1 in Nocedal & Wright
             if self.tr_ratio >= self.get_option(Options.ETA) \
-                    and nsx > self.delta * 0.9:
+                    and not interior_solution:
                 # increase radius
                 self.delta = self.get_option(Options.GAMMA2) * self.delta
             elif self.tr_ratio <= self.get_option(Options.MU) \
-                    or nsx < self.delta * 0.9:
+                    or interior_solution:
                 # decrease radius
                 self.delta = np.nanmin([
                     self.delta * self.get_option(Options.GAMMA1),
@@ -364,7 +385,7 @@ class Optimizer:
 
         if np.isclose(fval, self.fval, atol=fatol, rtol=frtol):
             self.exitflag = ExitFlag.FTOL
-            logger.info(
+            logger.warning(
                 'Stopping as function difference '
                 f'{np.abs(self.fval - fval)} was smaller than specified '
                 f'tolerances (atol={fatol:.2E}, rtol={frtol:.2E})'
@@ -373,7 +394,7 @@ class Optimizer:
 
         elif np.isclose(x, self.x, atol=xatol, rtol=xrtol).all():
             self.exitflag = ExitFlag.XTOL
-            logger.info(
+            logger.warning(
                 'Stopping as step was smaller than specified tolerances ('
                 f'atol={xatol:.2E}, rtol={xrtol:.2E})'
             )
@@ -381,7 +402,7 @@ class Optimizer:
 
         elif gnorm <= gatol:
             self.exitflag = ExitFlag.GTOL
-            logger.info(
+            logger.warning(
                 'Stopping as gradient norm satisfies absolute convergence '
                 f'criteria: {gnorm:.2E} < {gatol:.2E}'
             )
@@ -389,7 +410,7 @@ class Optimizer:
 
         elif gnorm <= grtol * self.fval:
             self.exitflag = ExitFlag.GTOL
-            logger.info(
+            logger.warning(
                 'Stopping as gradient norm satisfies relative convergence '
                 f'criteria: {gnorm:.2E} < {grtol:.2E} * {self.fval:.2E}'
             )
@@ -410,7 +431,7 @@ class Optimizer:
             return False
 
         maxiter = self.get_option(Options.MAXITER)
-        if self.iteration > maxiter:
+        if self.iteration >= maxiter:
             self.exitflag = ExitFlag.MAXITER
             logger.error(
                 f'Stopping as maximum number of iterations {maxiter} was '
@@ -427,14 +448,6 @@ class Optimizer:
             logger.error(
                 f'Stopping as maximum runtime {maxtime} is expected to be '
                 f'exceeded in the next iteration.'
-            )
-            return False
-
-        if self.delta < np.spacing(1):
-            self.exitflag = ExitFlag.SMALL_DELTA
-            logger.error(
-                'Stopping as trust region radius is smaller that machine '
-                'precision.'
             )
             return False
 
@@ -477,7 +490,7 @@ class Optimizer:
         dv[bounded] = 1
         return v, dv
 
-    def log_step(self, accepted: bool, step: Step, theta: float, fval: float):
+    def log_step(self, accepted: bool, step: Step, fval: float):
         """
         Prints diagnostic information about the current step to the log
 
@@ -485,8 +498,6 @@ class Optimizer:
             flag indicating whether the current step was accepted
         :param step:
             proposal step
-        :param theta:
-            value of the theta parameter
         :param fval:
             new fval if step is accepted
         """
@@ -495,11 +506,11 @@ class Optimizer:
         iterspaces = max(len(str(self.get_option(Options.MAXITER))), 5) - \
             len(str(self.iteration))
         steptypespaces = 4 - len(step.type)
-        if self.get_option(Options.STEPBACK_STRAT) == StepBackStrategy.REFLECT:
-            count = step.reflection_count
-        else:
-            count = step.truncation_count
-        stepbackspaces = 4 - len(str(count))
+        reflspaces, trunspaces = [
+            4 - len(str(count))
+            for count in [step.reflection_count, step.truncation_count]
+        ]
+
         if np.isnan(fval):
             fval = self.fval
         logger.info(f'{" " * iterspaces}{self.iteration}'
@@ -510,10 +521,11 @@ class Optimizer:
                     f' | {self.delta_iter:.2E}'
                     f' | {norm(self.grad):.2E}'
                     f' | {normdx:.2E}'
-                    f' | {theta:.2E}'
+                    f' | {step.theta:.2E}'
                     f' | {step.alpha:.2E}'
                     f' | {step.type}{" " * steptypespaces}'
-                    f' | {" " * stepbackspaces}{count}'
+                    f' | {" " * reflspaces}{step.reflection_count}'
+                    f' | {" " * trunspaces}{step.truncation_count}'
                     f' | {int(accepted)}')
 
     def log_step_initial(self):
@@ -535,6 +547,7 @@ class Optimizer:
                     f' |   NaN   '
                     f' | NaN '
                     f' | NaN '
+                    f' | NaN '
                     f' | {int(np.isfinite(self.fval))}')
 
     def log_header(self):
@@ -544,20 +557,25 @@ class Optimizer:
         """
         iterspaces = len(str(self.get_option(Options.MAXITER))) - 5
 
-        if self.get_option(Options.STEPBACK_STRAT) == StepBackStrategy.REFLECT:
-            countheader = 'refl'
-        else:
-            countheader = 'trun'
-
         logger.info(f'{" " * iterspaces} iter '
                     f'|   fval    | fval diff | pred diff | tr ratio  '
                     f'|  delta   |  ||g||   | ||step|| |  theta   |  alpha   '
-                    f'| step | {countheader} | accept')
+                    f'| step | refl | trun | accept')
 
-    def check_finite(self):
+    def check_finite(self,
+                     grad: Optional[np.ndarray] = None,
+                     hess: Optional[np.ndarray] = None):
         """
         Checks whether objective function value, gradient and Hessian (
         approximation) have finite values and optimization can continue.
+
+        :param grad:
+            gradient to be checked for finiteness, if not provided, current
+            one will be checked
+
+        :param hess:
+            Hessian (approximation) to be checked for finiteness, if not
+            provided, current one will be checked
 
         :raises:
             RuntimeError if any of the variables have non-finite entries
@@ -568,23 +586,29 @@ class Optimizer:
         else:
             pointstr = f'at iteration {self.iteration}.'
 
+        if grad is None:
+            grad = self.grad
+
+        if hess is None:
+            hess = self.hess
+
         if not np.isfinite(self.fval):
             self.exitflag = ExitFlag.NOT_FINITE
             raise RuntimeError(f'Encountered non-finite function {self.fval} '
                                f'value {pointstr}')
 
-        if not np.isfinite(self.grad).all():
+        if not np.isfinite(grad).all():
             self.exitflag = ExitFlag.NOT_FINITE
-            ix = np.where(np.logical_not(np.isfinite(self.grad)))
+            ix = np.where(np.logical_not(np.isfinite(grad)))
             raise RuntimeError('Encountered non-finite gradient entries'
-                               f' {self.grad[ix]} for indices {ix} '
+                               f' {grad[ix]} for indices {ix} '
                                f'{pointstr}')
 
-        if not np.isfinite(self.hess).all():
+        if not np.isfinite(hess).all():
             self.exitflag = ExitFlag.NOT_FINITE
-            ix = np.where(np.logical_not(np.isfinite(self.hess)))
+            ix = np.where(np.logical_not(np.isfinite(hess)))
             raise RuntimeError('Encountered non-finite gradient hessian'
-                               f' {self.hess[ix]} for indices {ix} '
+                               f' {hess[ix]} for indices {ix} '
                                f'{pointstr}')
 
     def check_in_bounds(self, x: Optional[np.ndarray] = None):
