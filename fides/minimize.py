@@ -12,7 +12,7 @@ from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from .trust_region import trust_region, Step
 from .hessian_approximation import HessianApproximation
-from .constants import Options, StepBackStrategy, ExitFlag, DEFAULT_OPTIONS
+from .constants import Options, ExitFlag, DEFAULT_OPTIONS
 from .logging import logger
 
 from typing import Callable, Dict, Optional, Tuple

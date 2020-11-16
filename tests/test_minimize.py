@@ -131,7 +131,7 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
                  fides.Options.SUBSPACE_DIM: subspace_dim,
                  fides.Options.STEPBACK_STRAT: stepback,
                  fides.Options.MAXITER: 1e3,
-                 fides.Options.REFINE_STEPBACK: refine,}
+                 fides.Options.REFINE_STEPBACK: refine, }
     )
     opt.minimize(x0)
     assert opt.fval >= opt.fval_min
