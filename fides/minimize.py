@@ -385,7 +385,7 @@ class Optimizer:
 
         if np.isclose(fval, self.fval, atol=fatol, rtol=frtol):
             self.exitflag = ExitFlag.FTOL
-            logger.info(
+            logger.warning(
                 'Stopping as function difference '
                 f'{np.abs(self.fval - fval)} was smaller than specified '
                 f'tolerances (atol={fatol:.2E}, rtol={frtol:.2E})'
@@ -394,7 +394,7 @@ class Optimizer:
 
         elif np.isclose(x, self.x, atol=xatol, rtol=xrtol).all():
             self.exitflag = ExitFlag.XTOL
-            logger.info(
+            logger.warning(
                 'Stopping as step was smaller than specified tolerances ('
                 f'atol={xatol:.2E}, rtol={xrtol:.2E})'
             )
@@ -402,7 +402,7 @@ class Optimizer:
 
         elif gnorm <= gatol:
             self.exitflag = ExitFlag.GTOL
-            logger.info(
+            logger.warning(
                 'Stopping as gradient norm satisfies absolute convergence '
                 f'criteria: {gnorm:.2E} < {gatol:.2E}'
             )
@@ -410,7 +410,7 @@ class Optimizer:
 
         elif gnorm <= grtol * self.fval:
             self.exitflag = ExitFlag.GTOL
-            logger.info(
+            logger.warning(
                 'Stopping as gradient norm satisfies relative convergence '
                 f'criteria: {gnorm:.2E} < {grtol:.2E} * {self.fval:.2E}'
             )
@@ -448,14 +448,6 @@ class Optimizer:
             logger.error(
                 f'Stopping as maximum runtime {maxtime} is expected to be '
                 f'exceeded in the next iteration.'
-            )
-            return False
-
-        if self.delta < np.spacing(1):
-            self.exitflag = ExitFlag.SMALL_DELTA
-            logger.error(
-                'Stopping as trust region radius is smaller than machine '
-                'precision.'
             )
             return False
 
