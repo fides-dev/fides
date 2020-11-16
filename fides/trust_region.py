@@ -71,7 +71,7 @@ class Step:
     :ivar ub: Upper boundaries for x
     :ivar minbr: Maximal fraction of step s that can be taken to reach
         first breakpoint
-    :ivar ipt: Index of x that specifies the variable that will hit the
+    :ivar iminbr: Index of x that specifies the variable that will hit the
         breakpoint if a step minbr * s is taken
     :ivar qpval: Value of the quadratic subproblem for the proposed step
     :ivar shess: Matrix of the full quadratic problem
@@ -142,7 +142,7 @@ class Step:
         self.br = np.ones(sg.shape)
         self.minbr = 1.0
         self.alpha = 1.0
-        self.ipt = 0
+        self.iminbr = 0
 
         self.qpval = 0.0
 
@@ -180,7 +180,7 @@ class Step:
                 (self.lb[nonzero] - self.x[nonzero])/self.s[nonzero]
             ]), axis=0)
         self.minbr = np.min(self.br)
-        self.ipt = np.where(self.br == self.minbr)[0]
+        self.iminbr = np.where(self.br == self.minbr)[0]
         # compute the minimum of the step
         self.alpha = np.min([1, self.theta * self.minbr])
 
@@ -313,7 +313,7 @@ class TRStepReflected(Step):
 
         # reflect the transformed step at the boundary
         nss = step.og_ss.copy()
-        nss[step.ipt] *= -1
+        nss[step.iminbr] *= -1
         normalize(nss)
         self.subspace = np.expand_dims(nss, 1)
         self.reflection_count = step.reflection_count + 1
@@ -328,7 +328,7 @@ class TRStepTruncated(Step):
     type = 'trt'
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb, step: Step, ipt: Optional[np.ndarray] = None):
+                 ub, lb, step: Step):
         """
         :param step:
             Trust-region step that is reduced
@@ -338,15 +338,14 @@ class TRStepTruncated(Step):
 
         self.s0 = step.s0.copy()
         self.ss0 = step.ss0.copy()
-        if ipt is None:
-            ipt = step.ipt
-        self.s0[ipt] += step.theta * step.br[ipt] * step.og_s[ipt]
-        self.ss0[ipt] += step.theta * step.br[ipt] * step.og_ss[ipt]
+        iminbr = step.iminbr
+        self.s0[iminbr] += step.theta * step.br[iminbr] * step.og_s[iminbr]
+        self.ss0[iminbr] += step.theta * step.br[iminbr] * step.og_ss[iminbr]
         # update x and at breakpoint
         self.x = x + self.s0
 
         subspace = step.subspace.copy()
-        subspace[ipt, :] = 0
+        subspace[iminbr, :] = 0
         # reduce subspace
         subspace = subspace[:, (subspace != 0).any(axis=0)]
         # normalize subspace
@@ -354,7 +353,7 @@ class TRStepTruncated(Step):
             normalize(subspace[:, ix])
         self.subspace = subspace
 
-        self.truncation_count = step.truncation_count + len(ipt)
+        self.truncation_count = step.truncation_count + len(iminbr)
 
 
 class GradientStep(Step):
@@ -657,7 +656,8 @@ def stepback_refine(steps: Sequence[Step],
                     ub: np.ndarray,
                     lb: np.ndarray) -> List[Step]:
     """
-    Refine the provided steps based on a
+    Refine a promising subset of the provided steps based on trust-constr
+    optimization
 
     :param steps:
         Reference trust region step that will be reflect
