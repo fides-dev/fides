@@ -47,7 +47,8 @@ class StepBackStrategy(str, enum.Enum):
     Defines the possible choices of search refinement if proposed step
     reaches optimization boundary
     """
-    REFLECT = 'reflect'  #: reflect step at boundary
+    SINGLE_REFLECT = 'reflect_single'  #: single reflection at boundary
+    REFLECT = 'reflect'  #: recursive reflections at boundary
     TRUNCATE = 'truncate'  #: truncate step at boundary and resolve subproblem
     MIXED = 'mixed'  #: mix reflections and truncations
 
@@ -62,14 +63,14 @@ DEFAULT_OPTIONS = {
     Options.GATOL: 1e-6,
     Options.GRTOL: 0,
     Options.SUBSPACE_DIM: SubSpaceDim.FULL,
-    Options.STEPBACK_STRAT: StepBackStrategy.MIXED,
+    Options.STEPBACK_STRAT: StepBackStrategy.REFLECT,
     Options.THETA_MAX: 0.95,
     Options.DELTA_INIT: 1.0,
     Options.MU: 0.25,  # [NodedalWright2006]
     Options.ETA: 0.75,  # [NodedalWright2006]
     Options.GAMMA1: 1/4,  # [NodedalWright2006]
     Options.GAMMA2: 2,  # [NodedalWright2006]
-    Options.REFINE_STEPBACK: True,
+    Options.REFINE_STEPBACK: False,
 }
 
 
@@ -87,4 +88,3 @@ class ExitFlag(int, enum.Enum):
     FTOL = 1  #: Converged according to fval difference
     XTOL = 2  #: Converged according to x difference
     GTOL = 3  #: Converged according to gradient norm
-    SMALL_DELTA = 4  #: Converged due to too small trust region radius
