@@ -136,4 +136,3 @@ def trust_region(x: np.ndarray,
 
     qpvals = [step.qpval for step in steps]
     return steps[int(np.argmin(qpvals))]
-
