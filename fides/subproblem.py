@@ -13,7 +13,7 @@ from numpy.linalg import norm
 from scipy import linalg
 from scipy.optimize import newton, brentq
 
-from typing import Tuple
+from typing import Tuple, Union
 
 
 def solve_1d_trust_region_subproblem(B: np.ndarray,
@@ -65,7 +65,8 @@ def solve_1d_trust_region_subproblem(B: np.ndarray,
 
 
 def solve_nd_trust_region_subproblem(
-        B: np.ndarray, g: np.ndarray, delta: float, logger: logging.Logger
+        B: np.ndarray, g: np.ndarray, delta: float,
+        logger: Union[logging.Logger, None] = None
 ) -> Tuple[np.ndarray, str]:
     r"""
     This function exactly solves the n-dimensional subproblem.
@@ -104,6 +105,9 @@ def solve_nd_trust_region_subproblem(
         step_type: Type of solution that was obtained
 
     """
+    if logger is None:
+        logging.getLogger('fides')
+
     if delta == 0:
         return np.zeros(g.shape), 'zero'
 
