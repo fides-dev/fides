@@ -544,7 +544,7 @@ class Optimizer:
             len(str(self.iteration))
         self.logger.info(
             f'{" " * iterspaces}{self.iteration}'
-            f' | {self.fval:.3E}'
+            f' | {self.fval:+.3E}'
             f' |    NaN   '
             f' |    NaN   '
             f' |    NaN   '
@@ -568,7 +568,7 @@ class Optimizer:
 
         self.logger.info(
             f'{" " * iterspaces} iter '
-            f'|   fval    | fval diff | pred diff | tr ratio  '
+            f'|    fval    | fval diff | pred diff | tr ratio  '
             f'|  delta   |  ||g||   | ||step|| |  theta   |  alpha   '
             f'| step | refl | trun | accept'
         )
