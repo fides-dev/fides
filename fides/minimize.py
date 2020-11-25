@@ -516,7 +516,7 @@ class Optimizer:
             for count in [step.reflection_count, step.truncation_count]
         ]
 
-        if np.isfinite(fval):
+        if not np.isfinite(fval):
             fval = self.fval
         self.logger.info(
             f'{" " * iterspaces}{self.iteration}'
