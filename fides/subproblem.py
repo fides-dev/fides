@@ -106,7 +106,7 @@ def solve_nd_trust_region_subproblem(
 
     """
     if logger is None:
-        logging.getLogger('fides')
+        logger = logging.getLogger('fides')
 
     if delta == 0:
         return np.zeros(g.shape), 'zero'
