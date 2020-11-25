@@ -35,5 +35,3 @@ def create_logger(level: int) -> logging.Logger:
     logger.addHandler(ch)
     logger.setLevel(level)
     return logger
-
-
