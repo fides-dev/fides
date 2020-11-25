@@ -511,11 +511,11 @@ class Optimizer:
             for count in [step.reflection_count, step.truncation_count]
         ]
 
-        if np.isnan(fval):
+        if np.isfinite(fval):
             fval = self.fval
         logger.info(f'{" " * iterspaces}{self.iteration}'
-                    f' | {fval if accepted else self.fval:.3E}'
-                    f' | {(fval - self.fval)*accepted:+.2E}'
+                    f' | {fval if accepted else self.fval:+.3E}'
+                    f' | {(fval - self.fval):+.2E}'
                     f' | {step.qpval:+.2E}'
                     f' | {self.tr_ratio:+.2E}'
                     f' | {self.delta_iter:.2E}'
