@@ -17,8 +17,10 @@ def create_logger(level: int) -> logging.Logger:
     """
     Creates a logger instance. To avoid unnecessary locks during
     multithreading, different logger instance should be created for every
+
     :param level:
         logging level
+
     :return:
         logger instance
     """
