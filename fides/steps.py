@@ -13,7 +13,7 @@ from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from scipy.optimize import Bounds, NonlinearConstraint, minimize
 
-from .logging import logger
+from logging import Logger
 from .subproblem import (
     solve_1d_trust_region_subproblem, solve_nd_trust_region_subproblem
 )
@@ -94,7 +94,8 @@ class Step:
                  delta: float,
                  theta: float,
                  ub: np.ndarray,
-                 lb: np.ndarray):
+                 lb: np.ndarray,
+                 logger: Logger):
         """
 
         :param x:
@@ -157,6 +158,7 @@ class Step:
 
         self.reflection_count: int = 0
         self.truncation_count: int = 0
+        self.logger: Logger = logger
 
     def step_back(self):
         """
@@ -209,7 +211,8 @@ class Step:
         if self.subspace.shape[1] > 1:
             self.sc, _ = solve_nd_trust_region_subproblem(
                 self.chess, self.cg,
-                np.sqrt(max(self.delta ** 2 - norm(self.ss0) ** 2, 0.0))
+                np.sqrt(max(self.delta ** 2 - norm(self.ss0) ** 2, 0.0)),
+                self.logger
             )
         else:
             self.sc = solve_1d_trust_region_subproblem(
@@ -238,9 +241,9 @@ class TRStepFull(Step):
     type = 'trnd'
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb):
+                 ub, lb, logger):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb)
+                         ub, lb, logger)
         self.subspace = np.eye(hess.shape[0])
 
 
@@ -253,9 +256,9 @@ class TRStep2D(Step):
     type = 'tr2d'
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb):
+                 ub, lb, logger):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb)
+                         ub, lb, logger)
         n = len(sg)
 
         s_newt = linalg.solve(hess, sg)
@@ -303,7 +306,7 @@ class TRStepReflected(Step):
             Trust-region step that is reflected
         """
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb)
+                         ub, lb, step.logger)
 
         alpha = min(step.minbr, 1)
         self.s0 = alpha * step.og_s + step.s0
@@ -334,7 +337,7 @@ class TRStepTruncated(Step):
             Trust-region step that is reduced
         """
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb)
+                         ub, lb, step.logger)
 
         self.s0 = step.s0.copy()
         self.ss0 = step.ss0.copy()
@@ -364,9 +367,9 @@ class GradientStep(Step):
     type = 'g'
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb):
+                 ub, lb, logger):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb)
+                         ub, lb, logger)
         s_grad = sg.copy()
         normalize(s_grad)
         self.subspace = np.expand_dims(s_grad, 1)
@@ -383,7 +386,7 @@ class RefinedStep(Step):
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
                  ub, lb, step):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb)
+                         ub, lb, step.logger)
         s_grad = sg.copy()
         normalize(s_grad)
         self.subspace = np.expand_dims(s_grad, 1)

@@ -7,10 +7,10 @@ performance according to the quadratic approximation of the objective function
 """
 
 import numpy as np
+import logging
 
 from scipy.sparse import csc_matrix
 
-from .logging import logger
 from .constants import SubSpaceDim, StepBackStrategy
 from .steps import Step, GradientStep, TRStep2D, TRStepFull, TRStepReflected
 from .stepback import stepback_refine, stepback_reflect, stepback_truncate
@@ -27,7 +27,8 @@ def trust_region(x: np.ndarray,
                  ub: np.ndarray,
                  subspace_dim: SubSpaceDim,
                  stepback_strategy: StepBackStrategy,
-                 refine_stepback: bool) -> Step:
+                 refine_stepback: bool,
+                 logger: logging.Logger) -> Step:
     """
     Compute a step according to the solution of the trust-region subproblem.
     If step-back is necessary, gradient and reflected trust region step are
@@ -63,6 +64,8 @@ def trust_region(x: np.ndarray,
     :param refine_stepback:
         If set to True, proposed steps that are computed via the specified
         stepback_strategy will be refined via optimization.
+    :param logger:
+        logging.Logger instance to be used for logging
 
     :return:
         s: proposed step,
@@ -77,11 +80,11 @@ def trust_region(x: np.ndarray,
 
     if subspace_dim == SubSpaceDim.TWO:
         tr_step = TRStep2D(
-            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
         )
     elif subspace_dim == SubSpaceDim.FULL:
         tr_step = TRStepFull(
-            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb,
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
         )
     else:
         raise ValueError('Invalid choice of subspace dimension.')
@@ -94,7 +97,7 @@ def trust_region(x: np.ndarray,
     steps = [tr_step]
     if tr_step.alpha < 1.0 and len(g) > 1:
         g_step = GradientStep(x, sg, hess, scaling, g_dscaling, delta,
-                              theta, ub, lb)
+                              theta, ub, lb, logger)
         g_step.calculate()
 
         steps = [g_step]

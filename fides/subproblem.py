@@ -5,15 +5,15 @@ This module provides the machinery to solve 1- and N-dimensional
 trust-region subproblems.
 """
 
+import logging
+
 import numpy as np
 from numpy.linalg import norm
 
 from scipy import linalg
 from scipy.optimize import newton, brentq
 
-from typing import Tuple
-
-from .logging import logger
+from typing import Tuple, Union
 
 
 def solve_1d_trust_region_subproblem(B: np.ndarray,
@@ -64,9 +64,10 @@ def solve_1d_trust_region_subproblem(B: np.ndarray,
     return tau * np.ones((1,))
 
 
-def solve_nd_trust_region_subproblem(B: np.ndarray,
-                                     g: np.ndarray,
-                                     delta: float) -> Tuple[np.ndarray, str]:
+def solve_nd_trust_region_subproblem(
+        B: np.ndarray, g: np.ndarray, delta: float,
+        logger: Union[logging.Logger, None] = None
+) -> Tuple[np.ndarray, str]:
     r"""
     This function exactly solves the n-dimensional subproblem.
 
@@ -96,12 +97,17 @@ def solve_nd_trust_region_subproblem(B: np.ndarray,
         Gradient of the quadratic subproblem
     :param delta:
         Norm boundary for the solution of the quadratic subproblem
+    :param logger:
+        Logger instance to be used for logging
 
     :return:
         s: Selected step,
         step_type: Type of solution that was obtained
 
     """
+    if logger is None:
+        logger = logging.getLogger('fides')
+
     if delta == 0:
         return np.zeros(g.shape), 'zero'
 

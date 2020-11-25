@@ -1,9 +1,9 @@
 """
 Trust Region StepBack
 -----------------------------
-This module provides the machinery to combine various stepback strategies
-that can be used to compute longer steps in case the initiallu proped step had
-to be truncated due to incompliance with boundary constraints.
+This module provides the machinery to combine various step-back strategies
+that can be used to compute longer steps in case the initially proposed step
+had to be truncated due to non-compliance with boundary constraints.
 """
 
 import numpy as np
