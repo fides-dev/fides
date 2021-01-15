@@ -13,9 +13,9 @@ from scipy.sparse import csc_matrix
 from .trust_region import trust_region, Step
 from .hessian_approximation import HessianApproximation
 from .constants import Options, ExitFlag, DEFAULT_OPTIONS
-from .logging import logger
+from .logging import create_logger
 
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple, Union
 
 
 class Optimizer:
@@ -40,7 +40,9 @@ class Optimizer:
     :ivar starttime: Time at which optimization was started
     :ivar iteration: Current iteration
     :ivar converged: Flag indicating whether optimization has converged
-    :ivar exitflag:
+    :ivar exitflag: ExitFlag to indicate reason for termination
+    :ivar verbose: Verbosity level for logging
+    :ivar logger: logger instance
     """
     def __init__(self, fun: Callable,
                  ub: np.ndarray,
@@ -112,7 +114,8 @@ class Optimizer:
         self.iteration: int = 0
         self.converged: bool = False
         self.exitflag: ExitFlag = ExitFlag.DID_NOT_RUN
-        logger.setLevel(verbose)
+        self.verbose: int = verbose
+        self.logger: Union[logging.Logger, None] = None
 
     def _reset(self):
         self.starttime = time.time()
@@ -121,6 +124,7 @@ class Optimizer:
         self.delta: float = self.get_option(Options.DELTA_INIT)
         self.delta_iter: float = self.delta
         self.fval_min = np.inf
+        self.logger = create_logger(self.verbose)
 
     def minimize(self, x0: np.ndarray):
         """
@@ -232,6 +236,7 @@ class Optimizer:
                     subspace_dim=self.get_option(Options.SUBSPACE_DIM),
                     stepback_strategy=self.get_option(Options.STEPBACK_STRAT),
                     refine_stepback=self.get_option(Options.REFINE_STEPBACK),
+                    logger=self.logger
                 )
 
             x_new = self.x + step.s + step.s0
@@ -385,7 +390,7 @@ class Optimizer:
 
         if np.isclose(fval, self.fval, atol=fatol, rtol=frtol):
             self.exitflag = ExitFlag.FTOL
-            logger.warning(
+            self.logger.warning(
                 'Stopping as function difference '
                 f'{np.abs(self.fval - fval):.2E} was smaller than specified '
                 f'tolerances (atol={fatol:.2E}, rtol={frtol:.2E})'
@@ -394,7 +399,7 @@ class Optimizer:
 
         elif np.isclose(x, self.x, atol=xatol, rtol=xrtol).all():
             self.exitflag = ExitFlag.XTOL
-            logger.warning(
+            self.logger.warning(
                 'Stopping as step was smaller than specified tolerances ('
                 f'atol={xatol:.2E}, rtol={xrtol:.2E})'
             )
@@ -402,7 +407,7 @@ class Optimizer:
 
         elif gnorm <= gatol:
             self.exitflag = ExitFlag.GTOL
-            logger.warning(
+            self.logger.warning(
                 'Stopping as gradient norm satisfies absolute convergence '
                 f'criteria: {gnorm:.2E} < {gatol:.2E}'
             )
@@ -410,7 +415,7 @@ class Optimizer:
 
         elif gnorm <= grtol * self.fval:
             self.exitflag = ExitFlag.GTOL
-            logger.warning(
+            self.logger.warning(
                 'Stopping as gradient norm satisfies relative convergence '
                 f'criteria: {gnorm:.2E} < {grtol:.2E} * {self.fval:.2E}'
             )
@@ -433,7 +438,7 @@ class Optimizer:
         maxiter = self.get_option(Options.MAXITER)
         if self.iteration >= maxiter:
             self.exitflag = ExitFlag.MAXITER
-            logger.warning(
+            self.logger.warning(
                 f'Stopping as maximum number of iterations {maxiter} was '
                 f'exceeded.'
             )
@@ -445,7 +450,7 @@ class Optimizer:
         avg_iter_time = time_elapsed/(self.iteration + (self.iteration == 0))
         if time_remaining < avg_iter_time:
             self.exitflag = ExitFlag.MAXTIME
-            logger.warning(
+            self.logger.warning(
                 f'Stopping as maximum runtime {maxtime} is expected to be '
                 f'exceeded in the next iteration.'
             )
@@ -511,22 +516,24 @@ class Optimizer:
             for count in [step.reflection_count, step.truncation_count]
         ]
 
-        if np.isnan(fval):
+        if not np.isfinite(fval):
             fval = self.fval
-        logger.info(f'{" " * iterspaces}{self.iteration}'
-                    f' | {fval if accepted else self.fval:.3E}'
-                    f' | {(fval - self.fval)*accepted:+.2E}'
-                    f' | {step.qpval:+.2E}'
-                    f' | {self.tr_ratio:+.2E}'
-                    f' | {self.delta_iter:.2E}'
-                    f' | {norm(self.grad):.2E}'
-                    f' | {normdx:.2E}'
-                    f' | {step.theta:.2E}'
-                    f' | {step.alpha:.2E}'
-                    f' | {step.type}{" " * steptypespaces}'
-                    f' | {" " * reflspaces}{step.reflection_count}'
-                    f' | {" " * trunspaces}{step.truncation_count}'
-                    f' | {int(accepted)}')
+        self.logger.info(
+            f'{" " * iterspaces}{self.iteration}'
+            f' | {fval if accepted else self.fval:+.3E}'
+            f' | {(fval - self.fval):+.2E}'
+            f' | {step.qpval:+.2E}'
+            f' | {self.tr_ratio:+.2E}'
+            f' | {self.delta_iter:.2E}'
+            f' | {norm(self.grad):.2E}'
+            f' | {normdx:.2E}'
+            f' | {step.theta:.2E}'
+            f' | {step.alpha:.2E}'
+            f' | {step.type}{" " * steptypespaces}'
+            f' | {" " * reflspaces}{step.reflection_count}'
+            f' | {" " * trunspaces}{step.truncation_count}'
+            f' | {int(accepted)}'
+        )
 
     def log_step_initial(self):
         """
@@ -535,20 +542,22 @@ class Optimizer:
 
         iterspaces = max(len(str(self.get_option(Options.MAXITER))), 5) - \
             len(str(self.iteration))
-        logger.info(f'{" " * iterspaces}{self.iteration}'
-                    f' | {self.fval:.3E}'
-                    f' |    NaN   '
-                    f' |    NaN   '
-                    f' |    NaN   '
-                    f' | {self.delta:.2E}'
-                    f' | {norm(self.grad):.2E}'
-                    f' |   NaN   '
-                    f' |   NaN   '
-                    f' |   NaN   '
-                    f' | NaN '
-                    f' | NaN '
-                    f' | NaN '
-                    f' | {int(np.isfinite(self.fval))}')
+        self.logger.info(
+            f'{" " * iterspaces}{self.iteration}'
+            f' | {self.fval:+.3E}'
+            f' |    NaN   '
+            f' |    NaN   '
+            f' |    NaN   '
+            f' | {self.delta:.2E}'
+            f' | {norm(self.grad):.2E}'
+            f' |   NaN   '
+            f' |   NaN   '
+            f' |   NaN   '
+            f' | NaN '
+            f' | NaN '
+            f' | NaN '
+            f' | {int(np.isfinite(self.fval))}'
+        )
 
     def log_header(self):
         """
@@ -557,10 +566,12 @@ class Optimizer:
         """
         iterspaces = len(str(self.get_option(Options.MAXITER))) - 5
 
-        logger.info(f'{" " * iterspaces} iter '
-                    f'|   fval    | fval diff | pred diff | tr ratio  '
-                    f'|  delta   |  ||g||   | ||step|| |  theta   |  alpha   '
-                    f'| step | refl | trun | accept')
+        self.logger.info(
+            f'{" " * iterspaces} iter '
+            f'|    fval    | fval diff | pred diff | tr ratio  '
+            f'|  delta   |  ||g||   | ||step|| |  theta   |  alpha   '
+            f'| step | refl | trun | accept'
+        )
 
     def check_finite(self,
                      grad: Optional[np.ndarray] = None,

@@ -1,7 +1,7 @@
 from fides.subproblem import (
     solve_nd_trust_region_subproblem, solve_1d_trust_region_subproblem,
 )
-from fides.trust_region import normalize
+from fides.steps import normalize
 from scipy.spatial.transform import Rotation as R
 
 import numpy as np
