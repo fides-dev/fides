@@ -365,7 +365,7 @@ class Optimizer:
                     self.delta * self.get_option(Options.GAMMA1),
                     nsx / 4
                 ])
-            return self.tr_ratio >= self.get_option(Options.MU)
+            return self.tr_ratio > 0.0
 
     def check_convergence(self, fval, x, grad) -> None:
         """

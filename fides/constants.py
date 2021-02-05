@@ -66,7 +66,7 @@ DEFAULT_OPTIONS = {
     Options.STEPBACK_STRAT: StepBackStrategy.REFLECT,
     Options.THETA_MAX: 0.95,
     Options.DELTA_INIT: 1.0,
-    Options.MU: 0.0,  # [NodedalWright2006]
+    Options.MU: 0.25,  # [NodedalWright2006]
     Options.ETA: 0.75,  # [NodedalWright2006]
     Options.GAMMA1: 1/4,  # [NodedalWright2006]
     Options.GAMMA2: 2,  # [NodedalWright2006]
