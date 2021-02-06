@@ -257,8 +257,7 @@ class Optimizer:
             if self.iteration % 10 == 0:
                 self.log_header()
             self.log_step(accepted, step, fval_new)
-            if accepted:
-                self.check_convergence(fval_new, x_new, grad_new)
+            self.check_convergence(fval_new, x_new, grad_new)
 
             # track minimum independently of whether we accept the step or not
             self.track_minimum(x_new, fval_new, grad_new)
