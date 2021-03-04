@@ -358,8 +358,7 @@ class Optimizer:
                     and not interior_solution:
                 # increase radius
                 self.delta = self.get_option(Options.GAMMA2) * self.delta
-            elif self.tr_ratio <= self.get_option(Options.MU) \
-                    or interior_solution:
+            elif self.tr_ratio <= self.get_option(Options.MU):
                 # decrease radius
                 self.delta = np.nanmin([
                     self.delta * self.get_option(Options.GAMMA1),
