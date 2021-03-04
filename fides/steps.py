@@ -261,7 +261,7 @@ class TRStep2D(Step):
                          ub, lb, logger)
         n = len(sg)
 
-        s_newt = - linalg.lstsq(hess, sg)[0]
+        s_newt = - linalg.lstsq(scaling*hess*scaling + g_dscaling, sg)[0]
         posdef = s_newt.dot(hess.dot(s_newt)) > 0
         normalize(s_newt)
 
