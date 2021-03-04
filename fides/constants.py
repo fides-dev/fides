@@ -56,8 +56,8 @@ class StepBackStrategy(str, enum.Enum):
 DEFAULT_OPTIONS = {
     Options.MAXITER: 1e3,
     Options.MAXTIME: np.inf,
-    Options.FATOL: 1e-6,
-    Options.FRTOL: 0,
+    Options.FATOL: 1e-8,
+    Options.FRTOL: 1e-8,
     Options.XATOL: 0,
     Options.XRTOL: 0,
     Options.GATOL: 1e-6,
