@@ -111,9 +111,22 @@ class DFP(HessianApproximation):
 
 class Hybrid(HessianApproximation):
     def __init__(self,
-                 happ: HessianApproximation=None,
-                 hess_init=None,
-                 switch_iteration=None):
+                 happ: HessianApproximation = None,
+                 hess_init: Optional[np.ndarray] = None,
+                 switch_iteration: Optional[int] = None):
+        """
+        Create a Hybrid Hessian update strategy which is generated from the
+        start but only applied after a certain iteration
+
+        :param happ:
+            Hessian Update Strategy (default: BFGS)
+
+        :param switch_iteration:
+            Iteration after which this approximation is used (default: 5*dim)
+
+        :param hess_init:
+            Initial guess for the Hessian. (default: eye)
+        """
         if happ is None:
             happ = BFGS()
         self.hessian_update = happ
