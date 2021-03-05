@@ -120,7 +120,7 @@ def unbounded_and_init():
     (rosengrad, SR1()),
     (rosengrad, BFGS()),
     (rosengrad, DFP()),
-    (rosengrad, HybridUpdate(BFGS())),
+    (rosenboth, HybridUpdate(BFGS())),
 ])
 def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
                               stepback, refine):
