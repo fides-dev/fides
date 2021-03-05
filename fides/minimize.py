@@ -11,7 +11,7 @@ import logging
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from .trust_region import trust_region, Step
-from .hessian_approximation import HessianApproximation, Hybrid
+from .hessian_approximation import HessianApproximation, HybridUpdate
 from .constants import Options, ExitFlag, DEFAULT_OPTIONS
 from .logging import create_logger
 
@@ -166,9 +166,9 @@ class Optimizer:
                              f'{funout}')
 
         if self.hessian_update is None or isinstance(self.hessian_update,
-                                                     Hybrid):
+                                                     HybridUpdate):
             self.fval, self.grad, self.hess = funout
-            if isinstance(self.hessian_update, Hybrid):
+            if isinstance(self.hessian_update, HybridUpdate):
                 self.hessian_update.init_mat(len(self.x))
         else:
             if len(funout) == 3:
@@ -247,7 +247,7 @@ class Optimizer:
             funout = self.fun(x_new, **self.funargs)
 
             if self.hessian_update is None or isinstance(self.hessian_update,
-                                                         Hybrid):
+                                                         HybridUpdate):
                 fval_new, grad_new, hess_new = funout
             else:
                 fval_new, grad_new = funout
@@ -314,7 +314,7 @@ class Optimizer:
                                        grad_new - self.grad)
 
         if self.hessian_update is None or \
-                (isinstance(self.hessian_update, Hybrid) and
+                (isinstance(self.hessian_update, HybridUpdate) and
                  self.iteration < self.hessian_update.switch_iteration):
             self.hess = hess_new
         else:

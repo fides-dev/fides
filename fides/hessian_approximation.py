@@ -109,7 +109,7 @@ class DFP(HessianApproximation):
         self._hess = mat1.dot(self._hess).dot(mat2) + np.outer(y, y.T)/curv
 
 
-class Hybrid(HessianApproximation):
+class HybridUpdate(HessianApproximation):
     def __init__(self,
                  happ: HessianApproximation = None,
                  hess_init: Optional[np.ndarray] = None,
@@ -132,7 +132,7 @@ class Hybrid(HessianApproximation):
         self.hessian_update = happ
         self.switch_iteration = switch_iteration
 
-        super(Hybrid, self).__init__(hess_init)
+        super(HybridUpdate, self).__init__(hess_init)
 
     def init_mat(self, dim: int):
         if self.switch_iteration is None:
