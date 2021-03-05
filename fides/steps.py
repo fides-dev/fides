@@ -261,8 +261,8 @@ class TRStep2D(Step):
                          ub, lb, logger)
         n = len(sg)
 
-        s_newt = - linalg.lstsq(scaling*hess*scaling + g_dscaling, sg)[0]
-        posdef = s_newt.dot(hess.dot(s_newt)) > 0
+        s_newt = - linalg.lstsq(self.shess, sg)[0]
+        posdef = s_newt.dot(self.shess.dot(s_newt)) > 0
         normalize(s_newt)
 
         if n > 1:
@@ -285,8 +285,7 @@ class TRStep2D(Step):
                 self.subspace = np.vstack([s_newt, s_grad]).T
                 return
             else:
-                logger.debug('Singular subspace, continuing with 1D '
-                             'subspace.')
+                logger.debug('Singular subspace, continuing with 1D subspace.')
 
         self.subspace = np.expand_dims(s_newt, 1)
 
