@@ -1,4 +1,5 @@
-from fides import Optimizer, BFGS, SR1, DFP, SubSpaceDim, StepBackStrategy
+from fides import Optimizer, BFGS, SR1, DFP, Hybrid, SubSpaceDim, \
+    StepBackStrategy
 import numpy as np
 
 import logging
@@ -119,6 +120,7 @@ def unbounded_and_init():
     (rosengrad, SR1()),
     (rosengrad, BFGS()),
     (rosengrad, DFP()),
+    (rosengrad, Hybrid(BFGS())),
 ])
 def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
                               stepback, refine):

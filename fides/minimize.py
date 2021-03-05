@@ -11,7 +11,7 @@ import logging
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from .trust_region import trust_region, Step
-from .hessian_approximation import HessianApproximation
+from .hessian_approximation import HessianApproximation, Hybrid
 from .constants import Options, ExitFlag, DEFAULT_OPTIONS
 from .logging import create_logger
 
@@ -165,8 +165,11 @@ class Optimizer:
                              'update strategy is used), but returned '
                              f'{funout}')
 
-        if self.hessian_update is None:
+        if self.hessian_update is None or isinstance(self.hessian_update,
+                                                     Hybrid):
             self.fval, self.grad, self.hess = funout
+            if isinstance(self.hessian_update, Hybrid):
+                self.hessian_update.init_mat(len(self.x))
         else:
             if len(funout) == 3:
                 raise ValueError('Cannot use Hessian update with a '
@@ -243,7 +246,8 @@ class Optimizer:
 
             funout = self.fun(x_new, **self.funargs)
 
-            if self.hessian_update is None:
+            if self.hessian_update is None or isinstance(self.hessian_update,
+                                                         Hybrid):
                 fval_new, grad_new, hess_new = funout
             else:
                 fval_new, grad_new = funout
@@ -308,9 +312,13 @@ class Optimizer:
         if self.hessian_update is not None:
             self.hessian_update.update(step.s + step.s0,
                                        grad_new - self.grad)
-            self.hess = self.hessian_update.get_mat()
-        else:
+
+        if self.hessian_update is None or \
+                (isinstance(self.hessian_update, Hybrid) and
+                 self.iteration < self.hessian_update.switch_iteration):
             self.hess = hess_new
+        else:
+            self.hess = self.hessian_update.get_mat()
         self.check_in_bounds(x_new)
         self.fval = fval_new
         self.x = x_new

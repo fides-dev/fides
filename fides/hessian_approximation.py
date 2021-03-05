@@ -17,7 +17,7 @@ class HessianApproximation:
     """
     def __init__(self, hess_init: Optional[np.ndarray] = None):
         """
-        Creata Hessian update strategy instance
+        Create a Hessian update strategy instance
 
         :param hess_init:
             Inital guess for the Hessian, if empty Identity matrix will be used
@@ -107,3 +107,27 @@ class DFP(HessianApproximation):
         mat2 = np.eye(self._hess.shape[0]) - np.outer(s, y.T) / curv
 
         self._hess = mat1.dot(self._hess).dot(mat2) + np.outer(y, y.T)/curv
+
+
+class Hybrid(HessianApproximation):
+    def __init__(self,
+                 happ: HessianApproximation=None,
+                 hess_init=None,
+                 switch_iteration=None):
+        if happ is None:
+            happ = BFGS()
+        self.hessian_update = happ
+        self.switch_iteration = switch_iteration
+
+        super(Hybrid, self).__init__(hess_init)
+
+    def init_mat(self, dim: int):
+        if self.switch_iteration is None:
+            self.switch_iteration = 5*dim
+        self.hessian_update.init_mat(dim)
+
+    def update(self, s, y):
+        self.hessian_update.update(s, y)
+
+    def get_mat(self) -> np.ndarray:
+        return self.hessian_update.get_mat()
