@@ -235,7 +235,7 @@ class Optimizer:
             step = \
                 trust_region(
                     self.x, self.grad, self.hess, scaling,
-                    self.delta, dv, theta, self.lb, self.ub,
+                    self.delta_iter, dv, theta, self.lb, self.ub,
                     subspace_dim=self.get_option(Options.SUBSPACE_DIM),
                     stepback_strategy=self.get_option(Options.STEPBACK_STRAT),
                     refine_stepback=self.get_option(Options.REFINE_STEPBACK),
@@ -359,7 +359,7 @@ class Optimizer:
             qpval = 0.5 * stepsx.dot(dv * np.abs(grad) * stepsx)
             self.tr_ratio = (fval + qpval - self.fval) / step.qpval
 
-            interior_solution = nsx < self.delta * 0.9
+            interior_solution = nsx < self.delta_iter * 0.9
 
             # values as proposed in algorithm 4.1 in Nocedal & Wright
             if self.tr_ratio >= self.get_option(Options.ETA) \
@@ -395,7 +395,8 @@ class Optimizer:
         grtol = self.get_option(Options.GRTOL)
         gnorm = norm(grad)
 
-        if np.isclose(fval, self.fval, atol=fatol, rtol=frtol):
+        if self.delta <= self.delta_iter and \
+                np.isclose(fval, self.fval, atol=fatol, rtol=frtol):
             self.exitflag = ExitFlag.FTOL
             self.logger.warning(
                 'Stopping as function difference '
