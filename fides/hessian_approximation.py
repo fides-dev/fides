@@ -73,7 +73,11 @@ class SR1(HessianApproximation):
     """
     def update(self, s, y):
         z = y - self._hess.dot(s)
-        self._hess += np.outer(z, z.T)/z.T.dot(s)
+        d = z.T.dot(s)
+
+        # [NocedalWright2006] (6.26) reject if update degenerate
+        if np.abs(d) >= 1e-8 * np.norm(s) * np.norm():
+            self._hess += np.outer(z, z.T)/d
 
 
 class BFGS(HessianApproximation):
