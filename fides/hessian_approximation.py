@@ -77,7 +77,7 @@ class SR1(HessianApproximation):
         d = z.T.dot(s)
 
         # [NocedalWright2006] (6.26) reject if update degenerate
-        if np.abs(d) >= 1e-8 * norm(s) * norm():
+        if np.abs(d) >= 1e-8 * norm(s) * norm(z):
             self._hess += np.outer(z, z.T)/d
 
 
