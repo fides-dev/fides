@@ -85,6 +85,7 @@ class ExitFlag(int, enum.Enum):
     MAXTIME = -2  #: Expected to reach maximum allowed time in next iteration
     NOT_FINITE = -3  #: Encountered non-finite fval/grad/hess
     EXCEEDED_BOUNDARY = -4  #: Exceeded specified boundaries
+    DELTA_TOO_SMALL = -5  #: Trust Region Radius too small to proceed
     FTOL = 1  #: Converged according to fval difference
     XTOL = 2  #: Converged according to x difference
     GTOL = 3  #: Converged according to gradient norm

@@ -396,7 +396,7 @@ class Optimizer:
         gnorm = norm(grad)
 
         if self.delta <= self.delta_iter and \
-                np.isclose(fval, self.fval, atol=fatol, rtol=frtol):
+                np.abs(fval - self.fval) < fatol + frtol*np.abs(self.fval):
             self.exitflag = ExitFlag.FTOL
             self.logger.warning(
                 'Stopping as function difference '
@@ -405,11 +405,12 @@ class Optimizer:
             )
             converged = True
 
-        elif np.isclose(x, self.x, atol=xatol, rtol=xrtol).all():
+        elif np.norm(x - self.x) < xatol + xrtol*np.norm(self.x):
             self.exitflag = ExitFlag.XTOL
             self.logger.warning(
-                'Stopping as step was smaller than specified tolerances ('
-                f'atol={xatol:.2E}, rtol={xrtol:.2E})'
+                'Stopping as norm of step '
+                f'{np.norm(x - self.x)} was smaller than specified '
+                f'tolerances (atol={xatol:.2E}, rtol={xrtol:.2E})'
             )
             converged = True
 
@@ -461,6 +462,14 @@ class Optimizer:
             self.logger.warning(
                 f'Stopping as maximum runtime {maxtime} is expected to be '
                 f'exceeded in the next iteration.'
+            )
+            return False
+
+        if self.delta < np.spacing(1):
+            self.exitflag = ExitFlag.DELTA_TOO_SMALL
+            self.logger.warning(
+                f'Stopping as trust region radius ({self.delta})is smaller '
+                'than machine precision.'
             )
             return False
 
