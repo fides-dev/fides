@@ -405,11 +405,12 @@ class Optimizer:
             )
             converged = True
 
-        elif norm(x - self.x) < xatol + xrtol*norm(self.x):
+        elif self.tr_ratio > 0.0 \
+                and norm(x - self.x) < xatol + xrtol*norm(self.x):
             self.exitflag = ExitFlag.XTOL
             self.logger.warning(
                 'Stopping as norm of step '
-                f'{np.norm(x - self.x)} was smaller than specified '
+                f'{norm(x - self.x)} was smaller than specified '
                 f'tolerances (atol={xatol:.2E}, rtol={xrtol:.2E})'
             )
             converged = True
