@@ -140,7 +140,7 @@ class HybridUpdate(HessianApproximation):
 
     def init_mat(self, dim: int):
         if self.switch_iteration is None:
-            self.switch_iteration = 5*dim
+            self.switch_iteration = 2*dim
         self.hessian_update.init_mat(dim)
 
     def update(self, s, y):

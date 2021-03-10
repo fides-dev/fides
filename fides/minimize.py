@@ -405,7 +405,7 @@ class Optimizer:
             )
             converged = True
 
-        elif np.norm(x - self.x) < xatol + xrtol*np.norm(self.x):
+        elif norm(x - self.x) < xatol + xrtol*norm(self.x):
             self.exitflag = ExitFlag.XTOL
             self.logger.warning(
                 'Stopping as norm of step '
