@@ -9,6 +9,7 @@ is computationally too demandind.
 
 from typing import Optional
 import numpy as np
+from numpy.linalg import norm
 
 
 class HessianApproximation:
@@ -76,7 +77,7 @@ class SR1(HessianApproximation):
         d = z.T.dot(s)
 
         # [NocedalWright2006] (6.26) reject if update degenerate
-        if np.abs(d) >= 1e-8 * np.norm(s) * np.norm():
+        if np.abs(d) >= 1e-8 * norm(s) * norm():
             self._hess += np.outer(z, z.T)/d
 
 

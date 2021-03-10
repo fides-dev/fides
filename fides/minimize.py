@@ -469,7 +469,8 @@ class Optimizer:
         if self.delta < np.spacing(1):
             self.exitflag = ExitFlag.DELTA_TOO_SMALL
             self.logger.warning(
-                f'Stopping as trust region radius ({self.delta})is smaller '
+                f'Stopping as trust region radius {self.delta:.2E} is '
+                f'smaller '
                 'than machine precision.'
             )
             return False
