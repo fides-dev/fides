@@ -9,6 +9,7 @@ is computationally too demandind.
 
 from typing import Optional
 import numpy as np
+from numpy.linalg import norm
 
 
 class HessianApproximation:
@@ -73,7 +74,11 @@ class SR1(HessianApproximation):
     """
     def update(self, s, y):
         z = y - self._hess.dot(s)
-        self._hess += np.outer(z, z.T)/z.T.dot(s)
+        d = z.T.dot(s)
+
+        # [NocedalWright2006] (6.26) reject if update degenerate
+        if np.abs(d) >= 1e-8 * norm(s) * norm(z):
+            self._hess += np.outer(z, z.T)/d
 
 
 class BFGS(HessianApproximation):
@@ -136,7 +141,7 @@ class HybridUpdate(HessianApproximation):
 
     def init_mat(self, dim: int):
         if self.switch_iteration is None:
-            self.switch_iteration = 5*dim
+            self.switch_iteration = 2*dim
         self.hessian_update.init_mat(dim)
 
     def update(self, s, y):
