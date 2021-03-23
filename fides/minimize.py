@@ -261,7 +261,7 @@ class Optimizer:
             if self.iteration % 10 == 0:
                 self.log_header()
             self.log_step(accepted, step, fval_new)
-            self.check_convergence(fval_new, x_new, grad_new)
+            self.check_convergence(step, fval_new, grad_new)
 
             # track minimum independently of whether we accept the step or not
             self.track_minimum(x_new, fval_new, grad_new)
@@ -374,14 +374,17 @@ class Optimizer:
                 ])
             return self.tr_ratio > 0.0
 
-    def check_convergence(self, fval, x, grad) -> None:
+    def check_convergence(self, step: Step, fval: float,
+                          grad: np.ndarray) -> None:
         """
         Check whether optimization has converged.
 
+        :param step:
+            update to optimization variables
+
         :param fval:
             updated objective function value
-        :param x:
-            updated optimization variables
+
         :param grad:
             updated objective function gradient
         """
@@ -389,11 +392,12 @@ class Optimizer:
 
         fatol = self.get_option(Options.FATOL)
         frtol = self.get_option(Options.FRTOL)
-        xatol = self.get_option(Options.XATOL)
-        xrtol = self.get_option(Options.XRTOL)
+        xtol = self.get_option(Options.XTOL)
         gatol = self.get_option(Options.GATOL)
         grtol = self.get_option(Options.GRTOL)
         gnorm = norm(grad)
+        stepsx = step.ss + step.ss0
+        nsx = norm(stepsx)
 
         if self.delta <= self.delta_iter and \
                 np.abs(fval - self.fval) < fatol + frtol*np.abs(self.fval):
@@ -405,13 +409,12 @@ class Optimizer:
             )
             converged = True
 
-        elif self.tr_ratio > 0.0 \
-                and norm(x - self.x) < xatol + xrtol*norm(self.x):
+        elif self.iteration > 1 and nsx < xtol:
             self.exitflag = ExitFlag.XTOL
             self.logger.warning(
                 'Stopping as norm of step '
-                f'{norm(x - self.x)} was smaller than specified '
-                f'tolerances (atol={xatol:.2E}, rtol={xrtol:.2E})'
+                f'{nsx} was smaller than specified '
+                f'tolerance (tol={xtol:.2E})'
             )
             converged = True
 
