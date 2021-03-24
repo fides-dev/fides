@@ -18,8 +18,7 @@ class Options(str, enum.Enum):
     MAXTIME = 'maxtime'  #: maximum amount of walltime in seconds
     FATOL = 'fatol'  #: absolute tolerance for convergence based on fval
     FRTOL = 'frtol'  #: relative tolerance for convergence based on fval
-    XATOL = 'xatol'  #: absolute tolerance for convergence based on x
-    XRTOL = 'xrtol'  #: relative tolerance for convergence based on x
+    XTOL = 'xtol'  #: tolerance for convergence based on x
     GATOL = 'gatol'  #: absolute tolerance for convergence based on grad
     GRTOL = 'grtol'  #: relative tolerance for convergence based on grad
     SUBSPACE_DIM = 'subspace_solver'  #: trust region subproblem subspace
@@ -58,8 +57,7 @@ DEFAULT_OPTIONS = {
     Options.MAXTIME: np.inf,
     Options.FATOL: 1e-8,
     Options.FRTOL: 1e-8,
-    Options.XATOL: 0,
-    Options.XRTOL: 0,
+    Options.XTOL: 0,
     Options.GATOL: 1e-6,
     Options.GRTOL: 0,
     Options.SUBSPACE_DIM: SubSpaceDim.FULL,
