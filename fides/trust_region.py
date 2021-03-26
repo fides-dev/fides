@@ -100,7 +100,7 @@ def trust_region(x: np.ndarray,
                               theta, ub, lb, logger)
         g_step.calculate()
 
-        steps = [g_step]
+        steps.append(g_step)
 
         if stepback_strategy == StepBackStrategy.SINGLE_REFLECT:
             rtr_step = TRStepReflected(x, sg, hess, scaling, g_dscaling, delta,
