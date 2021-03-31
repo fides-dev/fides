@@ -169,6 +169,8 @@ class Optimizer:
                                                      HybridUpdate):
             self.fval, self.grad, self.hess = funout
             if isinstance(self.hessian_update, HybridUpdate):
+                if self.hessian_update.switch_iteration == 0:
+                    self.hessian_update.hess_init = self.hess
                 self.hessian_update.init_mat(len(self.x))
         else:
             if len(funout) == 3:
