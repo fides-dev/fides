@@ -23,22 +23,32 @@ class HessianApproximation:
         :param hess_init:
             Inital guess for the Hessian, if empty Identity matrix will be used
         """
+        self.hess_init = None
         if hess_init is not None:
-            if not isinstance(hess_init, np.ndarray):
-                raise ValueError('Cannot initialize with hess_init of type'
-                                 f'{type(hess_init)}, needs np.ndarray.')
+            self.set_init(hess_init)
+        self._hess = None
 
-            if not hess_init.ndim == 2:
-                raise ValueError('hess_init needs to be a matrix with'
-                                 f'hess_init.ndim == 2, was {hess_init.ndim}')
+    def set_init(self, hess_init: np.ndarray):
+        """
+        Create a Hessian update strategy instance
 
-            if not hess_init.shape[0] == hess_init.shape[1]:
-                raise ValueError('hess_init needs to be a square matrix!')
+        :param hess_init:
+            Inital guess for the Hessian, if empty Identity matrix will be used
+        """
+        if not isinstance(hess_init, np.ndarray):
+            raise ValueError('Cannot initialize with hess_init of type'
+                             f'{type(hess_init)}, needs np.ndarray.')
 
-            hess_init = hess_init.copy()
+        if not hess_init.ndim == 2:
+            raise ValueError('hess_init needs to be a matrix with'
+                             f'hess_init.ndim == 2, was {hess_init.ndim}')
+
+        if not hess_init.shape[0] == hess_init.shape[1]:
+            raise ValueError('hess_init needs to be a square matrix!')
+
+        hess_init = hess_init.copy()
 
         self.hess_init: np.ndarray = hess_init
-        self._hess = None
 
     def init_mat(self, dim: int):
         """
@@ -138,6 +148,9 @@ class HybridUpdate(HessianApproximation):
         self.switch_iteration = switch_iteration
 
         super(HybridUpdate, self).__init__(hess_init)
+
+    def set_init(self, hess_init: np.ndarray):
+        self.hessian_update.set_init(hess_init)
 
     def init_mat(self, dim: int):
         if self.switch_iteration is None:
