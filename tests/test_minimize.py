@@ -108,7 +108,9 @@ def unbounded_and_init():
 
 
 @pytest.mark.parametrize("stepback", [StepBackStrategy.REFLECT,
-                                      StepBackStrategy.TRUNCATE])
+                                      StepBackStrategy.SINGLE_REFLECT,
+                                      StepBackStrategy.TRUNCATE,
+                                      StepBackStrategy.MIXED])
 @pytest.mark.parametrize("refine", [True, False])
 @pytest.mark.parametrize("subspace_dim", [SubSpaceDim.FULL,
                                           SubSpaceDim.TWO])
@@ -121,6 +123,8 @@ def unbounded_and_init():
     (rosengrad, BFGS()),
     (rosengrad, DFP()),
     (rosenboth, HybridUpdate(BFGS())),
+    (rosenboth, HybridUpdate(SR1())),
+    (rosenboth, HybridUpdate(init_with_hess=True)),
 ])
 def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
                               stepback, refine):
