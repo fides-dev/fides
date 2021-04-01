@@ -108,7 +108,9 @@ def unbounded_and_init():
 
 
 @pytest.mark.parametrize("stepback", [StepBackStrategy.REFLECT,
-                                      StepBackStrategy.TRUNCATE])
+                                      StepBackStrategy.REFLECT_SINGLE,
+                                      StepBackStrategy.TRUNCATE,
+                                      StepBackStrategy.MIXED])
 @pytest.mark.parametrize("refine", [True, False])
 @pytest.mark.parametrize("subspace_dim", [SubSpaceDim.FULL,
                                           SubSpaceDim.TWO])
