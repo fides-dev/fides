@@ -163,14 +163,9 @@ def stepback_refine(steps: Sequence[Step],
     :return:
         New proposal steps
     """
-    min_qpval = np.nanmin([step.qpval for step in steps])
-    ref_steps = [
-        RefinedStep(x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb,
-                    step)
-        for step in steps
-        if ((step.alpha == 1.0 and step.type not in ['trnd', 'tr2d', 'grad'])
-            or (step.alpha < 1.0 and step.qpval < min_qpval / 2))
-    ]
-    for step in ref_steps:
-        step.calculate()
-    return ref_steps
+    idx = np.nanargmin([step.qpval for step in steps])
+    step = RefinedStep(
+        x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, steps[idx]
+    )
+    step.calculate()
+    return [step]
