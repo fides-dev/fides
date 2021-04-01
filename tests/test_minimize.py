@@ -108,7 +108,7 @@ def unbounded_and_init():
 
 
 @pytest.mark.parametrize("stepback", [StepBackStrategy.REFLECT,
-                                      StepBackStrategy.REFLECT_SINGLE,
+                                      StepBackStrategy.SINGLE_REFLECT,
                                       StepBackStrategy.TRUNCATE,
                                       StepBackStrategy.MIXED])
 @pytest.mark.parametrize("refine", [True, False])
