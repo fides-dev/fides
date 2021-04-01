@@ -128,16 +128,22 @@ class HybridUpdate(HessianApproximation):
     def __init__(self,
                  happ: HessianApproximation = None,
                  hess_init: Optional[np.ndarray] = None,
+                 init_with_hess: Optional[bool] = False,
                  switch_iteration: Optional[int] = None):
         """
         Create a Hybrid Hessian update strategy which is generated from the
-        start but only applied after a certain iteration
+        start but only applied after a certain iteration, while Hessian
+        computed by the objective function is used until then.
 
         :param happ:
             Hessian Update Strategy (default: BFGS)
 
         :param switch_iteration:
-            Iteration after which this approximation is used (default: 5*dim)
+            Iteration after which this approximation is used (default: 2*dim)
+
+        :param init_with_hess (default: False)
+            Whether the hybrid update strategy should be initialized
+            according to the user-provided objective function
 
         :param hess_init:
             Initial guess for the Hessian. (default: eye)
@@ -146,6 +152,10 @@ class HybridUpdate(HessianApproximation):
             happ = BFGS()
         self.hessian_update = happ
         self.switch_iteration = switch_iteration
+        self.init_with_hess = init_with_hess
+        if init_with_hess and hess_init is not None:
+            raise ValueError('init_with_hess cannot be set to true if '
+                             'hess_init is also provided.')
 
         super(HybridUpdate, self).__init__(hess_init)
 
