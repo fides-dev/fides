@@ -11,9 +11,11 @@
 
 ## About Fides
 
-Fides implements an Interior Trust Region Reflective for boundary costrained
-optimization problems based on the papers [ColemanLi1994] and [ColemanLi1996
-]. Accordingly, Fides is named after the Roman goddess of trust and
+Fides implements an Interior Trust Region Reflective for boundary constrained
+optimization problems based on the papers
+[ColemanLi1994](https://doi.org/10.1007/BF01582221) and
+[ColemanLi1996](http://dx.doi.org/10.1137/0806023). Accordingly, Fides is named
+after the Roman goddess of trust and
 reliability. In contrast to other optimizers, Fides solves the full trust
 -region subproblem exactly, which can yield higher quality proposal steps, but
 is computationally more expensive. This makes Fides particularly attractive
