@@ -57,7 +57,7 @@ class Step:
         transformed step ss: `ss = subspace * sc`
     :ivar ss: Affine transformed step: `s = scaling * ss`
     :ivar og_s: `s` without step back
-    :ivar og_sc: `st` without step back
+    :ivar og_sc: `sc` without step back
     :ivar og_ss: `ss` without step back
     :ivar sg: Rescaled gradient `scaling * g`
     :ivar hess: Hessian of the objective function at `x`

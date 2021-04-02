@@ -27,7 +27,7 @@ def stepback_reflect(tr_step: Step,
     Compute new proposal steps according to a reflection strategy.
 
     :param tr_step:
-        Reference trust region step that will be reflect
+        Reference trust region step that will be reflected
     :param x:
         Current values of the optimization variables
     :param sg:
