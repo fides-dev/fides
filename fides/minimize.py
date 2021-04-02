@@ -128,15 +128,15 @@ class Optimizer:
 
     def minimize(self, x0: np.ndarray):
         """
-        Minimize the objective function the interior trust-region reflective
-        algorithm described by [ColemanLi1994] and [ColemanLi1996]
+        Minimize the objective function using the interior trust-region
+        reflective algorithm described by [ColemanLi1994] and [ColemanLi1996]
         Convergence with respect to function value is achieved when
         math:`|f_{k+1} - f_k|` < options[`fatol`] - :math:`f_k` options[
-        `frtol`]. Similarly,  convergence with respect to optimization
+        `frtol`]. Similarly, convergence with respect to optimization
         variables is achieved when :math:`||x_{k+1} - x_k||` < options[
-        `xatol`] - :math:`x_k` options[`xrtol`].  Convergence with respect
+        `xatol`] - :math:`x_k` options[`xrtol`]. Convergence with respect
         to the gradient is achieved when :math:`||g_k||` <
-        options[`gatol`] or `||g_k||` < options[`grtol`] * `f_k`.  Other than
+        options[`gatol`] or `||g_k||` < options[`grtol`] * `f_k`. Other than
         that, optimization can be terminated when iterations exceed
         options[ `maxiter`] or the elapsed time is expected to exceed
         options[`maxtime`] on the next iteration.
@@ -194,12 +194,6 @@ class Optimizer:
                              f'x has {len(self.x)} entries but gradient has '
                              f'{len(self.grad)}!')
 
-        if not len(self.grad) == len(self.x):
-            raise ValueError('Provided objective function must return a '
-                             'gradient vector of the same shape as x, '
-                             f'x has {len(self.x)} entries but gradient has '
-                             f'{len(self.grad)}!')
-
         # hessian approximation would error on these earlier
         if not self.hess.ndim == 2:
             raise ValueError('Provided objective function must return a '
@@ -212,7 +206,7 @@ class Optimizer:
 
         if not self.hess.shape[0] == len(self.x):
             raise ValueError('Provided objective function must return a '
-                             'square Hessian matrix with same dimension'
+                             'square Hessian matrix with same dimension as x. '
                              f'x has {len(self.x)} entries but Hessian has '
                              f'{self.hess.shape[0]}!')
 
@@ -475,8 +469,7 @@ class Optimizer:
             self.exitflag = ExitFlag.DELTA_TOO_SMALL
             self.logger.warning(
                 f'Stopping as trust region radius {self.delta:.2E} is '
-                f'smaller '
-                'than machine precision.'
+                f'smaller than machine precision.'
             )
             return False
 
@@ -498,7 +491,7 @@ class Optimizer:
 
     def get_affine_scaling(self) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Computes the vector v and dv, the diagonal of it's Jacobian. For the
+        Computes the vector v and dv, the diagonal of its Jacobian. For the
         definition of v, see Definition 2 in [Coleman-Li1994]
 
         :return:

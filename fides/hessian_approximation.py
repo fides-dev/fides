@@ -3,7 +3,7 @@ Hessian Update Strategies
 -------------------------
 This module provides various generic Hessian approximation strategies that
 can be employed when the calculating the exact Hessian or an approximation
-is computationally too demandind.
+is computationally too demanding.
 """
 
 
@@ -21,7 +21,8 @@ class HessianApproximation:
         Create a Hessian update strategy instance
 
         :param hess_init:
-            Inital guess for the Hessian, if empty Identity matrix will be used
+            Initial guess for the Hessian, if empty Identity matrix will be
+            used
         """
         self.hess_init = None
         if hess_init is not None:
@@ -33,7 +34,7 @@ class HessianApproximation:
         Create a Hessian update strategy instance
 
         :param hess_init:
-            Inital guess for the Hessian, if empty Identity matrix will be used
+            Initial guess for the Hessian, if empty Identity matrix will be used
         """
         if not isinstance(hess_init, np.ndarray):
             raise ValueError('Cannot initialize with hess_init of type'
@@ -62,7 +63,7 @@ class HessianApproximation:
         else:
             self._hess = self.hess_init.copy()
             if self._hess.shape[0] != dim:
-                raise ValueError('Inital approximation had inconsistent '
+                raise ValueError('Initial approximation had inconsistent '
                                  f'dimension, was {self._hess.shape[0]}, '
                                  f'but should be {dim}.')
 

@@ -74,11 +74,11 @@ def solve_nd_trust_region_subproblem(
     :math:`argmin_s\{s^T B s + s^T g = 0: ||s|| <= \Delta, s \in \mathbb{
     R}^n\}`
 
-    The  solution to is characterized by the equation
+    The solution is characterized by the equation
     :math:`-(B + \lambda I)s = g`. If B is positive definite, the solution can
     be obtained by :math:`\lambda = 0`$` if :math:`Bs = -g` satisfies
     :math:`||s|| <= \Delta`. If B is indefinite or :math:`Bs = -g`
-    satisfies :math:`||s|| > \Delta` and an approppriate :math:`\lambda` has
+    satisfies :math:`||s|| > \Delta` and an appropriate :math:`\lambda` has
     to be  identified via 1D rootfinding of the secular equation
 
     :math:`\phi(\lambda) = \frac{1}{||s(\lambda)||} - \frac{1}{\Delta} = 0`
@@ -89,7 +89,7 @@ def solve_nd_trust_region_subproblem(
     invariant to changes in :math:`\lambda` and eigenvalues are linear in
     :math:`\lambda`, so factorization only has to be performed once. We perform
     the linesearch via Newton's algorithm and Brent-Q as fallback.
-    The hard case is treated seperately and serves as general fallback.
+    The hard case is treated separately and serves as general fallback.
 
     :param B:
         Hessian of the quadratic subproblem
@@ -226,7 +226,7 @@ def dslam(lam: float,
           eigvecs: np.ndarray):
     r"""
     Computes the derivative of the solution :math:`s(\lambda)` with respect to
-    lambda, where :math:`s` is the ubproblem solution according to
+    lambda, where :math:`s` is the subproblem solution according to
 
     :math:`-(B + \lambda I)s = g`
 
