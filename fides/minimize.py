@@ -134,8 +134,9 @@ class Optimizer:
         math:`|f_{k+1} - f_k|` < options[`fatol`] - :math:`f_k` options[
         `frtol`]. Similarly, convergence with respect to optimization
         variables is achieved when :math:`||x_{k+1} - x_k||` < options[
-        `xatol`] - :math:`x_k` options[`xrtol`]. Convergence with respect
-        to the gradient is achieved when :math:`||g_k||` <
+        `xtol`] :math:`x_k` (note that this is checked in transformed
+        coordinates that account for distance to boundaries).  Convergence
+        with respect to the gradient is achieved when :math:`||g_k||` <
         options[`gatol`] or `||g_k||` < options[`grtol`] * `f_k`. Other than
         that, optimization can be terminated when iterations exceed
         options[ `maxiter`] or the elapsed time is expected to exceed
