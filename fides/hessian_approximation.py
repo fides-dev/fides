@@ -34,7 +34,8 @@ class HessianApproximation:
         Create a Hessian update strategy instance
 
         :param hess_init:
-            Initial guess for the Hessian, if empty Identity matrix will be used
+            Initial guess for the Hessian, if empty Identity matrix will be
+            used
         """
         if not isinstance(hess_init, np.ndarray):
             raise ValueError('Cannot initialize with hess_init of type'
