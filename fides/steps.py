@@ -393,8 +393,8 @@ class RefinedStep(Step):
             NonlinearConstraint(
                 fun=lambda xs: (norm(xs) - delta) * np.ones((1,)),
                 jac=lambda xs: np.expand_dims(xs, 1).T / norm(xs),
-                lb=np.zeros((1,)),
-                ub=np.ones((1,)) * np.inf,
+                lb=-np.ones((1,)) * np.inf,
+                ub=np.zeros((1,)),
             )
         ]
         self.guess = step.ss + step.ss0
