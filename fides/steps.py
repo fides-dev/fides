@@ -8,6 +8,7 @@ This module provides the machinery to calculate different trust-region(
 
 import numpy as np
 import scipy.linalg as linalg
+import scipy.sparse.linalg as slinalg
 
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
@@ -265,15 +266,17 @@ class TRStep2D(Step):
         posdef = s_newt.dot(self.shess.dot(s_newt)) > 0
         normalize(s_newt)
 
-        
         if n > 1:
             if not posdef:
                 # in this case we are in Case 2 of Fig 12 in
                 # [Coleman-Li1994]
                 logger.debug('Newton direction did not have negative '
-                             'curvature replacing it by scaling * np.sign('
-                             'sg).')
-                s_newt = scaling * np.sign(sg) + (sg == 0)
+                             'using scaling * np.sign(sg) and ev to smallest '
+                             'eigenvalue instead.')
+                e, v = slinalg.eigs(self.shess, k=1, which='SR')
+                s_newt = v[:, np.argmin(e)]
+                normalize(s_newt)
+                s_grad = scaling * np.sign(sg) + (sg == 0)
             else:
                 s_grad = sg.copy()
 
