@@ -265,14 +265,15 @@ class TRStep2D(Step):
         posdef = s_newt.dot(self.shess.dot(s_newt)) > 0
         normalize(s_newt)
 
+        
         if n > 1:
             if not posdef:
                 # in this case we are in Case 2 of Fig 12 in
                 # [Coleman-Li1994]
                 logger.debug('Newton direction did not have negative '
-                             'curvature adding scaling * np.sign(sg) to '
-                             '2D subspace.')
-                s_grad = scaling * np.sign(sg) + (sg == 0)
+                             'curvature replacing it by scaling * np.sign('
+                             'sg).')
+                s_newt = scaling * np.sign(sg) + (sg == 0)
             else:
                 s_grad = sg.copy()
 
@@ -370,6 +371,22 @@ class GradientStep(Step):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb, logger)
         s_grad = sg.copy()
+        normalize(s_grad)
+        self.subspace = np.expand_dims(s_grad, 1)
+
+
+class ScaledGradientStep(Step):
+    """
+    This class provides the machinery to compute a gradient step.
+    """
+
+    type = 'dg'
+
+    def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
+                 ub, lb, logger):
+        super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
+                         ub, lb, logger)
+        s_grad = scaling*sg.copy()
         normalize(s_grad)
         self.subspace = np.expand_dims(s_grad, 1)
 

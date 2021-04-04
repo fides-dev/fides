@@ -12,7 +12,10 @@ import logging
 from scipy.sparse import csc_matrix
 
 from .constants import SubSpaceDim, StepBackStrategy
-from .steps import Step, GradientStep, TRStep2D, TRStepFull, TRStepReflected
+from .steps import (
+    Step, GradientStep, ScaledGradientStep, TRStep2D, TRStepFull,
+    TRStepReflected
+)
 from .stepback import stepback_refine, stepback_reflect, stepback_truncate
 
 
@@ -100,7 +103,11 @@ def trust_region(x: np.ndarray,
                               theta, ub, lb, logger)
         g_step.calculate()
 
-        steps.append(g_step)
+        dg_step = ScaledGradientStep(x, sg, hess, scaling, g_dscaling, delta,
+                                     theta, ub, lb, logger)
+        dg_step.calculate()
+
+        steps.extend([g_step, dg_step])
 
         if stepback_strategy == StepBackStrategy.SINGLE_REFLECT:
             rtr_step = TRStepReflected(x, sg, hess, scaling, g_dscaling, delta,
