@@ -8,7 +8,6 @@ trust-region subproblems.
 import logging
 
 import numpy as np
-import math
 from numpy.linalg import norm
 
 from scipy import linalg
