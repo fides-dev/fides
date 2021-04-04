@@ -8,6 +8,7 @@ This module provides the machinery to calculate different trust-region(
 
 import numpy as np
 import scipy.linalg as linalg
+import scipy.sparse.linalg as slinalg
 
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
@@ -15,24 +16,11 @@ from scipy.optimize import Bounds, NonlinearConstraint, minimize
 
 from logging import Logger
 from .subproblem import (
-    solve_1d_trust_region_subproblem, solve_nd_trust_region_subproblem
+    solve_1d_trust_region_subproblem, solve_nd_trust_region_subproblem,
+    get_1d_trust_region_boundary_solution, quadratic_form
 )
 
 from typing import Union
-
-
-def quadratic_form(Q: np.ndarray, p: np.ndarray, x: np.ndarray) -> float:
-    """
-    Computes the quadratic form :math:`x^TQx + x^Tp`
-
-    :param Q: Matrix
-    :param p: Vector
-    :param x: Input
-
-    :return:
-        Value of form
-    """
-    return 0.5 * x.T.dot(Q).dot(x) + p.T.dot(x)
 
 
 def normalize(v: np.ndarray) -> None:
@@ -57,7 +45,7 @@ class Step:
         transformed step ss: `ss = subspace * sc`
     :ivar ss: Affine transformed step: `s = scaling * ss`
     :ivar og_s: `s` without step back
-    :ivar og_sc: `st` without step back
+    :ivar og_sc: `sc` without step back
     :ivar og_ss: `ss` without step back
     :ivar sg: Rescaled gradient `scaling * g`
     :ivar hess: Hessian of the objective function at `x`
@@ -238,7 +226,7 @@ class TRStepFull(Step):
     the trust region subproblem.
     """
 
-    type = 'trnd'
+    type = 'nd'
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
                  ub, lb, logger):
@@ -253,7 +241,7 @@ class TRStep2D(Step):
     the trust region subproblem according to a 2D subproblem
     """
 
-    type = 'tr2d'
+    type = '2d'
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
                  ub, lb, logger):
@@ -270,8 +258,11 @@ class TRStep2D(Step):
                 # in this case we are in Case 2 of Fig 12 in
                 # [Coleman-Li1994]
                 logger.debug('Newton direction did not have negative '
-                             'curvature adding scaling * np.sign(sg) to '
-                             '2D subspace.')
+                             'using scaling * np.sign(sg) and ev to smallest '
+                             'eigenvalue instead.')
+                e, v = slinalg.eigs(self.shess, k=1, which='SR')
+                s_newt = v[:, np.argmin(e)]
+                normalize(s_newt)
                 s_grad = scaling * np.sign(sg) + (sg == 0)
             else:
                 s_grad = sg.copy()
@@ -288,6 +279,78 @@ class TRStep2D(Step):
                 logger.debug('Singular subspace, continuing with 1D subspace.')
 
         self.subspace = np.expand_dims(s_newt, 1)
+
+
+class CGStep(Step):
+    """
+        This class provides the machinery to compute an approximate solution of
+        the trust region subproblem using the Steihaug Method
+        """
+
+    type = 'cg'
+
+    def calculate(self):
+        nsg = norm(self.sg)
+        self.conj_grad(min(0.5, np.sqrt(nsg)) * nsg)
+        self.s = self.scaling.dot(self.ss + self.ss0)
+        self.step_back()
+        self.qpval = quadratic_form(self.shess, self.sg, self.ss + self.ss0)
+
+    def conj_grad(self, eps):
+        """
+        Compute step proposal using conjugate gradient method
+
+        :param eps:
+            tolerance for residual norm
+        """
+        raise NotImplementedError()
+
+
+class TRStepSteihaug(CGStep):
+    """
+    This class provides the machinery to compute an approximate solution of
+    the trust region subproblem using the Steihaug Method
+    """
+
+    type = 'cgs'
+
+    def conj_grad(self, eps):
+        z = np.zeros_like(self.sg)
+        r = self.sg.copy()
+        d = -self.sg.copy()
+        if norm(r) < eps:
+            self.ss = z
+            return
+
+        while True:
+            bd = self.shess.dot(d)
+            c = d.dot(bd)
+            r2 = np.dot(r, r)
+            alpha = r2 / c
+            zp = z + alpha * d
+            if c <= 0 or norm(zp) >= self.delta:
+                self.subspace = np.expand_dims(d, 1)
+                self.ss0 = z
+                self.sc = get_1d_trust_region_boundary_solution(
+                    self.shess, self.sg, self.subspace[:, 0], self.ss0,
+                    self.delta
+                ) * np.ones((1,))
+                self.ss = self.subspace.dot(self.sc)
+                return
+            rp = r + alpha*bd
+            rp2 = np.dot(rp, rp)
+            if np.sqrt(rp2) < eps:
+                normalize(d)
+                self.subspace = np.expand_dims(d, 1)
+                self.sc = zp.dot(d) * np.ones((1,))
+                self.ss = self.subspace.dot(self.sc)
+                self.ss0 = zp - self.ss
+                return
+            beta = rp2 / r2
+
+            d = -rp + beta * d
+            z = zp
+            r = rp
 
 
 class TRStepReflected(Step):
@@ -374,6 +437,22 @@ class GradientStep(Step):
         self.subspace = np.expand_dims(s_grad, 1)
 
 
+class ScaledGradientStep(Step):
+    """
+    This class provides the machinery to compute a gradient step.
+    """
+
+    type = 'dg'
+
+    def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
+                 ub, lb, logger):
+        super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
+                         ub, lb, logger)
+        s_grad = scaling*sg.copy()
+        normalize(s_grad)
+        self.subspace = np.expand_dims(s_grad, 1)
+
+
 class RefinedStep(Step):
     """
     This class provides the machinery to refine a step based on interior
@@ -393,8 +472,8 @@ class RefinedStep(Step):
             NonlinearConstraint(
                 fun=lambda xs: (norm(xs) - delta) * np.ones((1,)),
                 jac=lambda xs: np.expand_dims(xs, 1).T / norm(xs),
-                lb=np.zeros((1,)),
-                ub=np.ones((1,)) * np.inf,
+                lb=-np.ones((1,)) * np.inf,
+                ub=np.zeros((1,)),
             )
         ]
         self.guess = step.ss + step.ss0

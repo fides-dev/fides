@@ -112,10 +112,11 @@ def unbounded_and_init():
                                       StepBackStrategy.TRUNCATE,
                                       StepBackStrategy.MIXED])
 @pytest.mark.parametrize("refine", [True, False])
-@pytest.mark.parametrize("subspace_dim", [SubSpaceDim.FULL,
+@pytest.mark.parametrize("subspace_dim", [SubSpaceDim.STEIHAUG,
+                                          SubSpaceDim.FULL,
                                           SubSpaceDim.TWO])
-@pytest.mark.parametrize("bounds_and_init", [finite_bounds_include_optimum(),
-                                             unbounded_and_init(),
+@pytest.mark.parametrize("bounds_and_init", [unbounded_and_init(),
+                                             finite_bounds_include_optimum(),
                                              finite_bounds_exlude_optimum()])
 @pytest.mark.parametrize("fun, happ", [
     (rosenboth, None),

@@ -62,6 +62,12 @@ def test_convex_subproblem(subproblem):
     assert case == 'posdef'
     assert is_local_quad_min(s, subproblem['B'], subproblem['g'])
 
+    for alpha in [0, 0.5, -0.5]:
+        sc = solve_1d_trust_region_subproblem(
+            subproblem['B'], subproblem['g'], s, delta, alpha * s
+        )[0]
+        assert sc + alpha == 1
+
 
 def test_nonconvex_subproblem(subproblem):
     subproblem['B'][0, 0] = -1.0
@@ -72,13 +78,13 @@ def test_nonconvex_subproblem(subproblem):
     assert np.isclose(norm(s), delta, atol=1e-6, rtol=0)
     assert case == 'indef'
     assert is_bound_quad_min(s, subproblem['B'], subproblem['g'])
+    assert not is_bound_quad_min(-s, subproblem['B'], subproblem['g'])
 
-    snorm = s.copy()
-    normalize(snorm)
     for alpha in [0, 0.5, -0.5]:
-        assert np.isclose(solve_1d_trust_region_subproblem(
-            subproblem['B'], subproblem['g'], snorm, delta, alpha * s
-        )[0], (1 - alpha)*delta)
+        sc = solve_1d_trust_region_subproblem(
+            subproblem['B'], subproblem['g'], s, delta, alpha * s
+        )[0]
+        assert np.isclose(sc + alpha, 1)
 
 
 @pytest.mark.parametrize("minev", list(np.logspace(-1, -50, 50)))
@@ -90,13 +96,13 @@ def test_nonconvex_subproblem_eigvals(subproblem, minev):
     assert np.any(np.real(linalg.eig(subproblem['B'])[0]) < 0)
     assert np.isclose(norm(s), delta, atol=1e-6, rtol=0)
     assert is_bound_quad_min(s, subproblem['B'], subproblem['g'])
+    assert not is_bound_quad_min(-s, subproblem['B'], subproblem['g'])
 
-    snorm = s.copy()
-    normalize(snorm)
     for alpha in [0, 0.5, -0.5]:
-        assert np.isclose(solve_1d_trust_region_subproblem(
-            subproblem['B'], subproblem['g'], snorm, delta, alpha * s
-        )[0], (1 - alpha)*delta)
+        sc = solve_1d_trust_region_subproblem(
+            subproblem['B'], subproblem['g'], s, delta, alpha * s
+        )[0]
+        assert np.isclose(sc + alpha, 1)
 
 
 def test_hard_indef_subproblem(subproblem):
