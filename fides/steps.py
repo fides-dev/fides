@@ -16,24 +16,11 @@ from scipy.optimize import Bounds, NonlinearConstraint, minimize
 
 from logging import Logger
 from .subproblem import (
-    solve_1d_trust_region_subproblem, solve_nd_trust_region_subproblem
+    solve_1d_trust_region_subproblem, solve_nd_trust_region_subproblem,
+    get_1d_trust_region_boundary_solution, quadratic_form
 )
 
 from typing import Union
-
-
-def quadratic_form(Q: np.ndarray, p: np.ndarray, x: np.ndarray) -> float:
-    """
-    Computes the quadratic form :math:`x^TQx + x^Tp`
-
-    :param Q: Matrix
-    :param p: Vector
-    :param x: Input
-
-    :return:
-        Value of form
-    """
-    return 0.5 * x.T.dot(Q).dot(x) + p.T.dot(x)
 
 
 def normalize(v: np.ndarray) -> None:
@@ -239,7 +226,7 @@ class TRStepFull(Step):
     the trust region subproblem.
     """
 
-    type = 'trnd'
+    type = 'nd'
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
                  ub, lb, logger):
@@ -254,7 +241,7 @@ class TRStep2D(Step):
     the trust region subproblem according to a 2D subproblem
     """
 
-    type = 'tr2d'
+    type = '2d'
 
     def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
                  ub, lb, logger):
@@ -292,6 +279,60 @@ class TRStep2D(Step):
                 logger.debug('Singular subspace, continuing with 1D subspace.')
 
         self.subspace = np.expand_dims(s_newt, 1)
+
+
+class TRStepSteihaug(Step):
+    """
+    This class provides the machinery to compute an approximate solution of
+    the trust region subproblem using the Steihaug Method
+    """
+
+    type = 'cgs'
+
+    def calculate(self):
+        nsg = norm(self.sg)
+        self.steihaug(min(0.5, np.sqrt(nsg)) * nsg)
+        self.s = self.scaling.dot(self.ss + self.ss0)
+        self.step_back()
+        self.qpval = quadratic_form(self.shess, self.sg, self.ss + self.ss0)
+
+    def steihaug(self, eps):
+        z = np.zeros_like(self.sg)
+        r = self.sg.copy()
+        d = -self.sg.copy()
+        if norm(r) < eps:
+            self.ss = z
+            return
+
+        while True:
+            bd = self.shess.dot(d)
+            c = d.dot(bd)
+            r2 = np.dot(r, r)
+            alpha = r2 / c
+            zp = z + alpha * d
+            if c <= 0 or norm(zp) >= self.delta:
+                self.subspace = np.expand_dims(d, 1)
+                self.ss0 = z
+                self.sc = get_1d_trust_region_boundary_solution(
+                    self.shess, self.sg, self.subspace[:, 0], self.ss0,
+                    self.delta
+                ) * np.ones((1,))
+                self.ss = self.subspace.dot(self.sc)
+                return
+            rp = r + alpha*bd
+            rp2 = np.dot(rp, rp)
+            if np.sqrt(rp2) < eps:
+                normalize(d)
+                self.subspace = np.expand_dims(d, 1)
+                self.sc = zp.dot(d) * np.ones((1,))
+                self.ss = self.subspace.dot(self.sc)
+                self.ss0 = zp - self.ss
+                return
+            beta = rp2 / r2
+
+            d = -rp + beta * d
+            z = zp
+            r = rp
 
 
 class TRStepReflected(Step):

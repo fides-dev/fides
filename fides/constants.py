@@ -39,6 +39,7 @@ class SubSpaceDim(str, enum.Enum):
     """
     TWO = '2D'  #: Two dimensional Newton/Gradient subspace
     FULL = 'full'  #: Full :math:`\mathbb{R}^n`
+    STEIHAUG = 'scg'  #: CG subspace via Steihaug's method
 
 
 class StepBackStrategy(str, enum.Enum):

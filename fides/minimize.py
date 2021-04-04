@@ -360,16 +360,17 @@ class Optimizer:
 
             # values as proposed in algorithm 4.1 in Nocedal & Wright
             if self.tr_ratio >= self.get_option(Options.ETA) \
-                    and not interior_solution:
+                    and not interior_solution and step.qpval <= 0:
                 # increase radius
                 self.delta = self.get_option(Options.GAMMA2) * self.delta
-            elif self.tr_ratio <= self.get_option(Options.MU):
+            elif self.tr_ratio <= self.get_option(Options.MU) or \
+                    step.qpval > 0:
                 # decrease radius
                 self.delta = np.nanmin([
                     self.delta * self.get_option(Options.GAMMA1),
                     nsx / 4
                 ])
-            return self.tr_ratio > 0.0
+            return self.tr_ratio > 0.0 and step.qpval <= 0
 
     def check_convergence(self, step: Step, fval: float,
                           grad: np.ndarray) -> None:

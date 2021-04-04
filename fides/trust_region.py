@@ -14,7 +14,7 @@ from scipy.sparse import csc_matrix
 from .constants import SubSpaceDim, StepBackStrategy
 from .steps import (
     Step, GradientStep, ScaledGradientStep, TRStep2D, TRStepFull,
-    TRStepReflected
+    TRStepReflected, TRStepSteihaug
 )
 from .stepback import stepback_refine, stepback_reflect, stepback_truncate
 
@@ -89,6 +89,10 @@ def trust_region(x: np.ndarray,
         tr_step = TRStepFull(
             x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
         )
+    elif subspace_dim == SubSpaceDim.STEIHAUG:
+        tr_step = TRStepSteihaug(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
+        )
     else:
         raise ValueError('Invalid choice of subspace dimension.')
     tr_step.calculate()
@@ -145,4 +149,4 @@ def trust_region(x: np.ndarray,
         ]))
 
     qpvals = [step.qpval for step in steps]
-    return steps[int(np.argmin(qpvals))]
+    return steps[np.argmin(qpvals)]

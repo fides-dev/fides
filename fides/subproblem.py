@@ -8,12 +8,27 @@ trust-region subproblems.
 import logging
 
 import numpy as np
+import math
 from numpy.linalg import norm
 
 from scipy import linalg
 from scipy.optimize import newton, brentq
 
 from typing import Tuple, Union
+
+
+def quadratic_form(Q: np.ndarray, p: np.ndarray, x: np.ndarray) -> float:
+    """
+    Computes the quadratic form :math:`x^TQx + x^Tp`
+
+    :param Q: Matrix
+    :param p: Vector
+    :param x: Input
+
+    :return:
+        Value of form
+    """
+    return 0.5 * x.T.dot(Q).dot(x) + p.T.dot(x)
 
 
 def solve_1d_trust_region_subproblem(B: np.ndarray,
@@ -42,26 +57,33 @@ def solve_1d_trust_region_subproblem(B: np.ndarray,
     if delta == 0.0:
         return delta * np.ones((1,))
 
+    if np.array_equal(s, np.zeros_like(s)):
+        return np.zeros((1,))
+
     a = 0.5 * B.dot(s).dot(s)
     if not isinstance(a, float):
         a = a[0, 0]
-    b = s.T.dot(g)
+    b = 2 * s.T.dot(g)
 
     minq = - b / (2 * a)
     if a > 0 and norm(minq * s + s0) <= delta:
         # interior solution
         tau = minq
     else:
-        nrms0 = norm(s0)
-        if nrms0 == 0:
-            tau = - delta * np.sign(b)
-        elif nrms0 >= delta:
-            tau = 0
-        else:
-            tau = brentq(lambda q: 1/norm(q * s + s0) - 1/delta,
-                         a=0, b=2*delta, xtol=1e-12, maxiter=100)
+        tau = get_1d_trust_region_boundary_solution(B, g, s, s0, delta)
 
     return tau * np.ones((1,))
+
+
+def get_1d_trust_region_boundary_solution(B, g, s, s0, delta):
+    a = np.dot(s, s)
+    b = 2 * np.dot(s0, s)
+    c = np.dot(s0, s0) - delta**2
+
+    aux = b + (np.sign(b) + b == 0)*np.sqrt(b**2 - 4*a*c)
+    ts = [- aux / (2 * a), -2 * c / aux]
+    qs = [quadratic_form(B, g, s0 + t*s) for t in ts]
+    return ts[np.argmin(qs)]
 
 
 def solve_nd_trust_region_subproblem(
