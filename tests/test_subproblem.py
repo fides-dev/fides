@@ -102,7 +102,7 @@ def test_nonconvex_subproblem_eigvals(subproblem, minev):
         sc = solve_1d_trust_region_subproblem(
             subproblem['B'], subproblem['g'], s, delta, alpha * s
         )[0]
-        assert np.isclose(sc * s + alpha * s, delta)
+        assert np.isclose(sc + alpha, 1)
 
 
 def test_hard_indef_subproblem(subproblem):

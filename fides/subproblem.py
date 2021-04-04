@@ -8,6 +8,7 @@ trust-region subproblems.
 import logging
 
 import numpy as np
+import math
 from numpy.linalg import norm
 
 from scipy import linalg
@@ -79,8 +80,8 @@ def get_1d_trust_region_boundary_solution(B, g, s, s0, delta):
     b = 2 * np.dot(s0, s)
     c = np.dot(s0, s0) - delta**2
 
-    aux = -(b + (np.sign(b) + b == 0)*np.sqrt(b**2 - 4*a*c))
-    ts = [aux / (2 * a), 2 * c / aux]
+    aux = b + math.copysign(np.sqrt(b**2 - 4*a*c), b)
+    ts = [-aux / (2 * a), -2 * c / aux]
     qs = [quadratic_form(B, g, s0 + t*s) for t in ts]
     return ts[np.argmin(qs)]
 
