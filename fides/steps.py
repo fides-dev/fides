@@ -281,7 +281,26 @@ class TRStep2D(Step):
         self.subspace = np.expand_dims(s_newt, 1)
 
 
-class TRStepSteihaug(Step):
+class CGStep(Step):
+    """
+        This class provides the machinery to compute an approximate solution of
+        the trust region subproblem using the Steihaug Method
+        """
+
+    type = 'cg'
+
+    def calculate(self):
+        nsg = norm(self.sg)
+        self.cg(min(0.5, np.sqrt(nsg)) * nsg)
+        self.s = self.scaling.dot(self.ss + self.ss0)
+        self.step_back()
+        self.qpval = quadratic_form(self.shess, self.sg, self.ss + self.ss0)
+
+    def cg(self, eps):
+        raise NotImplementedError()
+
+
+class TRStepSteihaug(CGStep):
     """
     This class provides the machinery to compute an approximate solution of
     the trust region subproblem using the Steihaug Method
@@ -289,14 +308,7 @@ class TRStepSteihaug(Step):
 
     type = 'cgs'
 
-    def calculate(self):
-        nsg = norm(self.sg)
-        self.steihaug(min(0.5, np.sqrt(nsg)) * nsg)
-        self.s = self.scaling.dot(self.ss + self.ss0)
-        self.step_back()
-        self.qpval = quadratic_form(self.shess, self.sg, self.ss + self.ss0)
-
-    def steihaug(self, eps):
+    def cg(self, eps):
         z = np.zeros_like(self.sg)
         r = self.sg.copy()
         d = -self.sg.copy()
