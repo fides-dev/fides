@@ -291,12 +291,18 @@ class CGStep(Step):
 
     def calculate(self):
         nsg = norm(self.sg)
-        self.cg(min(0.5, np.sqrt(nsg)) * nsg)
+        self.conj_grad(min(0.5, np.sqrt(nsg)) * nsg)
         self.s = self.scaling.dot(self.ss + self.ss0)
         self.step_back()
         self.qpval = quadratic_form(self.shess, self.sg, self.ss + self.ss0)
 
-    def cg(self, eps):
+    def conj_grad(self, eps):
+        """
+        Compute step proposal using conjugate gradient method
+
+        :param eps:
+            tolerance for residual norm
+        """
         raise NotImplementedError()
 
 
@@ -308,7 +314,7 @@ class TRStepSteihaug(CGStep):
 
     type = 'cgs'
 
-    def cg(self, eps):
+    def conj_grad(self, eps):
         z = np.zeros_like(self.sg)
         r = self.sg.copy()
         d = -self.sg.copy()

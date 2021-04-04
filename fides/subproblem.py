@@ -62,7 +62,7 @@ def solve_1d_trust_region_subproblem(B: np.ndarray,
     a = 0.5 * B.dot(s).dot(s)
     if not isinstance(a, float):
         a = a[0, 0]
-    b = 2 * s.T.dot(g)
+    b = s.T.dot(B.dot(s0) + g)
 
     minq = - b / (2 * a)
     if a > 0 and norm(minq * s + s0) <= delta:
@@ -79,8 +79,8 @@ def get_1d_trust_region_boundary_solution(B, g, s, s0, delta):
     b = 2 * np.dot(s0, s)
     c = np.dot(s0, s0) - delta**2
 
-    aux = b + (np.sign(b) + b == 0)*np.sqrt(b**2 - 4*a*c)
-    ts = [- aux / (2 * a), -2 * c / aux]
+    aux = -(b + (np.sign(b) + b == 0)*np.sqrt(b**2 - 4*a*c))
+    ts = [aux / (2 * a), 2 * c / aux]
     qs = [quadratic_form(B, g, s0 + t*s) for t in ts]
     return ts[np.argmin(qs)]
 
