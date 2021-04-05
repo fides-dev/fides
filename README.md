@@ -31,7 +31,7 @@ Fides can be installed via `pip install fides`. Further documentation is
 
 
 * Boundary constrained interior trust-region optimization
-* Recursive Reflective and Truncated constraint management
-* Full and 2D subproblem solution solvers
-* BFGS, DFP and SR1 Hessian Approximations
+* Reflective, truncated and optimization based boundary heuristics
+* Exact, 2D and CG subproblem solvers
+* BFGS, DFP, SR1 and Hybrid  Hessian Approximations
 
