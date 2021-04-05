@@ -261,7 +261,8 @@ class TRStep2D(Step):
                              'using scaling * np.sign(sg) and ev to smallest '
                              'eigenvalue instead.')
                 e, v = slinalg.eigs(self.shess, k=1, which='SR')
-                s_newt = v[:, np.argmin(e)]
+                if np.min(e) < 0:
+                    s_newt = np.real(v[:, np.argmin(e)])
                 normalize(s_newt)
                 s_grad = scaling * np.sign(sg) + (sg == 0)
             else:
