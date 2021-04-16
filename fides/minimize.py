@@ -424,11 +424,12 @@ class Optimizer:
             )
             converged = True
 
-        elif gnorm <= grtol * self.fval:
+        elif gnorm <= grtol * np.abs(self.fval):
             self.exitflag = ExitFlag.GTOL
             self.logger.warning(
                 'Stopping as gradient norm satisfies relative convergence '
-                f'criteria: {gnorm:.2E} < {grtol:.2E} * {self.fval:.2E}'
+                f'criteria: {gnorm:.2E} < {grtol:.2E} * '
+                f'{np.abs(self.fval):.2E}'
             )
             converged = True
 
