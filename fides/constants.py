@@ -31,9 +31,8 @@ class Options(str, enum.Enum):
     GAMMA2 = 'gamma2'  # factor by which trust region radius will be increased
     REFINE_STEPBACK = 'refine_stepback'  # whether stepbacks are refined via
     # optimization
-    SCALED_GRADIENT = 'scaled_gradient' # whether scaled gradient should be
+    SCALED_GRADIENT = 'scaled_gradient'  # whether scaled gradient should be
     # added to the set of possible stepback proposals
-
 
 
 class SubSpaceDim(str, enum.Enum):
