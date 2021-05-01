@@ -81,20 +81,15 @@ def trust_region(x: np.ndarray,
     sg = scaling.dot(g)
     g_dscaling = csc_matrix(np.diag(np.abs(g) * dv))
 
-    if subspace_dim == SubSpaceDim.TWO:
-        tr_step = TRStep2D(
-            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
-        )
-    elif subspace_dim == SubSpaceDim.FULL:
-        tr_step = TRStepFull(
-            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
-        )
-    elif subspace_dim == SubSpaceDim.STEIHAUG:
-        tr_step = TRStepSteihaug(
-            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
-        )
-    else:
+    steps = {
+        SubSpaceDim.TWO: TRStep2D,
+        SubSpaceDim.FULL: TRStepFull,
+        SubSpaceDim.STEIHAUG: TRStepSteihaug,
+    }
+    if subspace_dim not in steps:
         raise ValueError('Invalid choice of subspace dimension.')
+    tr_step = steps[subspace_dim](x, sg, hess, scaling, g_dscaling, delta,
+                                  theta, ub, lb, logger)
     tr_step.calculate()
 
     # in case of truncation, we hit the boundary and we check both the
