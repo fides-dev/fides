@@ -29,7 +29,11 @@ class Options(str, enum.Enum):
     ETA = 'eta'  # trust region increase threshold for trust region ratio
     GAMMA1 = 'gamma1'  # factor by which trust region radius will be decreased
     GAMMA2 = 'gamma2'  # factor by which trust region radius will be increased
-    REFINE_STEPBACK = 'refine_stepback'  # whether
+    REFINE_STEPBACK = 'refine_stepback'  # whether stepbacks are refined via
+    # optimization
+    SCALED_GRADIENT = 'scaled_gradient' # whether scaled gradient should be
+    # added to the set of possible stepback proposals
+
 
 
 class SubSpaceDim(str, enum.Enum):
@@ -70,6 +74,7 @@ DEFAULT_OPTIONS = {
     Options.GAMMA1: 1/4,  # [NodedalWright2006]
     Options.GAMMA2: 2,  # [NodedalWright2006]
     Options.REFINE_STEPBACK: False,
+    Options.SCALED_GRADIENT: True,
 }
 
 

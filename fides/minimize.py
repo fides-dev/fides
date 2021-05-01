@@ -236,6 +236,9 @@ class Optimizer:
                     subspace_dim=self.get_option(Options.SUBSPACE_DIM),
                     stepback_strategy=self.get_option(Options.STEPBACK_STRAT),
                     refine_stepback=self.get_option(Options.REFINE_STEPBACK),
+                    use_scaled_gradient=self.get_option(
+                        Options.SCALED_GRADIENT
+                    ),
                     logger=self.logger
                 )
 
