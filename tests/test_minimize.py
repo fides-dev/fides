@@ -112,6 +112,7 @@ def unbounded_and_init():
                                       StepBackStrategy.TRUNCATE,
                                       StepBackStrategy.MIXED])
 @pytest.mark.parametrize("refine", [True, False])
+@pytest.mark.parametrize("sgradient", [True, False])
 @pytest.mark.parametrize("subspace_dim", [SubSpaceDim.STEIHAUG,
                                           SubSpaceDim.FULL,
                                           SubSpaceDim.TWO])
@@ -128,7 +129,7 @@ def unbounded_and_init():
     (rosenboth, HybridUpdate(init_with_hess=True)),
 ])
 def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
-                              stepback, refine):
+                              stepback, refine, sgradient):
     lb, ub, x0 = bounds_and_init
 
     opt = Optimizer(
@@ -138,7 +139,8 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
                  fides.Options.SUBSPACE_DIM: subspace_dim,
                  fides.Options.STEPBACK_STRAT: stepback,
                  fides.Options.MAXITER: 1e3,
-                 fides.Options.REFINE_STEPBACK: refine, }
+                 fides.Options.REFINE_STEPBACK: refine,
+                 fides.Options.SCALED_GRADIENT: sgradient}
     )
     opt.minimize(x0)
     assert opt.fval >= opt.fval_min

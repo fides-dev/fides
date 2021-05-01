@@ -16,12 +16,7 @@ optimization problems based on the papers
 [ColemanLi1994](https://doi.org/10.1007/BF01582221) and
 [ColemanLi1996](http://dx.doi.org/10.1137/0806023). Accordingly, Fides is named
 after the Roman goddess of trust and
-reliability. In contrast to other optimizers, Fides solves the full trust
--region subproblem exactly, which can yield higher quality proposal steps, but
-is computationally more expensive. This makes Fides particularly attractive
-for optimization problems with objective functions that are computationally
-expensive to evaluate and the computational cost of solving the trust
- -region subproblem is negligible.
+reliability.
 
 Fides can be installed via `pip install fides`. Further documentation is
  available at [Read the Docs](https://fides-optimizer.readthedocs.io/).

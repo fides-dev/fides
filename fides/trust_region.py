@@ -31,6 +31,7 @@ def trust_region(x: np.ndarray,
                  subspace_dim: SubSpaceDim,
                  stepback_strategy: StepBackStrategy,
                  refine_stepback: bool,
+                 use_scaled_gradient: bool,
                  logger: logging.Logger) -> Step:
     """
     Compute a step according to the solution of the trust-region subproblem.
@@ -67,6 +68,9 @@ def trust_region(x: np.ndarray,
     :param refine_stepback:
         If set to True, proposed steps that are computed via the specified
         stepback_strategy will be refined via optimization.
+    :param use_scaled_gradient:
+        If set to True, the scaled gradient will be added to the set of
+        proposal steps
     :param logger:
         logging.Logger instance to be used for logging
 
@@ -81,20 +85,15 @@ def trust_region(x: np.ndarray,
     sg = scaling.dot(g)
     g_dscaling = csc_matrix(np.diag(np.abs(g) * dv))
 
-    if subspace_dim == SubSpaceDim.TWO:
-        tr_step = TRStep2D(
-            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
-        )
-    elif subspace_dim == SubSpaceDim.FULL:
-        tr_step = TRStepFull(
-            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
-        )
-    elif subspace_dim == SubSpaceDim.STEIHAUG:
-        tr_step = TRStepSteihaug(
-            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
-        )
-    else:
+    steps = {
+        SubSpaceDim.TWO: TRStep2D,
+        SubSpaceDim.FULL: TRStepFull,
+        SubSpaceDim.STEIHAUG: TRStepSteihaug,
+    }
+    if subspace_dim not in steps:
         raise ValueError('Invalid choice of subspace dimension.')
+    tr_step = steps[subspace_dim](x, sg, hess, scaling, g_dscaling, delta,
+                                  theta, ub, lb, logger)
     tr_step.calculate()
 
     # in case of truncation, we hit the boundary and we check both the
@@ -106,12 +105,12 @@ def trust_region(x: np.ndarray,
         g_step = GradientStep(x, sg, hess, scaling, g_dscaling, delta,
                               theta, ub, lb, logger)
         g_step.calculate()
-
-        dg_step = ScaledGradientStep(x, sg, hess, scaling, g_dscaling, delta,
-                                     theta, ub, lb, logger)
-        dg_step.calculate()
-
-        steps.extend([g_step, dg_step])
+        steps.append(g_step)
+        if use_scaled_gradient:
+            dg_step = ScaledGradientStep(x, sg, hess, scaling, g_dscaling,
+                                         delta, theta, ub, lb, logger)
+            dg_step.calculate()
+            steps.append(dg_step)
 
         if stepback_strategy == StepBackStrategy.SINGLE_REFLECT:
             rtr_step = TRStepReflected(x, sg, hess, scaling, g_dscaling, delta,
