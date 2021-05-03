@@ -52,7 +52,8 @@ class StepBackStrategy(str, enum.Enum):
     """
     SINGLE_REFLECT = 'reflect_single'  #: single reflection at boundary
     REFLECT = 'reflect'  #: recursive reflections at boundary
-    TRUNCATE = 'truncate'  #: truncate step at boundary and resolve subproblem
+    TRUNCATE = 'truncate'  #: truncate step at boundary and re-solve
+    # restricted subproblem
     MIXED = 'mixed'  #: mix reflections and truncations
 
 
