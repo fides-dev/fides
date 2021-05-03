@@ -73,7 +73,7 @@ DEFAULT_OPTIONS = {
     Options.GAMMA1: 1/4,  # [NodedalWright2006]
     Options.GAMMA2: 2,  # [NodedalWright2006]
     Options.REFINE_STEPBACK: False,
-    Options.SCALED_GRADIENT: True,
+    Options.SCALED_GRADIENT: False,
 }
 
 
