@@ -109,6 +109,8 @@ class Optimizer:
         self.grad_min = self.grad
 
         self.hessian_update: HessianApproximation = hessian_update
+        self.iterations_since_tr_update: int = 0
+        self.hybrid_switch: bool = False
 
         self.starttime: float = np.nan
         self.iteration: int = 0
@@ -120,11 +122,12 @@ class Optimizer:
     def _reset(self):
         self.starttime = time.time()
         self.iteration = 0
-        self.converged: bool = False
-        self.delta: float = self.get_option(Options.DELTA_INIT)
-        self.delta_iter: float = self.delta
+        self.converged = False
+        self.delta = self.get_option(Options.DELTA_INIT)
+        self.delta_iter = self.delta
         self.fval_min = np.inf
         self.logger = create_logger(self.verbose)
+        self.hybrid_switch = False
 
     def minimize(self, x0: np.ndarray):
         """
@@ -315,9 +318,14 @@ class Optimizer:
 
         if self.hessian_update is None or \
                 (isinstance(self.hessian_update, HybridUpdate) and
-                 self.iteration < self.hessian_update.switch_iteration):
+                 (self.iterations_since_tr_update <
+                  self.hessian_update.switch_iteration and not
+                  self.hybrid_switch)):
             self.hess = hess_new
         else:
+            if not self.hybrid_switch:
+                self.logger.info('Hybrid switchpoint reached.')
+            self.hybrid_switch = True
             self.hess = self.hessian_update.get_mat()
         self.check_in_bounds(x_new)
         self.fval = fval_new
@@ -348,12 +356,14 @@ class Optimizer:
         """
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
+        self.iterations_since_tr_update += 1
         if not np.isfinite(fval):
             self.tr_ratio = 0
             self.delta = np.nanmin([
                 self.delta * self.get_option(Options.GAMMA1),
                 nsx / 4
             ])
+            self.iterations_since_tr_update = 0
             return False
         else:
             qpval = 0.5 * stepsx.dot(dv * np.abs(grad) * stepsx)
@@ -366,6 +376,7 @@ class Optimizer:
                     and not interior_solution and step.qpval <= 0:
                 # increase radius
                 self.delta = self.get_option(Options.GAMMA2) * self.delta
+                self.iterations_since_tr_update = 0
             elif self.tr_ratio <= self.get_option(Options.MU) or \
                     step.qpval > 0:
                 # decrease radius
@@ -373,6 +384,7 @@ class Optimizer:
                     self.delta * self.get_option(Options.GAMMA1),
                     nsx / 4
                 ])
+                self.iterations_since_tr_update = 0
             return self.tr_ratio > 0.0 and step.qpval <= 0
 
     def check_convergence(self, step: Step, fval: float,

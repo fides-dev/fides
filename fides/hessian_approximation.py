@@ -131,7 +131,7 @@ class HybridUpdate(HessianApproximation):
                  happ: HessianApproximation = None,
                  hess_init: Optional[np.ndarray] = None,
                  init_with_hess: Optional[bool] = False,
-                 switch_iteration: Optional[int] = None):
+                 switch_iteration: Optional[int] = 20):
         """
         Create a Hybrid Hessian update strategy which is generated from the
         start but only applied after a certain iteration, while Hessian
@@ -165,8 +165,6 @@ class HybridUpdate(HessianApproximation):
         self.hessian_update.set_init(hess_init)
 
     def init_mat(self, dim: int):
-        if self.switch_iteration is None:
-            self.switch_iteration = 2*dim
         self.hessian_update.init_mat(dim)
 
     def update(self, s, y):
