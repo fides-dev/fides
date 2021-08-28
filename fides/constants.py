@@ -65,7 +65,7 @@ DEFAULT_OPTIONS = {
     Options.XTOL: 0,
     Options.GATOL: 1e-6,
     Options.GRTOL: 0,
-    Options.SUBSPACE_DIM: SubSpaceDim.FULL,
+    Options.SUBSPACE_DIM: SubSpaceDim.TWO,
     Options.STEPBACK_STRAT: StepBackStrategy.REFLECT,
     Options.THETA_MAX: 0.95,
     Options.DELTA_INIT: 1.0,
