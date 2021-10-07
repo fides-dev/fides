@@ -180,7 +180,7 @@ class Optimizer:
                 resfun != hessian_update.requires_resfun:
             raise ValueError(f'Hessian update scheme {type(hessian_update)} '
                              f'requires an objective function that returns '
-                             f'(residual, residual derivative). Please make'
+                             f'(residual, residual derivative). Please make '
                              f'sure that is the case and then call this '
                              f'function with argument resfun set to `True`.')
 
