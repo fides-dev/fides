@@ -34,6 +34,15 @@ class FunEvaluator:
     def __call__(self, x: np.ndarray):
         ret = self.fun(x, **self.funargs)
 
+        if len(ret) != self.nargout:
+            raise ValueError(f'Provided function returned {len(ret)} values, '
+                             f'but was expected to return {self.nargout}.'
+                             f'Please make sure the provided function is '
+                             f'compatible with the employed Hessian '
+                             f'Approximation Scheme. If no Hessian '
+                             f'Approximation Scheme is employed, the function '
+                             f'needs to return 3 values (fval, grad, hess).')
+
         if self.resfun:
             res, sres = ret
             return Funout(fval=0.5 * res.T.dot(res), grad=res.T.dot(sres),
