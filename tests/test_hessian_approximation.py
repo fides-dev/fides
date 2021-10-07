@@ -43,4 +43,3 @@ def test_broyden_class_update():
         broyden_class_update(np.random.random((2,)),
                              np.random.random((2,)),
                              np.random.random((2, 2)))
-
