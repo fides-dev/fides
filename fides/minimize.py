@@ -12,8 +12,8 @@ from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from .trust_region import trust_region, Step
 from .hessian_approximation import (
-    HessianApproximation, StructuredApproximation, HybridSwitchApproximation,
-    IterativeHessianApproximation, HybridFixed, FX,
+    HessianApproximation, StructuredApproximation, HybridFixed, FX,
+    IterativeHessianApproximation,
 )
 from .constants import Options, ExitFlag, DEFAULT_OPTIONS
 from .logging import create_logger
@@ -93,7 +93,6 @@ class Funout:
 
     def __repr__(self):
         return f'Funout(fval={self.fval}, grad={self.grad}, hess={self.hess})'
-
 
 
 class Optimizer:

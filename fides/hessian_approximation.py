@@ -107,7 +107,7 @@ class Broyden(IterativeHessianApproximation):
     generalization of BFGS/DFP methods where the parameter :math:`phi`
     controls the convex combination between the two. This is a rank 2 update
     strategy that preserves positive-semidefiniteness and symmetry (if
-    :math:`\phi \in [0,1]`).
+    :math:`\\phi \\in [0,1]`).
 
     :parameter phi:
         convex combination parameter interpolating between BFGS (phi==0) and
@@ -249,12 +249,12 @@ class FX(HybridSwitchApproximation):
         Hybrid method as introduced by
         [Fletcher & Xu 1986](https://doi.org/10.1093/imanum/7.3.371). This
         approximation scheme employs a dynamic approximation as long as
-        function values satisfy :math:`\frac{f_k - f_{k+1}}{f_k} < \epsilon`
+        function values satisfy :math:`\frac{f_k - f_{k+1}}{f_k} < \\epsilon`
         and employs the iterative scheme applied to the last dynamic
         approximation if not.
 
         :param hybrid_tol:
-            switch tolerance :math:`\epsilon`
+            switch tolerance :math:`\\epsilon`
         """
         self.hybrid_tol = hybrid_tol
         super(FX, self).__init__(happ)
