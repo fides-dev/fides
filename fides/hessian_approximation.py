@@ -428,7 +428,7 @@ def broyden_class_update(y, s, mat, phi=None, v=None):
 
     if v is None and phi is not None:
         bfgs = phi == 0
-    elif v is not None:
+    elif v is not None and phi is None:
         bfgs = False
     else:
         raise ValueError('Exactly one of the values of phi and v must be '
