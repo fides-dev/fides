@@ -168,13 +168,15 @@ class Optimizer:
             Boolean flag indicating whether fun returns function values
             (False, default) or residuals (True).
         """
-        nargout = 3 if hessian_update is None or hessian_update.requires_hess \
-            else 2
+        nargout = 3 if hessian_update is None or (
+            hessian_update.requires_hess and not hessian_update.requires_resfun
+        ) else 2
+
         self.fevaler = FunEvaluator(fun=fun, nargout=nargout, resfun=resfun,
                                     funargs=funargs)
 
         if hessian_update is not None and \
-                resfun != hessian_update.requires_residual_fun:
+                resfun != hessian_update.requires_resfun:
             raise ValueError(f'Hessian update scheme {type(hessian_update)} '
                              f'requires an objective function that returns '
                              f'(residual, residual derivative). Please make'

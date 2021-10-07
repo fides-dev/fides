@@ -66,7 +66,7 @@ class HessianApproximation:
         self._hess = mat
 
     @property
-    def requires_residual_fun(self):
+    def requires_resfun(self):
         return False
 
     @property
@@ -122,8 +122,7 @@ class Broyden(IterativeHessianApproximation):
         super(Broyden, self).__init__(init_with_hess)
 
     def update(self, s, y):
-        curv = y.T.dot(s)
-        if curv <= 0:
+        if y.T.dot(s) <= 0:
             return
         self._hess += broyden_class_update(y, s, self._hess, self.phi)
 
@@ -150,7 +149,7 @@ class SR1(IterativeHessianApproximation):
 
         # [NocedalWright2006] (6.26) reject if update degenerate
         if np.abs(d) >= 1e-8 * norm(s) * norm(z):
-            self._hess += np.outer(z, z.T)/d
+            self._hess += np.outer(z, z.T) / d
 
 
 class BG(IterativeHessianApproximation):
@@ -172,7 +171,10 @@ class BB(IterativeHessianApproximation):
     positive definiteness.
     """
     def update(self, s, y):
-        self._hess += np.outer(y - self._hess.dot(s), s.T) / y.T.dot(s)
+        b = y.T.dot(s)
+        if b <= 0:
+            return
+        self._hess += np.outer(y - self._hess.dot(s), s.T) / b
 
 
 class HybridSwitchApproximation(HessianApproximation):
@@ -261,7 +263,7 @@ class FX(HybridSwitchApproximation):
         else:
             self.hessian_update.update(s, yh)
 
-    def requires_residual_fun(self):
+    def requires_resfun(self):
         return True
 
 
@@ -312,7 +314,7 @@ class StructuredApproximation(HessianApproximation):
                hess: np.ndarray, yb: np.ndarray):
         raise NotImplementedError()  # pragma : no cover
 
-    def requires_residual_fun(self):
+    def requires_resfun(self):
         return True
 
     def requires_hess(self):

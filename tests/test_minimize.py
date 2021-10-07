@@ -168,16 +168,16 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
         x0 += 1
 
     opt = Optimizer(
-        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        fun, ub=ub, lb=lb, verbose=logging.WARNING,
         hessian_update=happ if happ is not None else None,
         options={fides.Options.FATOL: 0,
                  fides.Options.FRTOL: 1e-12 if fun is fletcher else 1e-8,
                  fides.Options.SUBSPACE_DIM: subspace_dim,
                  fides.Options.STEPBACK_STRAT: stepback,
-                 fides.Options.MAXITER: 1e3,
+                 fides.Options.MAXITER: 2e2,
                  fides.Options.REFINE_STEPBACK: refine,
                  fides.Options.SCALED_GRADIENT: sgradient},
-        resfun=happ.requires_residual_fun if happ is not None else False
+        resfun=happ.requires_resfun if happ is not None else False
     )
     opt.minimize(x0)
     assert opt.fval >= opt.fval_min
@@ -190,7 +190,7 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
     if opt.fval == opt.fval_min:
         assert np.isclose(opt.grad, opt.grad_min).all()
         assert np.isclose(opt.x, opt.x_min).all()
-    if np.all(ub > 1):
+    if np.all(ub > 1) and not isinstance(happ, BB):  # bad broyden is bad
         assert np.isclose(opt.x, xsol,
                           atol=1e-4 if fun is fletcher else 1e-6).all()
         assert np.isclose(opt.grad, np.zeros(opt.x.shape),
