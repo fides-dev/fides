@@ -161,10 +161,7 @@ class BG(IterativeHessianApproximation):
     positive definiteness.
     """
     def update(self, s, y):
-        z = y - self._hess.dot(s)
-        a = s.T.dot(s)
-
-        self._hess += np.outer(z, s.T) / a
+        self._hess += np.outer(y - self._hess.dot(s), s.T) / s.T.dot(s)
 
 
 class BB(IterativeHessianApproximation):
@@ -175,10 +172,7 @@ class BB(IterativeHessianApproximation):
     positive definiteness.
     """
     def update(self, s, y):
-        z = y - self._hess.dot(s)
-        a = s.T.dot(s)
-
-        self._hess += np.outer(z, s.T) / a
+        self._hess += np.outer(y - self._hess.dot(s), s.T) / y.T.dot(s)
 
 
 class HybridSwitchApproximation(HessianApproximation):
