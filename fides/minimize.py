@@ -34,7 +34,7 @@ class FunEvaluator:
     def __call__(self, x: np.ndarray):
         ret = self.fun(x, **self.funargs)
 
-        if len(ret) != self.nargout:
+        if not isinstance(ret, tuple) or len(ret) != self.nargout:
             raise ValueError(f'Provided function returned {len(ret)} values, '
                              f'but was expected to return {self.nargout}.'
                              f'Please make sure the provided function is '
