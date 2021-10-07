@@ -136,29 +136,29 @@ def unbounded_and_init():
                                              finite_bounds_include_optimum(),
                                              finite_bounds_exlude_optimum()])
 @pytest.mark.parametrize("fun, happ", [
-    (rosenboth, None),
-    (rosengrad, SR1()),
-    (rosengrad, BFGS()),
-    (rosengrad, DFP()),
-    (rosengrad, BG()),
-    (rosengrad, BB()),
-    (rosengrad, PSB()),
-    (rosengrad, Broyden(0.5)),
-    (rosenboth, HybridFixed(BFGS())),
-    (rosenboth, HybridFixed(SR1())),
-    (rosenboth, HybridFixed(BFGS(init_with_hess=True))),
-    (rosenboth, HybridFixed(SR1(init_with_hess=True))),
-    (fletcher, FX(BFGS())),
-    (fletcher, FX(SR1())),
-    (fletcher, FX(BFGS(init_with_hess=True))),
-    (fletcher, FX(SR1(init_with_hess=True))),
-    (fletcher, SSM('BFGS')),
-    (fletcher, SSM('DFP')),
-    (fletcher, SSM('PSB')),
-    (fletcher, TSSM('BFGS')),
-    (fletcher, TSSM('DFP')),
-    (fletcher, TSSM('PSB')),
-    (fletcher, GNSBFGS()),
+    (rosenboth, None),  # 0
+    (rosengrad, SR1()),  # 1
+    (rosengrad, BFGS()),  # 2
+    (rosengrad, DFP()),  # 3
+    (rosengrad, BG()),  # 4
+    (rosengrad, BB()),  # 5
+    (rosengrad, PSB()),  # 6
+    (rosengrad, Broyden(0.5)),  # 7
+    (rosenboth, HybridFixed(BFGS())),  # 8
+    (rosenboth, HybridFixed(SR1())),  # 9
+    (rosenboth, HybridFixed(BFGS(init_with_hess=True))),  # 10
+    (rosenboth, HybridFixed(SR1(init_with_hess=True))),  # 11
+    (fletcher, FX(BFGS())),  # 12
+    (fletcher, FX(SR1())),  # 13
+    (fletcher, FX(BFGS(init_with_hess=True))),  # 14
+    (fletcher, FX(SR1(init_with_hess=True))),  # 15
+    (fletcher, SSM('BFGS')),  # 16
+    (fletcher, SSM('DFP')),  # 17
+    (fletcher, SSM('PSB')),  # 18
+    (fletcher, TSSM('BFGS')),  # 19
+    (fletcher, TSSM('DFP')),  # 20
+    (fletcher, TSSM('PSB')),  # 21
+    (fletcher, GNSBFGS()),  # 22
 ])
 def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
                               stepback, refine, sgradient):
@@ -171,6 +171,7 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
         fun, ub=ub, lb=lb, verbose=logging.INFO,
         hessian_update=happ if happ is not None else None,
         options={fides.Options.FATOL: 0,
+                 fides.Options.FRTOL: 1e-12 if fun is fletcher else 1e-8,
                  fides.Options.SUBSPACE_DIM: subspace_dim,
                  fides.Options.STEPBACK_STRAT: stepback,
                  fides.Options.MAXITER: 1e3,
