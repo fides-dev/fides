@@ -35,7 +35,8 @@ class FunEvaluator:
         ret = self.fun(x, **self.funargs)
 
         if not isinstance(ret, tuple) or len(ret) != self.nargout:
-            raise ValueError(f'Provided function returned {len(ret)} values, '
+            nargout = len(ret) if isinstance(ret, tuple) else 1
+            raise ValueError(f'Provided function returned {nargout} values, '
                              f'but was expected to return {self.nargout}.'
                              f'Please make sure the provided function is '
                              f'compatible with the employed Hessian '
