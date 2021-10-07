@@ -67,11 +67,11 @@ class HessianApproximation:
 
     @property
     def requires_resfun(self):
-        return False
+        return False  # pragma: no cover
 
     @property
     def requires_hess(self):
-        return False
+        return False  # pragma: no cover
 
 
 class IterativeHessianApproximation(HessianApproximation):
@@ -79,7 +79,7 @@ class IterativeHessianApproximation(HessianApproximation):
     Iterative update schemes that only use s and y values for update.
     """
     def update(self, s, y):
-        raise NotImplementedError()  # pragma : no cover
+        raise NotImplementedError()  # pragma: no cover
 
 
 class BFGS(IterativeHessianApproximation):
@@ -214,7 +214,7 @@ class HybridSwitchApproximation(HessianApproximation):
         self.hessian_update.set_mat(mat)
 
     def requires_hess(self):
-        return True
+        return True  # pragma: no cover
 
 
 class HybridFixed(HybridSwitchApproximation):
@@ -282,7 +282,7 @@ class FX(HybridSwitchApproximation):
             self.hessian_update.update(s, yh)
 
     def requires_resfun(self):
-        return True
+        return True  # pragma: no cover
 
 
 def _bfgs_vector(s, y, mat):
@@ -330,13 +330,13 @@ class StructuredApproximation(HessianApproximation):
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray):
-        raise NotImplementedError()  # pragma : no cover
+        raise NotImplementedError()  # pragma: no cover
 
     def requires_resfun(self):
-        return True
+        return True  # pragma: no cover
 
     def requires_hess(self):
-        return True
+        return True  # pragma: no cover
 
 
 class SSM(StructuredApproximation):
