@@ -86,6 +86,8 @@ class BFGS(IterativeHessianApproximation):
     """
     Broyden-Fletcher-Goldfarb-Shanno update strategy. This is a rank 2
     update strategy that preserves symmetry and positive-semidefiniteness.
+
+    This scheme only works with a function that returns (fval, grad)
     """
     def update(self, s, y):
         self._hess += broyden_class_update(y, s, self._hess, phi=0.0)
@@ -95,6 +97,8 @@ class DFP(IterativeHessianApproximation):
     """
     Davidon-Fletcher-Powell update strategy. This is a rank 2
     update strategy that preserves symmetry and positive-semidefiniteness.
+
+    This scheme only works with a function that returns (fval, grad)
     """
     def update(self, s, y):
         self._hess += broyden_class_update(y, s, self._hess, phi=1.0)
@@ -102,12 +106,14 @@ class DFP(IterativeHessianApproximation):
 
 class Broyden(IterativeHessianApproximation):
     """
-    BroydenClass Update Scheme as described in [Nocedal & Wright](
+    BroydenClass Update scheme as described in [Nocedal & Wright](
     http://dx.doi.org/10.1007/b98874) Chapter 6.3. This is a
     generalization of BFGS/DFP methods where the parameter :math:`phi`
     controls the convex combination between the two. This is a rank 2 update
     strategy that preserves positive-semidefiniteness and symmetry (if
     :math:`\\phi \\in [0,1]`).
+
+    This scheme only works with a function that returns (fval, grad)
 
     :parameter phi:
         convex combination parameter interpolating between BFGS (phi==0) and
@@ -132,6 +138,8 @@ class PSB(IterativeHessianApproximation):
     Powell-symmetric-Broyden update strategy as introduced in []().
     This is a rank 2 update strategy that preserves symmetry and
     positive-semidefiniteness.
+
+    This scheme only works with a function that returns (fval, grad)
     """
     def update(self, s, y):
         self._hess += broyden_class_update(y, s, self._hess, v=s)
@@ -142,6 +150,8 @@ class SR1(IterativeHessianApproximation):
     Symmetric Rank 1 update strategy as introduced in []().
     This is a rank 1 update  strategy that preserves symmetry but does not
     preserve positive-semidefiniteness.
+
+    This scheme only works with a function that returns (fval, grad)
     """
     def update(self, s, y):
         z = y - self._hess.dot(s)
@@ -158,6 +168,8 @@ class BG(IterativeHessianApproximation):
     [Broyden 1965](https://doi.org/10.1090%2FS0025-5718-1965-0198670-6).
     This is a rank 1 update strategy that does not preserve symmetry or
     positive definiteness.
+
+    This scheme only works with a function that returns (fval, grad)
     """
     def update(self, s, y):
         self._hess += np.outer(y - self._hess.dot(s), s.T) / s.T.dot(s)
@@ -169,6 +181,8 @@ class BB(IterativeHessianApproximation):
     [Broyden 1965](https://doi.org/10.1090%2FS0025-5718-1965-0198670-6).
     This is a rank 1 update strategy that does not preserve symmetry or
     positive definiteness.
+
+    This scheme only works with a function that returns (fval, grad)
     """
     def update(self, s, y):
         b = y.T.dot(s)
@@ -213,6 +227,8 @@ class HybridFixed(HybridSwitchApproximation):
         scheme is initialized and updated from the beginning, but only
         employed after the specified number of iterations.
 
+        This scheme only works with a function that returns (fval, grad, hess)
+
         :param switch_iteration:
             Iteration after which this approximation is used
         """
@@ -241,16 +257,18 @@ class FX(HybridSwitchApproximation):
     def __init__(self,
                  happ: IterativeHessianApproximation = BFGS(),
                  hybrid_tol: Optional[float] = 1e-2):
-        """
+        r"""
         Hybrid method as introduced by
         [Fletcher & Xu 1986](https://doi.org/10.1093/imanum/7.3.371). This
         approximation scheme employs a dynamic approximation as long as
-        function values satisfy :math:`\frac{f_k - f_{k+1}}{f_k} < \\epsilon`
+        function values satisfy :math:`\frac{f_k - f_{k+1}}{f_k} < \epsilon`
         and employs the iterative scheme applied to the last dynamic
         approximation if not.
 
+        This scheme only works with a function that returns (fval, grad, hess)
+
         :param hybrid_tol:
-            switch tolerance :math:`\\epsilon`
+            switch tolerance :math:`\epsilon`
         """
         self.hybrid_tol = hybrid_tol
         super(FX, self).__init__(happ)
@@ -326,6 +344,8 @@ class SSM(StructuredApproximation):
     Structured Secant Method as introduced by
     [Dennis et al 1989](https://doi.org/10.1007/BF00962795), which is
     compatible with BFGS, DFP and PSB update schemes.
+
+    This scheme only works with a function that returns (res, sres)
     """
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
@@ -342,6 +362,8 @@ class TSSM(StructuredApproximation):
     Totally Structured Secant Method as introduced by
     [Huschens 1994](https://doi.org/10.1137/0804005), which uses a
     self-adjusting update method for the second order term.
+
+    This scheme only works with a function that returns (res, sres)
     """
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
@@ -359,6 +381,8 @@ class GNSBFGS(StructuredApproximation):
         [Zhou & Chen 2010](https://doi.org/10.1137/090748470),
         which combines ideas of hybrid switching methods and structured
         secant methods.
+
+        This scheme only works with a function that returns (res, sres)
 
         :parameter hybrid_tol:
             switching tolerance that controls switching between update methods
@@ -380,18 +404,20 @@ def broyden_class_update(y, s, mat, phi=None, v=None):
     """
     Scale free implementation of the broyden class update scheme. This can
     either be called by using a phi parameter that interpolates between BFGS
-    (phi=0) and DFP (phi=1) or by using the weighting vector v that also allows
-    implementation of PSB method (v=s)
+    (phi=0) and DFP (phi=1) or by using the weighting vector v that allows
+    implementation of PSB (v=s), DFP (v=y) and BFGS (V=y+rho*B*s).
 
     :param y:
-
+        difference in gradient
     :param s:
-
+        search direction in previous step
     :param mat:
-
+        current hessian approximation
     :param phi:
-
+        convex combination parameter. Must not pass this parameter at the same
+        time as v.
     :param v:
+        weighting vector. Must not pass this parameter at the same time as phi.
     """
     u = mat.dot(s)
     c = u.T.dot(s)
