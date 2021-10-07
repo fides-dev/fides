@@ -82,28 +82,6 @@ class IterativeHessianApproximation(HessianApproximation):
         raise NotImplementedError()  # pragma: no cover
 
 
-class BFGS(IterativeHessianApproximation):
-    """
-    Broyden-Fletcher-Goldfarb-Shanno update strategy. This is a rank 2
-    update strategy that preserves symmetry and positive-semidefiniteness.
-
-    This scheme only works with a function that returns (fval, grad)
-    """
-    def update(self, s, y):
-        self._hess += broyden_class_update(y, s, self._hess, phi=0.0)
-
-
-class DFP(IterativeHessianApproximation):
-    """
-    Davidon-Fletcher-Powell update strategy. This is a rank 2
-    update strategy that preserves symmetry and positive-semidefiniteness.
-
-    This scheme only works with a function that returns (fval, grad)
-    """
-    def update(self, s, y):
-        self._hess += broyden_class_update(y, s, self._hess, phi=1.0)
-
-
 class Broyden(IterativeHessianApproximation):
     """
     BroydenClass Update scheme as described in [Nocedal & Wright](
@@ -133,9 +111,32 @@ class Broyden(IterativeHessianApproximation):
         self._hess += broyden_class_update(y, s, self._hess, self.phi)
 
 
+class BFGS(Broyden):
+    """
+    Broyden-Fletcher-Goldfarb-Shanno update strategy. This is a rank 2
+    update strategy that preserves symmetry and positive-semidefiniteness.
+
+    This scheme only works with a function that returns (fval, grad)
+    """
+    def __init__(self, init_with_hess: Optional[bool] = False):
+        super(BFGS, self).__init__(phi=0.0, init_with_hess=init_with_hess)
+
+
+class DFP(Broyden):
+    """
+    Davidon-Fletcher-Powell update strategy. This is a rank 2
+    update strategy that preserves symmetry and positive-semidefiniteness.
+
+    This scheme only works with a function that returns (fval, grad)
+    """
+    def __init__(self, init_with_hess: Optional[bool] = False):
+        super(DFP, self).__init__(phi=1.0, init_with_hess=init_with_hess)
+
+
 class PSB(IterativeHessianApproximation):
     """
-    Powell-symmetric-Broyden update strategy as introduced in []().
+    Powell-symmetric-Broyden update strategy as introduced in
+    [Powell 1970](https://doi.org/10.1016/B978-0-12-597050-1.50006-3).
     This is a rank 2 update strategy that preserves symmetry and
     positive-semidefiniteness.
 
@@ -147,7 +148,8 @@ class PSB(IterativeHessianApproximation):
 
 class SR1(IterativeHessianApproximation):
     """
-    Symmetric Rank 1 update strategy as introduced in []().
+    Symmetric Rank 1 update strategy as described in
+    [Nocedal & Wright](http://dx.doi.org/10.1007/b98874) Chapter 6.2.
     This is a rank 1 update  strategy that preserves symmetry but does not
     preserve positive-semidefiniteness.
 
