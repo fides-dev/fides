@@ -1,5 +1,7 @@
-from fides import Optimizer, BFGS, SR1, DFP, HybridUpdate, SubSpaceDim, \
-    StepBackStrategy
+from fides import (
+    Optimizer, BFGS, SR1, DFP, BB, BG, PSB, Broyden, GNSBFGS, HybridFixed,
+    FX, SSM, TSSM, SubSpaceDim, StepBackStrategy
+)
 import numpy as np
 
 import logging
@@ -30,6 +32,20 @@ def rosenboth(x):
                   [-400 * x[0], 200]])
 
     return f, g, h
+
+
+def fletcher(x):
+    res = np.array([np.sqrt(10.2)*x[0],
+                    np.sqrt(10.8)*x[1],
+                    4.6-x[0]**2,
+                    4.9-x[1]**2])
+
+    sres = np.array([[np.sqrt(10.2), 0],
+                     [0, np.sqrt(10.8)],
+                     [-2*x[0], 0],
+                     [0, -2*x[1]]])
+
+    return res, sres
 
 
 def rosenrandomfail(x):
@@ -124,13 +140,32 @@ def unbounded_and_init():
     (rosengrad, SR1()),
     (rosengrad, BFGS()),
     (rosengrad, DFP()),
-    (rosenboth, HybridUpdate(BFGS())),
-    (rosenboth, HybridUpdate(SR1())),
-    (rosenboth, HybridUpdate(init_with_hess=True)),
+    (rosengrad, BG()),
+    (rosengrad, BB()),
+    (rosengrad, PSB()),
+    (rosengrad, Broyden(0.5)),
+    (rosenboth, HybridFixed(BFGS())),
+    (rosenboth, HybridFixed(SR1())),
+    (rosenboth, HybridFixed(BFGS(init_with_hess=True))),
+    (rosenboth, HybridFixed(SR1(init_with_hess=True))),
+    (fletcher, FX(BFGS())),
+    (fletcher, FX(SR1())),
+    (fletcher, FX(BFGS(init_with_hess=True))),
+    (fletcher, FX(SR1(init_with_hess=True))),
+    (fletcher, SSM('BFGS')),
+    (fletcher, SSM('DFP')),
+    (fletcher, SSM('PSB')),
+    (fletcher, TSSM('BFGS')),
+    (fletcher, TSSM('DFP')),
+    (fletcher, TSSM('PSB')),
+    (fletcher, GNSBFGS()),
 ])
 def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
                               stepback, refine, sgradient):
     lb, ub, x0 = bounds_and_init
+
+    if (x0 == 0).all() and fun is fletcher:
+        x0 += 1
 
     opt = Optimizer(
         fun, ub=ub, lb=lb, verbose=logging.INFO,
@@ -140,16 +175,25 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
                  fides.Options.STEPBACK_STRAT: stepback,
                  fides.Options.MAXITER: 1e3,
                  fides.Options.REFINE_STEPBACK: refine,
-                 fides.Options.SCALED_GRADIENT: sgradient}
+                 fides.Options.SCALED_GRADIENT: sgradient},
+        resfun=happ.requires_residual_fun if happ is not None else False
     )
     opt.minimize(x0)
     assert opt.fval >= opt.fval_min
+
+    if fun is fletcher:
+        xsol = [0, 0]
+    else:
+        xsol = [1, 1]
+
     if opt.fval == opt.fval_min:
         assert np.isclose(opt.grad, opt.grad_min).all()
         assert np.isclose(opt.x, opt.x_min).all()
     if np.all(ub > 1):
-        assert np.isclose(opt.x, [1, 1]).all()
-        assert np.isclose(opt.grad, np.zeros(opt.x.shape), atol=1e-6).all()
+        assert np.isclose(opt.x, xsol,
+                          atol=1e-4 if fun is fletcher else 1e-6).all()
+        assert np.isclose(opt.grad, np.zeros(opt.x.shape),
+                          atol=1e-4 if fun is fletcher else 1e-6).all()
 
 
 @pytest.mark.parametrize("stepback", [StepBackStrategy.REFLECT,

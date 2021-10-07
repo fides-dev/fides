@@ -11,19 +11,96 @@ import logging
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from .trust_region import trust_region, Step
-from .hessian_approximation import HessianApproximation, HybridUpdate
+from .hessian_approximation import (
+    HessianApproximation, StructuredApproximation, HybridSwitchApproximation,
+    IterativeHessianApproximation, HybridFixed, FX,
+)
 from .constants import Options, ExitFlag, DEFAULT_OPTIONS
 from .logging import create_logger
 
 from typing import Callable, Dict, Optional, Tuple, Union
 
 
+class FunEvaluator:
+    def __init__(self, fun: Callable, nargout: int, resfun: bool,
+                 funargs: dict):
+        self.fun = fun
+        self.nargout = nargout
+        self.resfun = resfun
+        if funargs is None:
+            funargs = {}
+        self.funargs = funargs
+
+    def __call__(self, x: np.ndarray):
+        ret = self.fun(x, **self.funargs)
+
+        if self.resfun:
+            res, sres = ret
+            return Funout(fval=0.5 * res.T.dot(res), grad=res.T.dot(sres),
+                          hess=sres.T.dot(sres), res=res, sres=sres, x=x)
+        else:
+            if self.nargout == 3:
+                fval, grad, hess = ret
+                return Funout(fval=fval, grad=grad, hess=hess, x=x)
+            else:
+                fval, grad = ret
+                return Funout(fval=fval, grad=grad, x=x)
+
+
+class Funout:
+    def __init__(self, fval: float, grad: np.ndarray, x: np.ndarray,
+                 hess: Optional[np.ndarray] = None,
+                 res: Optional[np.ndarray] = None,
+                 sres: Optional[np.ndarray] = None,):
+        self.fval = fval
+        self.grad = grad
+        self.hess = hess
+        self.x = x
+        self.res = res
+        self.sres = sres
+
+    def checkdims(self):
+        if not np.isscalar(self.fval):
+            raise ValueError('Provided objective function must return a '
+                             'scalar!')
+        if not self.grad.ndim == 1:
+            raise ValueError('Provided objective function must return a '
+                             'gradient vector with x.ndim == 1, was '
+                             f'{self.grad.ndim}!')
+        if not len(self.grad) == len(self.x):
+            raise ValueError('Provided objective function must return a '
+                             'gradient vector of the same shape as x, '
+                             f'x has {len(self.x)} entries but gradient has '
+                             f'{len(self.grad)}!')
+
+        if self.hess is None:
+            return
+
+        if not self.hess.ndim == 2:
+            raise ValueError('Provided objective function must return a '
+                             'Hessian matrix with x.ndim == 2, was '
+                             f'{self.hess.ndim}!')
+
+        if not self.hess.shape[0] == self.hess.shape[1]:
+            raise ValueError('Provided objective function must return a '
+                             'square Hessian matrix!')
+
+        if not self.hess.shape[0] == len(self.x):
+            raise ValueError('Provided objective function must return a '
+                             'square Hessian matrix with same dimension as x. '
+                             f'x has {len(self.x)} entries but Hessian has '
+                             f'{self.hess.shape[0]}!')
+
+    def __repr__(self):
+        return f'Funout(fval={self.fval}, grad={self.grad}, hess={self.hess})'
+
+
+
 class Optimizer:
     """
     Performs optimization
 
-    :ivar fun: Objective function
-    :ivar funargs: Keyword arguments that are passed to the function
+    :ivar fevaler: FunctionEvaluator instance
     :ivar lb: Lower optimization boundaries
     :ivar ub: Upper optimization boundaries
     :ivar options: Options that configure convergence checks
@@ -44,20 +121,24 @@ class Optimizer:
     :ivar verbose: Verbosity level for logging
     :ivar logger: logger instance
     """
-    def __init__(self, fun: Callable,
+    def __init__(self,
+                 fun: Callable,
                  ub: np.ndarray,
                  lb: np.ndarray,
                  verbose: Optional[int] = logging.DEBUG,
                  options: Optional[Dict] = None,
                  funargs: Optional[Dict] = None,
-                 hessian_update: Optional[HessianApproximation] = None):
+                 hessian_update: Optional[HessianApproximation] = None,
+                 resfun: bool = False):
         """
         Create an optimizer object
 
         :param fun:
             This is the objective function, if no `hessian_update` is
             provided, this function must return a tuple (fval, grad),
-            otherwise this function must return a tuple (fval, grad, Hessian)
+            otherwise this function must return a tuple (fval, grad, Hessian).
+            If the argument resfun is True, this function must return a tuple
+            (res, sres) instead, where `sres` is the derivative of res.
         :param ub:
             Upper optimization boundaries. Individual entries can be set to
             np.inf for respective variable to have no upper bound
@@ -75,11 +156,22 @@ class Optimizer:
         :param hessian_update:
             Subclass of :py:class:`fides.hessian_update.HessianApproximation`
             that performs the hessian updates in every iteration.
+        :param resfun:
+            Boolean flag indicating whether fun returns function values
+            (False, default) or residuals (True).
         """
-        self.fun: Callable = fun
-        if funargs is None:
-            funargs = {}
-        self.funargs: Dict = funargs
+        nargout = 3 if hessian_update is None or hessian_update.requires_hess \
+            else 2
+        self.fevaler = FunEvaluator(fun=fun, nargout=nargout, resfun=resfun,
+                                    funargs=funargs)
+
+        if hessian_update is not None and \
+                resfun != hessian_update.requires_residual_fun:
+            raise ValueError(f'Hessian update scheme {type(hessian_update)} '
+                             f'requires an objective function that returns '
+                             f'(residual, residual derivative). Please make'
+                             f'sure that is the case and then call this '
+                             f'function with argument resfun set to `True`.')
 
         self.lb: np.ndarray = np.array(lb)
         self.ub: np.ndarray = np.array(ub)
@@ -108,7 +200,7 @@ class Optimizer:
         self.fval_min = self.fval
         self.grad_min = self.grad
 
-        self.hessian_update: HessianApproximation = hessian_update
+        self.hessian_update: Union[HessianApproximation, None] = hessian_update
         self.iterations_since_tr_update: int = 0
         self.hybrid_switch: bool = False
 
@@ -162,63 +254,22 @@ class Optimizer:
         self.make_non_degenerate()
         self.check_in_bounds()
 
-        funout = self.fun(self.x, **self.funargs)
-        if not isinstance(funout, tuple) or len(funout) not in [2, 3]:
-            raise ValueError('Function must either return two or three '
-                             'outputs (depending on whether Hessian '
-                             'update strategy is used), but returned '
-                             f'{funout}')
+        funout = self.fevaler(self.x)
 
-        if self.hessian_update is None or isinstance(self.hessian_update,
-                                                     HybridUpdate):
-            self.fval, self.grad, self.hess = funout
-            if isinstance(self.hessian_update, HybridUpdate):
-                if self.hessian_update.init_with_hess:
-                    self.hessian_update.set_init(self.hess)
-                self.hessian_update.init_mat(len(self.x))
-        else:
-            if len(funout) == 3:
-                raise ValueError('Cannot use Hessian update with a '
-                                 'function that returns 3 outputs.')
-
-            self.fval, self.grad = funout
-            self.hessian_update.init_mat(len(self.x))
+        self.fval, self.grad = funout.fval, funout.grad
+        if self.hessian_update is not None:
+            self.hessian_update.init_mat(len(self.x), funout.hess)
             self.hess = self.hessian_update.get_mat()
+        else:
+            self.hess = funout.hess
 
-        if not np.isscalar(self.fval):
-            raise ValueError('Provided objective function must return a '
-                             'scalar!')
-        if not self.grad.ndim == 1:
-            raise ValueError('Provided objective function must return a '
-                             'gradient vector with x.ndim == 1, was '
-                             f'{self.grad.ndim}!')
-        if not len(self.grad) == len(self.x):
-            raise ValueError('Provided objective function must return a '
-                             'gradient vector of the same shape as x, '
-                             f'x has {len(self.x)} entries but gradient has '
-                             f'{len(self.grad)}!')
+        funout.checkdims()
 
-        # hessian approximation would error on these earlier
-        if not self.hess.ndim == 2:
-            raise ValueError('Provided objective function must return a '
-                             'Hessian matrix with x.ndim == 2, was '
-                             f'{self.hess.ndim}!')
-
-        if not self.hess.shape[0] == self.hess.shape[1]:
-            raise ValueError('Provided objective function must return a '
-                             'square Hessian matrix!')
-
-        if not self.hess.shape[0] == len(self.x):
-            raise ValueError('Provided objective function must return a '
-                             'square Hessian matrix with same dimension as x. '
-                             f'x has {len(self.x)} entries but Hessian has '
-                             f'{self.hess.shape[0]}!')
-
-        self.track_minimum(self.x, self.fval, self.grad)
+        self.track_minimum(funout)
         self.log_header()
         self.log_step_initial()
 
-        self.check_finite()
+        self.check_finite(funout)
 
         self.converged = False
 
@@ -246,114 +297,111 @@ class Optimizer:
                 )
 
             x_new = self.x + step.s + step.s0
+            funout_new = self.fevaler(x_new)
 
-            funout = self.fun(x_new, **self.funargs)
+            if np.isfinite(funout_new.fval):
+                self.check_finite(funout_new)
 
-            if self.hessian_update is None or isinstance(self.hessian_update,
-                                                         HybridUpdate):
-                fval_new, grad_new, hess_new = funout
-            else:
-                fval_new, grad_new = funout
-                hess_new = None
-
-            if np.isfinite(fval_new):
-                self.check_finite(grad_new, hess_new)
-
-            accepted = self.update_tr_radius(fval_new, grad_new, step, dv)
+            accepted = self.update_tr_radius(funout_new, step, dv)
 
             if self.iteration % 10 == 0:
                 self.log_header()
-            self.log_step(accepted, step, fval_new)
-            self.check_convergence(step, fval_new, grad_new)
+            self.log_step(accepted, step, funout_new)
+            self.check_convergence(step, funout_new)
 
             # track minimum independently of whether we accept the step or not
-            self.track_minimum(x_new, fval_new, grad_new)
+            self.track_minimum(funout_new)
 
             if accepted:
-                self.update(step, x_new, fval_new, grad_new, hess_new)
+                self.update(step, funout_new, funout)
+                funout = funout_new
 
         return self.fval, self.x, self.grad, self.hess
 
-    def track_minimum(self,
-                      x_new: np.ndarray,
-                      fval_new: float,
-                      grad_new: np.ndarray) -> None:
+    def track_minimum(self, funout: Funout) -> None:
         """
         Function that tracks the optimization variables that have minimal
         function value independent of whether the step is accepted or not.
 
-        :param x_new:
-        :param fval_new:
-        :param grad_new:
-        :return:
+        :param funout:
+            Function output generated by a :py:class:`FunEvaluator`
+            evaluated at new x
+
         """
-        if np.isfinite(fval_new) and fval_new < self.fval_min:
-            self.x_min = x_new
-            self.fval_min = fval_new
-            self.grad_min = grad_new
+        if np.isfinite(funout.fval) and funout.fval < self.fval_min:
+            self.x_min = funout.x
+            self.fval_min = funout.fval
+            self.grad_min = funout.grad
 
     def update(self,
                step: Step,
-               x_new: np.ndarray,
-               fval_new: float,
-               grad_new: np.ndarray,
-               hess_new: Optional[np.ndarray] = None) -> None:
+               funout_new: Funout,
+               funout: Funout) -> None:
         """
         Update self according to employed step
 
         :param step:
             Employed step
-        :param x_new:
-            New optimization variable values
-        :param fval_new:
-            Objective function value at x_new
-        :param grad_new:
-            Objective function gradient at x_new
-        :param hess_new:
-            (Approximate) objective function Hessian at x_new
+
+        :param funout:
+            Function output generated by a :py:class:`FunEvaluator` for new
+            variables before step is taken
+
+        :param funout_new:
+            Function output generated by a :py:class:`FunEvaluator` for new
+            variables after step is taken
         """
         if self.hessian_update is not None:
-            self.hessian_update.update(step.s + step.s0,
-                                       grad_new - self.grad)
+            s = step.s + step.s0
+            y = funout_new.grad - self.grad
 
-        if self.hessian_update is None or \
-                (isinstance(self.hessian_update, HybridUpdate) and
-                 (self.iterations_since_tr_update <
-                  self.hessian_update.switch_iteration and not
-                  self.hybrid_switch)):
-            self.hess = hess_new
-        else:
-            if not self.hybrid_switch:
-                self.logger.info('Hybrid switchpoint reached.')
-            self.hybrid_switch = True
+            if isinstance(self.hessian_update, IterativeHessianApproximation):
+                self.hessian_update.update(s=s, y=y)
+            elif isinstance(self.hessian_update, HybridFixed):
+                self.hessian_update.update(s=s, y=y, hess=funout_new.hess)
+            elif isinstance(self.hessian_update, FX):
+                yb = (funout_new.sres - funout.sres).T.dot(funout_new.res)
+                self.hessian_update.update(s=s, yb=yb, r=funout_new.res,
+                                           rprev=funout.res,
+                                           hess=funout_new.hess)
+            elif isinstance(self.hessian_update, StructuredApproximation):
+                yb = (funout_new.sres - funout.sres).T.dot(funout_new.res) \
+                     / norm(funout.res)
+                self.hessian_update.update(s=s, y=y, yb=yb, r=funout_new.res,
+                                           hess=funout_new.hess)
+            else:
+                raise NotImplementedError
+
             self.hess = self.hessian_update.get_mat()
-        self.check_in_bounds(x_new)
-        self.fval = fval_new
-        self.x = x_new
-        self.grad = grad_new
-        self.check_finite()
+        else:
+            self.hess = funout_new.hess
+        self.check_in_bounds(funout_new.x)
+        self.fval = funout_new.fval
+        self.x = funout_new.x
+        self.grad = funout_new.grad
         self.make_non_degenerate()
 
     def update_tr_radius(self,
-                         fval: float,
-                         grad: np.ndarray,
+                         funout: Funout,
                          step: Step,
                          dv: np.ndarray) -> bool:
         """
         Update the trust region radius
 
-        :param fval:
-            new function value if step defined by step_sx is taken
-        :param grad:
-            new gradient value if step defined by step_sx is taken
+        :param funout:
+            Function output generated by a :py:class:`FunEvaluator` for new
+            variables after step is taken
+
         :param step:
             step
+
         :param dv:
             derivative of scaling vector v wrt x
 
         :return:
             flag indicating whether the proposed step should be accepted
         """
+        fval, grad = funout.fval, funout.grad
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
         self.iterations_since_tr_update += 1
@@ -387,21 +435,18 @@ class Optimizer:
                 self.iterations_since_tr_update = 0
             return self.tr_ratio > 0.0 and step.qpval <= 0
 
-    def check_convergence(self, step: Step, fval: float,
-                          grad: np.ndarray) -> None:
+    def check_convergence(self, step: Step, funout: Funout) -> None:
         """
         Check whether optimization has converged.
 
         :param step:
             update to optimization variables
 
-        :param fval:
-            updated objective function value
-
-        :param grad:
-            updated objective function gradient
+        :param funout:
+            Function output generated by a :py:class:`FunEvaluator`
         """
         converged = False
+        fval, grad = funout.fval, funout.grad
 
         fatol = self.get_option(Options.FATOL)
         frtol = self.get_option(Options.FRTOL)
@@ -530,16 +575,18 @@ class Optimizer:
         dv[bounded] = 1
         return v, dv
 
-    def log_step(self, accepted: bool, step: Step, fval: float):
+    def log_step(self, accepted: bool, step: Step, funout: Funout):
         """
         Prints diagnostic information about the current step to the log
 
         :param accepted:
             flag indicating whether the current step was accepted
+
         :param step:
             proposal step
-        :param fval:
-            new fval if step is accepted
+
+        :param funout:
+            Function output generated by a :py:class:`FunEvaluator`
         """
         normdx = norm(step.s + step.s0)
 
@@ -551,6 +598,7 @@ class Optimizer:
             for count in [step.reflection_count, step.truncation_count]
         ]
 
+        fval = funout.fval
         if not np.isfinite(fval):
             fval = self.fval
         self.logger.info(
@@ -608,20 +656,13 @@ class Optimizer:
             f'| step | refl | trun | accept'
         )
 
-    def check_finite(self,
-                     grad: Optional[np.ndarray] = None,
-                     hess: Optional[np.ndarray] = None):
+    def check_finite(self, funout: Funout):
         """
         Checks whether objective function value, gradient and Hessian (
         approximation) have finite values and optimization can continue.
 
-        :param grad:
-            gradient to be checked for finiteness, if not provided, current
-            one will be checked
-
-        :param hess:
-            Hessian (approximation) to be checked for finiteness, if not
-            provided, current one will be checked
+        :param funout:
+            Function output generated by a :py:class:`FunEvaluator`
 
         :raises:
             RuntimeError if any of the variables have non-finite entries
@@ -632,13 +673,9 @@ class Optimizer:
         else:
             pointstr = f'at iteration {self.iteration}.'
 
-        if grad is None:
-            grad = self.grad
+        fval, grad, hess = funout.fval, funout.grad, funout.hess
 
-        if hess is None:
-            hess = self.hess
-
-        if not np.isfinite(self.fval):
+        if not np.isfinite(fval):
             self.exitflag = ExitFlag.NOT_FINITE
             raise RuntimeError(f'Encountered non-finite function {self.fval} '
                                f'value {pointstr}')
@@ -649,6 +686,9 @@ class Optimizer:
             raise RuntimeError('Encountered non-finite gradient entries'
                                f' {grad[ix]} for indices {ix} '
                                f'{pointstr}')
+
+        if hess is None:
+            return
 
         if not np.isfinite(hess).all():
             self.exitflag = ExitFlag.NOT_FINITE
