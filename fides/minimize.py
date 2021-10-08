@@ -180,7 +180,7 @@ class Optimizer:
                 resfun != hessian_update.requires_resfun:
             raise ValueError(f'Hessian update scheme {type(hessian_update)} '
                              f'requires an objective function that returns '
-                             f'(residual, residual derivative). Please make '
+                             f'(residual, residual derivative). Please make'
                              f'sure that is the case and then call this '
                              f'function with argument resfun set to `True`.')
 
@@ -293,6 +293,8 @@ class Optimizer:
             scaling = csc_matrix(np.diag(np.sqrt(np.abs(v))))
             theta = max(self.get_option(Options.THETA_MAX),
                         1 - norm(v * self.grad, np.inf))
+
+            self.check_finite()
 
             step = \
                 trust_region(
@@ -667,7 +669,7 @@ class Optimizer:
             f'| step | refl | trun | accept'
         )
 
-    def check_finite(self, funout: Funout):
+    def check_finite(self, funout: Optional[Funout] = None):
         """
         Checks whether objective function value, gradient and Hessian (
         approximation) have finite values and optimization can continue.
@@ -684,7 +686,10 @@ class Optimizer:
         else:
             pointstr = f'at iteration {self.iteration}.'
 
-        fval, grad, hess = funout.fval, funout.grad, funout.hess
+        if funout is not None:
+            fval, grad, hess = funout.fval, funout.grad, funout.hess
+        else:
+            fval, grad, hess = self.fval, self.grad, self.hess
 
         if not np.isfinite(fval):
             self.exitflag = ExitFlag.NOT_FINITE
