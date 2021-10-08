@@ -284,9 +284,9 @@ class TRStep2D(Step):
 
 class CGStep(Step):
     """
-        This class provides the machinery to compute an approximate solution of
-        the trust region subproblem using the Steihaug Method
-        """
+    This class provides the machinery to compute an approximate solution of
+    the trust region subproblem using the conjugate gradients methods
+    """
 
     type = 'cg'
 
@@ -310,7 +310,7 @@ class CGStep(Step):
 class TRStepSteihaug(CGStep):
     """
     This class provides the machinery to compute an approximate solution of
-    the trust region subproblem using the Steihaug Method
+    the trust region subproblem using Steihaug's Method
     """
 
     type = 'cgs'
