@@ -292,6 +292,8 @@ def _bfgs_vector(s, y, mat):
     c = u.T.dot(s)
     b = y.T.dot(s)
     rho = np.sqrt(b / c)
+    if not np.isfinite(rho):
+        rho = 0
     return y + np.sqrt(rho)*u
 
 
@@ -440,7 +442,9 @@ def broyden_class_update(y, s, mat, phi=None, v=None):
         return np.outer(y, y.T) / b - np.outer(u, u.T) / c
 
     if v is None:
-        rho = np.sqrt(b / c) if c > 0 else 0  # c == 0 iff u == 0
+        rho = np.sqrt(b / c)
+        if not np.isfinite(rho):
+            rho = 0
         v = y + (1-phi) * rho * u
 
     z = y - mat.dot(s)
