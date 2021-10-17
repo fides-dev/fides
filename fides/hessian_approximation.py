@@ -38,7 +38,7 @@ class HessianApproximation:
         :param hess:
             user provided initialization
         """
-        if hess is None:
+        if hess is None or not self.init_with_hess:
             self._hess = np.eye(dim)
         else:
             if hess.shape[0] != dim:
