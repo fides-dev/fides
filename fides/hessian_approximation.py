@@ -326,7 +326,7 @@ class StructuredApproximation(HessianApproximation):
                              f'methods are {self.vector_routines.keys()}')
 
         self.vector_routine = self.vector_routines[update_method]
-        super(StructuredApproximation, self).__init__()
+        super(StructuredApproximation, self).__init__(init_with_hess=True)
 
     def init_mat(self, dim: int, hess: Optional[np.ndarray] = None):
         self.A = np.zeros((dim, dim))
