@@ -371,7 +371,8 @@ class Optimizer:
             if isinstance(self.hessian_update, IterativeHessianApproximation):
                 self.hessian_update.update(s=s, y=y)
             elif isinstance(self.hessian_update, HybridFixed):
-                self.hessian_update.update(s=s, y=y, hess=funout_new.hess)
+                self.hessian_update.update(s=s, y=y, hess=funout_new.hess,
+                                           self.iterations_since_tr_update)
             elif isinstance(self.hessian_update, FX):
                 yb = (funout_new.sres - funout.sres).T.dot(funout_new.res)
                 self.hessian_update.update(s=s, yb=yb, r=funout_new.res,

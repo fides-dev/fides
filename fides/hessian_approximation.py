@@ -235,21 +235,22 @@ class HybridFixed(HybridSwitchApproximation):
             Iteration after which this approximation is used
         """
         self.switch_iteration: int = switch_iteration
-        self.iter: int = 0
         super(HybridFixed, self).__init__(happ)
+        self._switched = False
 
     def init_mat(self, dim: int, hess: Optional[np.ndarray] = None):
-        self.iter = 0
         super(HybridFixed, self).init_mat(dim, hess)
         self._hess = hess
 
-    def update(self, s, y, hess):
+    def update(self, s, y, hess, iter_since_tr_update):
         self.hessian_update.update(s, y)
         self._hess = hess
-        self.iter += 1
+        if self._switched:
+            return 
+        self._switched = iter_since_tr_update >= self.switch_iteration
 
     def get_mat(self) -> np.ndarray:
-        if self.iter >= self.switch_iteration:
+        if self._switched:
             return self.hessian_update.get_mat()
         else:
             return self._hess
