@@ -357,8 +357,8 @@ class SSM(StructuredApproximation):
         Bs = hess + self.A  # Bs = A + C(x)
         ys = yb + hess.dot(s)  # ys = y# + C(x)*s
         v = self.vector_routine(s, ys, Bs)
-        self._hess = Bs + broyden_class_update(s, ys, Bs, v=v)
-        self.A += broyden_class_update(s, yb, self.A, v=v)
+        self.A += broyden_class_update(yb, s, self.A, v=v)
+        self._hess = hess + self.A
 
 
 class TSSM(StructuredApproximation):
@@ -373,9 +373,9 @@ class TSSM(StructuredApproximation):
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray):
         Bs = hess + norm(r) * self.A
-        y = hess.dot(s) + norm(r) * yb
-        v = self.vector_routine(s, y, Bs)
-        self.A += broyden_class_update(s, yb, self.A, v=v)
+        ys = hess.dot(s) + norm(r) * yb
+        v = self.vector_routine(s, ys, Bs)
+        self.A += broyden_class_update(yb, s, self.A, v=v)
         self._hess = hess + norm(r) * self.A
 
 
@@ -397,10 +397,10 @@ class GNSBFGS(StructuredApproximation):
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray):
-        yb *= norm(r)
-        ratio = yb.T.dot(s)/s.dot(s)
+        ys = yb * norm(r)
+        ratio = ys.T.dot(s)/s.dot(s)
         if ratio > self.hybrid_tol:
-            self.A += broyden_class_update(s, yb, self.A, phi=1.0)
+            self.A += broyden_class_update(ys, s, self.A, phi=1.0)
             self._hess = hess + self.A
         else:
             self._hess = hess + norm(r) * np.eye(len(y))
