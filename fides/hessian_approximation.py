@@ -397,6 +397,7 @@ class GNSBFGS(StructuredApproximation):
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray):
+        yb *= norm(r)
         ratio = yb.T.dot(s)/s.dot(s)
         if ratio > self.hybrid_tol:
             self.A += broyden_class_update(s, yb, self.A, phi=1.0)
