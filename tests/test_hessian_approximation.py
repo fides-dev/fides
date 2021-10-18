@@ -8,7 +8,7 @@ import numpy as np
 def test_wrong_dim():
 
     with pytest.raises(ValueError):
-        h = BFGS()
+        h = BFGS(init_with_hess=True)
         h.init_mat(dim=3, hess=np.ones((2, 2)))
 
     with pytest.raises(ValueError):
