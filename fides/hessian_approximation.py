@@ -246,7 +246,7 @@ class HybridFixed(HybridSwitchApproximation):
         self.hessian_update.update(s, y)
         self._hess = hess
         if self._switched:
-            return 
+            return
         self._switched = iter_since_tr_update >= self.switch_iteration
 
     def get_mat(self) -> np.ndarray:
