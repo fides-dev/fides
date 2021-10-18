@@ -373,6 +373,7 @@ class TSSM(StructuredApproximation):
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray):
         Bs = hess + norm(r) * self.A
+        y = hess.dot(s) + norm(r) * yb
         v = self.vector_routine(s, y, Bs)
         self.A += broyden_class_update(s, yb, self.A, v=v)
         self._hess = hess + norm(r) * self.A
