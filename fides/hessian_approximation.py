@@ -38,7 +38,7 @@ class HessianApproximation:
         :param hess:
             user provided initialization
         """
-        if hess is None:
+        if hess is None or not self.init_with_hess:
             self._hess = np.eye(dim)
         else:
             if hess.shape[0] != dim:
@@ -212,9 +212,6 @@ class HybridSwitchApproximation(HessianApproximation):
     def get_mat(self) -> np.ndarray:
         return self.hessian_update.get_mat()
 
-    def set_mat(self, mat: np.ndarray):
-        self.hessian_update.set_mat(mat)
-
     def requires_hess(self):
         return True  # pragma: no cover
 
@@ -235,21 +232,18 @@ class HybridFixed(HybridSwitchApproximation):
             Iteration after which this approximation is used
         """
         self.switch_iteration: int = switch_iteration
-        self.iter: int = 0
         super(HybridFixed, self).__init__(happ)
+        self._switched = False
 
-    def init_mat(self, dim: int, hess: Optional[np.ndarray] = None):
-        self.iter = 0
-        super(HybridFixed, self).init_mat(dim, hess)
-        self._hess = hess
-
-    def update(self, s, y, hess):
+    def update(self, s, y, hess, iter_since_tr_update):
         self.hessian_update.update(s, y)
         self._hess = hess
-        self.iter += 1
+        if self._switched:
+            return
+        self._switched = iter_since_tr_update >= self.switch_iteration
 
     def get_mat(self) -> np.ndarray:
-        if self.iter >= self.switch_iteration:
+        if self._switched:
             return self.hessian_update.get_mat()
         else:
             return self._hess
@@ -258,9 +252,9 @@ class HybridFixed(HybridSwitchApproximation):
 class FX(HybridSwitchApproximation):
     def __init__(self,
                  happ: IterativeHessianApproximation = BFGS(),
-                 hybrid_tol: Optional[float] = 1e-2):
+                 hybrid_tol: Optional[float] = 0.2):
         r"""
-        Hybrid method as introduced by
+        Hybrid method HY2 as introduced by
         [Fletcher & Xu 1986](https://doi.org/10.1093/imanum/7.3.371). This
         approximation scheme employs a dynamic approximation as long as
         function values satisfy :math:`\frac{f_k - f_{k+1}}{f_k} < \epsilon`
@@ -275,13 +269,13 @@ class FX(HybridSwitchApproximation):
         self.hybrid_tol = hybrid_tol
         super(FX, self).__init__(happ)
 
-    def update(self, s, yb, r, rprev, hess):
-        yh = yb + hess.dot(s)
-        ratio = (norm(rprev)**2 - norm(r)**2)/(norm(rprev)**2)
+    def update(self, delta, gamma, r, rprev, hess):
+        # Equation (3.5)
+        ratio = (rprev.dot(rprev) - r.dot(r))/rprev.dot(rprev)
         if ratio >= self.hybrid_tol:
-            self.set_mat(hess)
+            self.hessian_update.set_mat(hess)
         else:
-            self.hessian_update.update(s, yh)
+            self.hessian_update.update(delta, gamma)
 
     def requires_resfun(self):
         return True  # pragma: no cover
@@ -292,6 +286,8 @@ def _bfgs_vector(s, y, mat):
     c = u.T.dot(s)
     b = y.T.dot(s)
     rho = np.sqrt(b / c)
+    if not np.isfinite(rho):
+        rho = 0
     return y + np.sqrt(rho)*u
 
 
@@ -321,13 +317,13 @@ class StructuredApproximation(HessianApproximation):
         self.A: np.ndarray = np.empty(0)
         if update_method not in self.vector_routines:
             raise ValueError(f'Unknown update method {update_method}. Known '
-                             f'methods are {self.vector_routines.keys()}')
+                             f'methods are {self.vector_routines.keys()}.')
 
         self.vector_routine = self.vector_routines[update_method]
-        super(StructuredApproximation, self).__init__()
+        super(StructuredApproximation, self).__init__(init_with_hess=True)
 
     def init_mat(self, dim: int, hess: Optional[np.ndarray] = None):
-        self.A = np.zeros((dim, dim))
+        self.A = np.eye(dim) * np.spacing(1)
         super(StructuredApproximation, self).init_mat(dim, hess)
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
@@ -352,11 +348,16 @@ class SSM(StructuredApproximation):
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray):
-        Bs = hess + self.A  # Bs = A + C(x)
-        ys = yb + hess.dot(s)  # ys = y# + C(x)*s
+        # B^S = A + C(x_+)
+        Bs = hess + self.A
+        # y^S = y^# + C(x_+)*s
+        ys = yb + hess.dot(s)
+        # Equation (8-10) + Equation (13)
         v = self.vector_routine(s, ys, Bs)
-        self._hess = Bs + broyden_class_update(s, ys, Bs, v=v)
-        self.A += broyden_class_update(s, yb, self.A, v=v)
+        # Equation (13)
+        self.A += broyden_class_update(yb, s, self.A, v=v)
+        # B_+ = C(x_+) + A + BFGS update A (=A_+)
+        self._hess = hess + self.A
 
 
 class TSSM(StructuredApproximation):
@@ -370,9 +371,15 @@ class TSSM(StructuredApproximation):
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray):
+        # Equation (2.7)
         Bs = hess + norm(r) * self.A
-        v = self.vector_routine(s, y, Bs)
-        self.A += broyden_class_update(s, yb, self.A, v=v)
+        # Equation (2.6)
+        ys = hess.dot(s) + norm(r) * yb
+        # Equation (2.8)
+        v = self.vector_routine(s, ys, Bs)
+        # Equation (2.8)
+        self.A += broyden_class_update(yb, s, self.A, v=v)
+        # Equation (2.9)
         self._hess = hess + norm(r) * self.A
 
 
@@ -394,11 +401,16 @@ class GNSBFGS(StructuredApproximation):
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray):
-        ratio = yb.T.dot(s)/s.dot(s)
+        # Equation (2.1)
+        ys = yb * norm(r)
+        ratio = ys.T.dot(s)/s.dot(s)
         if ratio > self.hybrid_tol:
-            self.A += broyden_class_update(s, yb, self.A, phi=1.0)
+            # Equation (2.3)
+            self.A += broyden_class_update(ys, s, self.A, phi=1.0)
+            # Equation (2.2)
             self._hess = hess + self.A
         else:
+            # Equation (2.2)
             self._hess = hess + norm(r) * np.eye(len(y))
 
 
@@ -440,7 +452,9 @@ def broyden_class_update(y, s, mat, phi=None, v=None):
         return np.outer(y, y.T) / b - np.outer(u, u.T) / c
 
     if v is None:
-        rho = np.sqrt(b / c) if c > 0 else 0  # c == 0 iff u == 0
+        rho = np.sqrt(b / c)
+        if not np.isfinite(rho):
+            rho = 0
         v = y + (1-phi) * rho * u
 
     z = y - mat.dot(s)
