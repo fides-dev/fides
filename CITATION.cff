@@ -8,8 +8,7 @@ authors:
   given-names: "Daniel"
   orcid: "https://orcid.org/0000-0001-9963-6057"
 title: "Fides"
-version: 0.6.0
-doi: 10.5281/zenodo.5554996
+doi: 10.5281/zenodo.5556023
 date-released: 2021-10-07
 url: "https://github.com/fides/fides"
 preferred-citation:
