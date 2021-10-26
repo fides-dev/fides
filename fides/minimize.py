@@ -13,7 +13,7 @@ from scipy.sparse import csc_matrix
 from .trust_region import trust_region, Step
 from .hessian_approximation import (
     HessianApproximation, StructuredApproximation, HybridFixed, FX,
-    IterativeHessianApproximation,
+    IterativeHessianApproximation, TSSM, GNSBFGS
 )
 from .constants import Options, ExitFlag, DEFAULT_OPTIONS
 from .logging import create_logger
@@ -376,13 +376,23 @@ class Optimizer:
                     iter_since_tr_update=self.iterations_since_tr_update
                 )
             elif isinstance(self.hessian_update, FX):
-                yb = (funout_new.sres - funout.sres).T.dot(funout_new.res)
-                self.hessian_update.update(s=s, yb=yb, r=funout_new.res,
-                                           rprev=funout.res,
+                # Equation (1.16)
+                # A = sres
+                # M = hess
+                # \delta = s
+                # r = res
+                gamma = funout_new.hess.dot(s) + \
+                        (funout_new.sres - funout.sres).T.dot(funout_new.res)
+                self.hessian_update.update(delta=s, gamma=gamma,
+                                           r=funout_new.res, rprev=funout.res,
                                            hess=funout_new.hess)
             elif isinstance(self.hessian_update, StructuredApproximation):
-                yb = (funout_new.sres - funout.sres).T.dot(funout_new.res) \
-                     / norm(funout.res)
+                # SSM: Equation (43) in [Dennis et al 1989]
+                yb = (funout_new.sres - funout.sres).T.dot(funout_new.res)
+                if isinstance(self.hessian_update, (TSSM, GNSBFGS)):
+                    # TSSM: Equation (2.5) in [Huschens 1994]
+                    # GNSBFGS: Equation (2.1) in [Zhou & Chen 2010]
+                    yb /= norm(funout.res)
                 self.hessian_update.update(s=s, y=y, yb=yb, r=funout_new.res,
                                            hess=funout_new.hess)
             else:
