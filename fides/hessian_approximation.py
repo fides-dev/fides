@@ -323,7 +323,7 @@ class StructuredApproximation(HessianApproximation):
         super(StructuredApproximation, self).__init__(init_with_hess=True)
 
     def init_mat(self, dim: int, hess: Optional[np.ndarray] = None):
-        self.A = np.eye(dim) * np.spacing()
+        self.A = np.eye(dim) * np.spacing(1)
         super(StructuredApproximation, self).init_mat(dim, hess)
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
