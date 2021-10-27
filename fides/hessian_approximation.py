@@ -281,33 +281,8 @@ class FX(HybridSwitchApproximation):
         return True  # pragma: no cover
 
 
-def _bfgs_vector(s, y, mat):
-    u = mat.dot(s)
-    c = u.T.dot(s)
-    b = y.T.dot(s)
-    rho = np.sqrt(b / c)
-    if not np.isfinite(rho):
-        rho = 0
-    return y + np.sqrt(rho)*u
-
-
-def _psb_vector(s, y, mat):
-    return s
-
-
-def _dfp_vector(s, y, mat):
-    return y
-
-
 class StructuredApproximation(HessianApproximation):
-    vector_routines = {
-        'BFGS': _bfgs_vector,
-        'PSB': _psb_vector,
-        'DFP': _dfp_vector,
-    }
-
-    def __init__(self,
-                 update_method: Optional[str] = 'BFGS'):
+    def __init__(self, phi: Optional[float] = 0.0):
         """
         This is the base class for structured secant methods (SSM). SSMs
         approximate the hessian by combining the Gauss-Newton component C(x)
@@ -315,11 +290,11 @@ class StructuredApproximation(HessianApproximation):
         difference S to the true Hessian.
         """
         self.A: np.ndarray = np.empty(0)
-        if update_method not in self.vector_routines:
-            raise ValueError(f'Unknown update method {update_method}. Known '
-                             f'methods are {self.vector_routines.keys()}.')
-
-        self.vector_routine = self.vector_routines[update_method]
+        self.phi = phi
+        if phi < 0 or phi > 1:
+            warnings.warn('Setting phi to values outside the interval [0, 1]'
+                          'will not guarantee that positive definiteness is '
+                          'preserved during updating.')
         super(StructuredApproximation, self).__init__(init_with_hess=True)
 
     def init_mat(self, dim: int, hess: Optional[np.ndarray] = None):
@@ -352,10 +327,8 @@ class SSM(StructuredApproximation):
         Bs = hess + self.A
         # y^S = y^# + C(x_+)*s
         ys = yb + hess.dot(s)
-        # Equation (8-10) + Equation (13)
-        v = self.vector_routine(s, ys, Bs)
         # Equation (13)
-        self.A += broyden_class_update(yb, s, self.A, v=v)
+        self.A += broyden_class_update(ys, s, Bs, phi=self.phi)
         # B_+ = C(x_+) + A + BFGS update A (=A_+)
         self._hess = hess + self.A
 
@@ -376,9 +349,7 @@ class TSSM(StructuredApproximation):
         # Equation (2.6)
         ys = hess.dot(s) + norm(r) * yb
         # Equation (2.8)
-        v = self.vector_routine(s, ys, Bs)
-        # Equation (2.8)
-        self.A += broyden_class_update(yb, s, self.A, v=v)
+        self.A += broyden_class_update(ys, s, Bs, phi=self.phi)/norm(r)
         # Equation (2.9)
         self._hess = hess + norm(r) * self.A
 
@@ -397,7 +368,7 @@ class GNSBFGS(StructuredApproximation):
             switching tolerance that controls switching between update methods
         """
         self.hybrid_tol: float = hybrid_tol
-        super(GNSBFGS, self).__init__('BFGS')
+        super(GNSBFGS, self).__init__(phi=0.0)
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray):
@@ -406,7 +377,7 @@ class GNSBFGS(StructuredApproximation):
         ratio = ys.T.dot(s)/s.dot(s)
         if ratio > self.hybrid_tol:
             # Equation (2.3)
-            self.A += broyden_class_update(ys, s, self.A, phi=1.0)
+            self.A += broyden_class_update(ys, s, self.A, phi=self.phi)
             # Equation (2.2)
             self._hess = hess + self.A
         else:
@@ -414,12 +385,9 @@ class GNSBFGS(StructuredApproximation):
             self._hess = hess + norm(r) * np.eye(len(y))
 
 
-def broyden_class_update(y, s, mat, phi=None, v=None):
+def broyden_class_update(y, s, mat, phi=0.0):
     """
-    Scale free implementation of the broyden class update scheme. This can
-    either be called by using a phi parameter that interpolates between BFGS
-    (phi=0) and DFP (phi=1) or by using the weighting vector v that allows
-    implementation of PSB (v=s), DFP (v=y) and BFGS (V=y+rho*B*s).
+    Scale free implementation of the broyden class update scheme.
 
     :param y:
         difference in gradient
@@ -428,10 +396,8 @@ def broyden_class_update(y, s, mat, phi=None, v=None):
     :param mat:
         current hessian approximation
     :param phi:
-        convex combination parameter. Must not pass this parameter at the same
-        time as v.
-    :param v:
-        weighting vector. Must not pass this parameter at the same time as phi.
+        convex combination parameter, interpolates between BFGS (phi=0) and
+        DFP (phi=1).
     """
     u = mat.dot(s)
     c = u.T.dot(s)
@@ -440,27 +406,10 @@ def broyden_class_update(y, s, mat, phi=None, v=None):
     if b <= 0:
         return np.zeros(mat.shape)
 
-    if v is None and phi is not None:
-        bfgs = phi == 0
-    elif v is not None and phi is None:
-        bfgs = False
-    else:
-        raise ValueError('Exactly one of the values of phi and v must be '
-                         'provided.')
+    update = np.outer(y, y.T) / b - np.outer(u, u.T) / c
 
-    if bfgs:  # BFGS
-        return np.outer(y, y.T) / b - np.outer(u, u.T) / c
-
-    if v is None:
-        rho = np.sqrt(b / c)
-        if not np.isfinite(rho):
-            rho = 0
-        v = y + (1-phi) * rho * u
-
-    z = y - mat.dot(s)
-    d = v.T.dot(s)
-    a = z.T.dot(s) / (d ** 2)
-
-    update = (np.outer(z, v.T) + np.outer(v, z.T)) / d - a * np.outer(v, v.T)
+    if phi != 0.0:
+        v = y / b - u / c
+        update += phi * c * np.outer(v, v.T)
 
     return update
