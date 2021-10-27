@@ -338,8 +338,8 @@ class TSSM(StructuredApproximation):
         # Equation (2.7)
         Bs = hess + norm(r) * self.A
         # Equation (2.6)
-        ys = hess.dot(s) + norm(r) * yb
-        # Equation (2.8)
+        ys = hess.dot(s) + yb
+        # Equation (2.10)
         self.A += broyden_class_update(ys, s, Bs, phi=self.phi)/norm(r)
         # Equation (2.9)
         self._hess = hess + norm(r) * self.A
@@ -364,11 +364,10 @@ class GNSBFGS(StructuredApproximation):
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray):
         # Equation (2.1)
-        ys = yb * norm(r)
-        ratio = ys.T.dot(s)/s.dot(s)
+        ratio = yb.T.dot(s)/s.dot(s)
         if ratio > self.hybrid_tol:
             # Equation (2.3)
-            self.A += broyden_class_update(ys, s, self.A, phi=self.phi)
+            self.A += broyden_class_update(yb, s, self.A, phi=self.phi)
             # Equation (2.2)
             self._hess = hess + self.A
         else:
