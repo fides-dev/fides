@@ -1,4 +1,4 @@
-from fides import BFGS, Broyden, SSM
+from fides import BFGS, Broyden
 from fides.hessian_approximation import broyden_class_update
 
 import pytest
