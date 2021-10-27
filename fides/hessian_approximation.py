@@ -133,19 +133,6 @@ class DFP(Broyden):
         super(DFP, self).__init__(phi=1.0, init_with_hess=init_with_hess)
 
 
-class PSB(IterativeHessianApproximation):
-    """
-    Powell-symmetric-Broyden update strategy as introduced in
-    [Powell 1970](https://doi.org/10.1016/B978-0-12-597050-1.50006-3).
-    This is a rank 2 update strategy that preserves symmetry and
-    positive-semidefiniteness.
-
-    This scheme only works with a function that returns (fval, grad)
-    """
-    def update(self, s, y):
-        self._hess += broyden_class_update(y, s, self._hess, v=s)
-
-
 class SR1(IterativeHessianApproximation):
     """
     Symmetric Rank 1 update strategy as described in
