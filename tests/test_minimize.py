@@ -1,5 +1,5 @@
 from fides import (
-    Optimizer, BFGS, SR1, DFP, BB, BG, PSB, Broyden, GNSBFGS, HybridFixed,
+    Optimizer, BFGS, SR1, DFP, BB, BG, Broyden, GNSBFGS, HybridFixed,
     FX, SSM, TSSM, SubSpaceDim, StepBackStrategy
 )
 import numpy as np
@@ -142,23 +142,22 @@ def unbounded_and_init():
     (rosengrad, DFP()),  # 3
     (rosengrad, BG()),  # 4
     (rosengrad, BB()),  # 5
-    (rosengrad, PSB()),  # 6
-    (rosengrad, Broyden(0.5)),  # 7
-    (rosenboth, HybridFixed(BFGS())),  # 8
-    (rosenboth, HybridFixed(SR1())),  # 9
-    (rosenboth, HybridFixed(BFGS(init_with_hess=True))),  # 10
-    (rosenboth, HybridFixed(SR1(init_with_hess=True))),  # 11
-    (fletcher, FX(BFGS())),  # 12
-    (fletcher, FX(SR1())),  # 13
-    (fletcher, FX(BFGS(init_with_hess=True))),  # 14
-    (fletcher, FX(SR1(init_with_hess=True))),  # 15
-    (fletcher, SSM('BFGS')),  # 16
-    (fletcher, SSM('DFP')),  # 17
-    (fletcher, SSM('PSB')),  # 18
-    (fletcher, TSSM('BFGS')),  # 19
-    (fletcher, TSSM('DFP')),  # 20
-    (fletcher, TSSM('PSB')),  # 21
-    (fletcher, GNSBFGS()),  # 22
+    (rosengrad, Broyden(0.5)),  # 6
+    (rosenboth, HybridFixed(BFGS())),  # 7
+    (rosenboth, HybridFixed(SR1())),  # 8
+    (rosenboth, HybridFixed(BFGS(init_with_hess=True))),  # 9
+    (rosenboth, HybridFixed(SR1(init_with_hess=True))),  # 10
+    (fletcher, FX(BFGS())),  # 11
+    (fletcher, FX(SR1())),  # 12
+    (fletcher, FX(BFGS(init_with_hess=True))),  # 13
+    (fletcher, FX(SR1(init_with_hess=True))),  # 14
+    (fletcher, SSM(0.0)),  # 15
+    (fletcher, SSM(0.5)),  # 16
+    (fletcher, SSM(1.0)),  # 17
+    (fletcher, TSSM(0.0)),  # 18
+    (fletcher, TSSM(0.5)),  # 19
+    (fletcher, TSSM(1.0)),  # 20
+    (fletcher, GNSBFGS()),  # 21
 ])
 def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
                               stepback, refine, sgradient):

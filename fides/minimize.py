@@ -392,7 +392,7 @@ class Optimizer:
                 if isinstance(self.hessian_update, (TSSM, GNSBFGS)):
                     # TSSM: Equation (2.5) in [Huschens 1994]
                     # GNSBFGS: Equation (2.1) in [Zhou & Chen 2010]
-                    yb /= norm(funout.res)
+                    yb *= norm(funout_new.res)/norm(funout.res)
                 self.hessian_update.update(s=s, y=y, yb=yb, r=funout_new.res,
                                            hess=funout_new.hess)
             else:

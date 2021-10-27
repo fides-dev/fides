@@ -1,12 +1,10 @@
-from fides import BFGS, Broyden, SSM
-from fides.hessian_approximation import broyden_class_update
+from fides import BFGS, Broyden
 
 import pytest
 import numpy as np
 
 
 def test_wrong_dim():
-
     with pytest.raises(ValueError):
         h = BFGS(init_with_hess=True)
         h.init_mat(dim=3, hess=np.ones((2, 2)))
@@ -25,21 +23,3 @@ def test_broyden():
     h = Broyden(phi=-1)
     h.init_mat(dim=2)
     h.update(np.random.random((2,)), np.random.random((2,)))
-
-
-def test_ssm_bad_method():
-    with pytest.raises(ValueError):
-        SSM('SR1')
-
-
-def test_broyden_class_update():
-    with pytest.raises(ValueError):
-        broyden_class_update(np.random.random((2,)),
-                             np.random.random((2,)),
-                             np.random.random((2, 2)),
-                             phi=1, v=np.random.random((2,)))
-
-    with pytest.raises(ValueError):
-        broyden_class_update(np.random.random((2,)),
-                             np.random.random((2,)),
-                             np.random.random((2, 2)))
