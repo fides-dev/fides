@@ -152,12 +152,12 @@ def unbounded_and_init():
     (fletcher, FX(SR1())),  # 13
     (fletcher, FX(BFGS(init_with_hess=True))),  # 14
     (fletcher, FX(SR1(init_with_hess=True))),  # 15
-    (fletcher, SSM('BFGS')),  # 16
-    (fletcher, SSM('DFP')),  # 17
-    (fletcher, SSM('PSB')),  # 18
-    (fletcher, TSSM('BFGS')),  # 19
-    (fletcher, TSSM('DFP')),  # 20
-    (fletcher, TSSM('PSB')),  # 21
+    (fletcher, SSM(0.0)),  # 16
+    (fletcher, SSM(0.5)),  # 17
+    (fletcher, SSM(1.0)),  # 18
+    (fletcher, TSSM(0.0)),  # 19
+    (fletcher, TSSM(0.5)),  # 20
+    (fletcher, TSSM(1.0)),  # 21
     (fletcher, GNSBFGS()),  # 22
 ])
 def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
