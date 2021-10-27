@@ -288,6 +288,10 @@ class StructuredApproximation(HessianApproximation):
         approximate the hessian by combining the Gauss-Newton component C(x)
         and an iteratively updated component that approximates the
         difference S to the true Hessian.
+
+        :parameter phi:
+            convex combination parameter interpolating between BFGS (phi==0)
+            and DFP (phi==1) update schemes.
         """
         self.A: np.ndarray = np.empty(0)
         self.phi = phi
@@ -316,7 +320,7 @@ class SSM(StructuredApproximation):
     """
     Structured Secant Method as introduced by
     [Dennis et al 1989](https://doi.org/10.1007/BF00962795), which is
-    compatible with BFGS, DFP and PSB update schemes.
+    compatible with BFGS, DFP update schemes.
 
     This scheme only works with a function that returns (res, sres)
     """

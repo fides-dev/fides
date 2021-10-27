@@ -27,18 +27,7 @@ def test_broyden():
     h.update(np.random.random((2,)), np.random.random((2,)))
 
 
-def test_ssm_bad_method():
-    with pytest.raises(ValueError):
-        SSM('SR1')
-
-
 def test_broyden_class_update():
-    with pytest.raises(ValueError):
-        broyden_class_update(np.random.random((2,)),
-                             np.random.random((2,)),
-                             np.random.random((2, 2)),
-                             phi=1, v=np.random.random((2,)))
-
     with pytest.raises(ValueError):
         broyden_class_update(np.random.random((2,)),
                              np.random.random((2,)),
