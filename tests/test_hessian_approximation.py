@@ -25,10 +25,3 @@ def test_broyden():
     h = Broyden(phi=-1)
     h.init_mat(dim=2)
     h.update(np.random.random((2,)), np.random.random((2,)))
-
-
-def test_broyden_class_update():
-    with pytest.raises(ValueError):
-        broyden_class_update(np.random.random((2,)),
-                             np.random.random((2,)),
-                             np.random.random((2, 2)))
