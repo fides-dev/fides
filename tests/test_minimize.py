@@ -345,7 +345,7 @@ def test_history():
     with h5py.File(h5file, 'r') as f:
         assert len(f.keys()) == 2  # one group per optimization
 
-    # repeat to check we are not appending
+    # create new optimizer to check we are appending
     opt = Optimizer(
         fun, ub=ub, lb=lb, verbose=logging.INFO,
         options={fides.Options.FATOL: 0,
@@ -357,7 +357,7 @@ def test_history():
     opt.minimize(x0)
     opt.minimize(x0)
     with h5py.File(h5file, 'r') as f:
-        assert len(f.keys()) == 3
+        assert len(f.keys()) == 5
     os.remove(h5file)
 
 

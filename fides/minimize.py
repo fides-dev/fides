@@ -226,11 +226,6 @@ class Optimizer:
         self.history: Dict[str, List[Union[float, int, bool]]] = dict()
         self.start_id: str = ''
 
-        if self.get_option(Options.HISTORY_FILE):
-            # initialize file
-            h5py.File(self.get_option(Options.HISTORY_FILE), 'w')
-
-
     def _reset(self):
         self.starttime = time.time()
         self.iteration = 0
