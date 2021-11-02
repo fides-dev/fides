@@ -18,8 +18,8 @@ def test_wrong_dim():
 def test_broyden():
     h = Broyden(phi=2)
     h.init_mat(dim=2)
-    h.update(np.random.random((2, 1)), np.random.random((2, 1)))
+    h.update(np.random.random((2, 1)), np.random.random((2, 1)), np.empty(0))
 
     h = Broyden(phi=-1)
     h.init_mat(dim=2)
-    h.update(np.random.random((2,)), np.random.random((2,)))
+    h.update(np.random.random((2,)), np.random.random((2,)), np.empty(0))
