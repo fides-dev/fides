@@ -33,6 +33,8 @@ class Options(str, enum.Enum):
     # optimization
     SCALED_GRADIENT = 'scaled_gradient'  # whether scaled gradient should be
     # added to the set of possible stepback proposals
+    HISTORY_FILE = 'history_file'  # when set, statistics for each start will
+    # be saved to the specified file
 
 
 class SubSpaceDim(str, enum.Enum):
@@ -75,6 +77,7 @@ DEFAULT_OPTIONS = {
     Options.GAMMA2: 2,  # [NodedalWright2006]
     Options.REFINE_STEPBACK: False,
     Options.SCALED_GRADIENT: False,
+    Options.HISTORY_FILE: None,
 }
 
 

@@ -8,6 +8,8 @@ import logging
 import pytest
 import fides
 import time
+import h5py
+import os
 
 
 def rosen(x):
@@ -323,6 +325,40 @@ def test_maxiter_maxtime():
     opt.minimize(x0)
     assert opt.exitflag == fides.ExitFlag.MAXTIME
     del opt.options[fides.Options.MAXTIME]
+
+
+def test_history():
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    fun = fletcher
+
+    h5file = 'history.h5'
+
+    opt = Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={fides.Options.FATOL: 0,
+                 fides.Options.HISTORY_FILE: h5file},
+        hessian_update=GNSBFGS(),
+        resfun=True
+    )
+    opt.minimize(x0)
+    opt.minimize(x0)
+    with h5py.File(h5file, 'r') as f:
+        assert len(f.keys()) == 2  # one group per optimization
+
+    # repeat to check we are not appending
+    opt = Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={fides.Options.FATOL: 0,
+                 fides.Options.HISTORY_FILE: h5file},
+        hessian_update=GNSBFGS(),
+        resfun=True
+    )
+    opt.minimize(x0)
+    opt.minimize(x0)
+    opt.minimize(x0)
+    with h5py.File(h5file, 'r') as f:
+        assert len(f.keys()) == 3
+    os.remove(h5file)
 
 
 def test_wrong_options():

@@ -26,6 +26,7 @@ class HessianApproximation:
             according to the user-provided objective function
         """
         self._hess: np.ndarray = np.empty(0)
+        self._diff: np.ndarray = np.empty(0)
         self.init_with_hess = init_with_hess
 
     def init_mat(self, dim: int, hess: Optional[np.ndarray] = None):
@@ -46,18 +47,29 @@ class HessianApproximation:
                                  f'dimension, was {hess.shape[0]}, '
                                  f'but should be {dim}.')
             self._hess = hess.copy()
+        self._diff = np.zeros_like(self._hess)
 
     def get_mat(self) -> np.ndarray:
         """
         Getter for the Hessian approximation
         :return:
+            Hessian approximation
         """
         return self._hess
 
+    def get_diff(self) -> np.ndarray:
+        """
+        Getter for the Hessian approximation update
+        :return:
+            Hessian approximation update
+        """
+        return self._diff
+
     def set_mat(self, mat: np.ndarray):
         """
-        Getter for the Hessian approximation
-        :return:
+        Setter for the Hessian approximation
+        :param mat:
+            Hessian approximation
         """
         if mat.shape != self._hess.shape:
             raise ValueError('Passed matrix had inconsistent '
@@ -79,7 +91,14 @@ class IterativeHessianApproximation(HessianApproximation):
     Iterative update schemes that only use s and y values for update.
     """
     def update(self, s, y):
+        self.compute_update(s, y)
+        self.apply_update()
+
+    def compute_update(self, s, y):
         raise NotImplementedError()  # pragma: no cover
+
+    def apply_update(self):
+        self._hess += self._diff
 
 
 class Broyden(IterativeHessianApproximation):
@@ -105,10 +124,11 @@ class Broyden(IterativeHessianApproximation):
                           'preserved during updating.')
         super(Broyden, self).__init__(init_with_hess)
 
-    def update(self, s, y):
+    def compute_update(self, s, y):
         if y.T.dot(s) <= 0:
-            return
-        self._hess += broyden_class_update(y, s, self._hess, self.phi)
+            self._diff = np.zeros_like(self._hess)
+        else:
+            self._diff = broyden_class_update(y, s, self._hess, self.phi)
 
 
 class BFGS(Broyden):
@@ -142,13 +162,15 @@ class SR1(IterativeHessianApproximation):
 
     This scheme only works with a function that returns (fval, grad)
     """
-    def update(self, s, y):
+    def compute_update(self, s, y):
         z = y - self._hess.dot(s)
         d = z.T.dot(s)
 
         # [NocedalWright2006] (6.26) reject if update degenerate
         if np.abs(d) >= 1e-8 * norm(s) * norm(z):
-            self._hess += np.outer(z, z.T) / d
+            self._diff = np.outer(z, z.T) / d
+        else:
+            self._diff = np.zeros_like(self._hess)
 
 
 class BG(IterativeHessianApproximation):
@@ -160,8 +182,8 @@ class BG(IterativeHessianApproximation):
 
     This scheme only works with a function that returns (fval, grad)
     """
-    def update(self, s, y):
-        self._hess += np.outer(y - self._hess.dot(s), s.T) / s.T.dot(s)
+    def compute_update(self, s, y):
+        self._diff = np.outer(y - self._hess.dot(s), s.T) / s.T.dot(s)
 
 
 class BB(IterativeHessianApproximation):
@@ -176,8 +198,9 @@ class BB(IterativeHessianApproximation):
     def update(self, s, y):
         b = y.T.dot(s)
         if b <= 0:
-            return
-        self._hess += np.outer(y - self._hess.dot(s), s.T) / b
+            self._diff = np.zeros_like(self._hess)
+        else:
+            self._diff = np.outer(y - self._hess.dot(s), s.T) / b
 
 
 class HybridSwitchApproximation(HessianApproximation):
@@ -224,6 +247,7 @@ class HybridFixed(HybridSwitchApproximation):
 
     def update(self, s, y, hess, iter_since_tr_update):
         self.hessian_update.update(s, y)
+        self._diff = hess - self._hess
         self._hess = hess
         if self._switched:
             return
@@ -234,6 +258,12 @@ class HybridFixed(HybridSwitchApproximation):
             return self.hessian_update.get_mat()
         else:
             return self._hess
+
+    def get_diff(self) -> np.ndarray:
+        if self._switched:
+            return self.hessian_update.get_diff()
+        else:
+            return self._diff
 
 
 class FX(HybridSwitchApproximation):
@@ -260,10 +290,13 @@ class FX(HybridSwitchApproximation):
         # Equation (3.5)
         ratio = (rprev.dot(rprev) - r.dot(r))/rprev.dot(rprev)
         if ratio >= self.hybrid_tol:
+            self._diff = hess - self.hessian_update.get_mat()
             self.hessian_update.set_mat(hess)
         else:
             self.hessian_update.update(delta, gamma)
+            self._diff = self.hessian_update.get_diff()
 
+    @property
     def requires_resfun(self):
         return True  # pragma: no cover
 
@@ -282,6 +315,7 @@ class StructuredApproximation(HessianApproximation):
         """
         self.A: np.ndarray = np.empty(0)
         self.phi = phi
+        self._structured_diff = np.empty(0)
         if phi < 0 or phi > 1:
             warnings.warn('Setting phi to values outside the interval [0, 1]'
                           'will not guarantee that positive definiteness is '
@@ -290,17 +324,27 @@ class StructuredApproximation(HessianApproximation):
 
     def init_mat(self, dim: int, hess: Optional[np.ndarray] = None):
         self.A = np.eye(dim) * np.spacing(1)
+        self._structured_diff = np.zeros_like(self.A)
         super(StructuredApproximation, self).init_mat(dim, hess)
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray):
         raise NotImplementedError()  # pragma: no cover
 
+    @property
     def requires_resfun(self):
         return True  # pragma: no cover
 
+    @property
     def requires_hess(self):
         return True  # pragma: no cover
+
+    def get_structured_diff(self):
+        return self._structured_diff
+
+    def _update_hess_and_store_diff(self, hess):
+        self._diff = hess - self._hess
+        self._hess = hess
 
 
 class SSM(StructuredApproximation):
@@ -319,9 +363,10 @@ class SSM(StructuredApproximation):
         # y^S = y^# + C(x_+)*s
         ys = yb + hess.dot(s)
         # Equation (13)
-        self.A += broyden_class_update(ys, s, Bs, phi=self.phi)
+        self._structured_diff = broyden_class_update(ys, s, Bs, phi=self.phi)
+        self.A += self._structured_diff
         # B_+ = C(x_+) + A + BFGS update A (=A_+)
-        self._hess = hess + self.A
+        self._update_hess_and_store_diff(hess + self.A)
 
 
 class TSSM(StructuredApproximation):
@@ -340,9 +385,11 @@ class TSSM(StructuredApproximation):
         # Equation (2.6)
         ys = hess.dot(s) + yb
         # Equation (2.10)
-        self.A += broyden_class_update(ys, s, Bs, phi=self.phi)/norm(r)
+        self._structured_diff = broyden_class_update(ys, s, Bs,
+                                                     phi=self.phi)/norm(r)
+        self.A += self._structured_diff
         # Equation (2.9)
-        self._hess = hess + norm(r) * self.A
+        self._update_hess_and_store_diff(hess + norm(r) * self.A)
 
 
 class GNSBFGS(StructuredApproximation):
@@ -367,12 +414,15 @@ class GNSBFGS(StructuredApproximation):
         ratio = yb.T.dot(s)/s.dot(s)
         if ratio > self.hybrid_tol:
             # Equation (2.3)
-            self.A += broyden_class_update(yb, s, self.A, phi=self.phi)
+            self._structured_diff = broyden_class_update(yb, s, self.A,
+                                                         phi=self.phi)
+            self.A += self._structured_diff
             # Equation (2.2)
-            self._hess = hess + self.A
+            self._update_hess_and_store_diff(hess + self.A)
         else:
             # Equation (2.2)
-            self._hess = hess + norm(r) * np.eye(len(y))
+            self._structured_diff = np.zeros_like(self.A)
+            self._update_hess_and_store_diff(hess + norm(r) * np.eye(len(y)))
 
 
 def broyden_class_update(y, s, mat, phi=0.0):
@@ -394,7 +444,7 @@ def broyden_class_update(y, s, mat, phi=0.0):
     b = y.T.dot(s)
 
     if b <= 0:
-        return np.zeros(mat.shape)
+        return np.zeros_like(mat)
 
     update = np.outer(y, y.T) / b - np.outer(u, u.T) / c
 
