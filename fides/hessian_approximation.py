@@ -90,7 +90,8 @@ class IterativeHessianApproximation(HessianApproximation):
     """
     Iterative update schemes that only use s and y values for update.
     """
-    def update(self, s, y) -> None:
+    def update(self, s: np.ndarray, y: np.ndarray,
+               restrict_ix: np.ndarray) -> None:
         """
         Update the Hessian approximation
         :param s:
@@ -98,10 +99,10 @@ class IterativeHessianApproximation(HessianApproximation):
         :param y:
             step in gradient
         """
-        self.compute_update(s, y)
+        self.compute_update(s, y, restrict_ix)
         self.apply_update()
 
-    def compute_update(self, s, y) -> None:
+    def compute_update(self, s, y, restrict_ix) -> None:
         raise NotImplementedError()  # pragma: no cover
 
     def apply_update(self) -> None:
@@ -138,12 +139,14 @@ class Broyden(IterativeHessianApproximation):
                           'preserved during updating.')
         super(Broyden, self).__init__(init_with_hess)
 
-    def compute_update(self, s, y):
+    def compute_update(self, s, y, restrict_ix):
         if y.T.dot(s) <= 0:
             self._diff = np.zeros_like(self._hess)
         else:
             self._diff = broyden_class_update(y, s, self._hess, self.phi,
                                               self.enforce_curv_cond)
+            if restrict_ix.size:
+                self._diff[restrict_ix, restrict_ix] = 0
 
 
 class BFGS(Broyden):
@@ -181,12 +184,14 @@ class SR1(IterativeHessianApproximation):
 
     This scheme only works with a function that returns (fval, grad)
     """
-    def compute_update(self, s, y):
+    def compute_update(self, s, y, restrict_ix):
         z = y - self._hess.dot(s)
+        if restrict_ix.size:
+            z[restrict_ix] = 0
         d = z.T.dot(s)
 
         # [NocedalWright2006] (6.26) reject if update degenerate
-        if np.abs(d) >= 1e-8 * norm(s) * norm(z):
+        if np.abs(d) >= np.sqrt(np.spacing(1)) * norm(s) * norm(z):
             self._diff = np.outer(z, z.T) / d
         else:
             self._diff = np.zeros_like(self._hess)
@@ -201,8 +206,11 @@ class BG(IterativeHessianApproximation):
 
     This scheme only works with a function that returns (fval, grad)
     """
-    def compute_update(self, s, y):
-        self._diff = np.outer(y - self._hess.dot(s), s.T) / s.T.dot(s)
+    def compute_update(self, s, y, restrict_ix):
+        z = y - self._hess.dot(s)
+        if restrict_ix.size:
+            z[restrict_ix] = 0
+        self._diff = np.outer(z, s.T) / s.T.dot(s)
 
 
 class BB(IterativeHessianApproximation):
@@ -214,12 +222,15 @@ class BB(IterativeHessianApproximation):
 
     This scheme only works with a function that returns (fval, grad)
     """
-    def update(self, s, y):
+    def update(self, s, y, restrict_ix):
         b = y.T.dot(s)
+        z = y - self._hess.dot(s)
+        if restrict_ix.size:
+            z[restrict_ix] = 0
         if b <= 0:
             self._diff = np.zeros_like(self._hess)
         else:
-            self._diff = np.outer(y - self._hess.dot(s), s.T) / b
+            self._diff = np.outer(z, s.T) / b
 
 
 class HybridSwitchApproximation(HessianApproximation):
@@ -264,8 +275,8 @@ class HybridFixed(HybridSwitchApproximation):
         super(HybridFixed, self).__init__(happ)
         self._switched = False
 
-    def update(self, s, y, hess, iter_since_tr_update):
-        self.hessian_update.update(s, y)
+    def update(self, s, y, hess, iter_since_tr_update, restrict_ix):
+        self.hessian_update.update(s, y, restrict_ix)
         self._diff = hess - self._hess
         self._hess = hess
         if self._switched:
@@ -305,14 +316,14 @@ class FX(HybridSwitchApproximation):
         self.hybrid_tol = hybrid_tol
         super(FX, self).__init__(happ)
 
-    def update(self, delta, gamma, r, rprev, hess):
+    def update(self, delta, gamma, r, rprev, hess, restrict_ix):
         # Equation (3.5)
         ratio = (rprev.dot(rprev) - r.dot(r))/rprev.dot(rprev)
         if ratio >= self.hybrid_tol:
             self._diff = hess - self.hessian_update.get_mat()
             self.hessian_update.set_mat(hess)
         else:
-            self.hessian_update.update(delta, gamma)
+            self.hessian_update.update(delta, gamma, restrict_ix)
             self._diff = self.hessian_update.get_diff()
 
     @property
@@ -407,10 +418,11 @@ class SSM(StructuredApproximation):
         # Equation (13)
         if restrict_ix.size:
             ys[restrict_ix] = 0
-            Bs[restrict_ix, restrict_ix] = 0
         self._structured_diff = broyden_class_update(
-            ys, s, Bs, phi=self.phi, enforce_pos_def=self.enforce_curv_cond
+            ys, s, Bs, phi=self.phi, enforce_curv_cond=self.enforce_curv_cond
         )
+        if restrict_ix.size:
+            self._structured_diff[restrict_ix, restrict_ix] = 0
         self.A += self._structured_diff
         # B_+ = C(x_+) + A + BFGS update A (=A_+)
         self._update_hess_and_store_diff(hess + self.A)
@@ -434,10 +446,11 @@ class TSSM(StructuredApproximation):
         # Equation (2.10)
         if restrict_ix.size:
             ys[restrict_ix] = 0
-            Bs[restrict_ix, restrict_ix] = 0
         self._structured_diff = broyden_class_update(
-            ys, s, Bs, phi=self.phi, enforce_pos_def=self.enforce_curv_cond
+            ys, s, Bs, phi=self.phi, enforce_curv_cond=self.enforce_curv_cond
         )/norm(r)
+        if restrict_ix.size:
+            self._structured_diff[restrict_ix, restrict_ix] = 0
         self.A += self._structured_diff
         # Equation (2.9)
         self._update_hess_and_store_diff(hess + norm(r) * self.A)
@@ -458,7 +471,8 @@ class GNSBFGS(StructuredApproximation):
             switching tolerance that controls switching between update methods
         """
         self.hybrid_tol: float = hybrid_tol
-        super(GNSBFGS, self).__init__(phi=0.0, enforce_curv_cond=enforce_curv_cond)
+        super(GNSBFGS, self).__init__(phi=0.0,
+                                      enforce_curv_cond=enforce_curv_cond)
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray, restrict_ix: np.ndarray):
@@ -468,8 +482,10 @@ class GNSBFGS(StructuredApproximation):
             # Equation (2.3)
             self._structured_diff = broyden_class_update(
                 yb, s, self.A, phi=self.phi,
-                enforce_pos_def=self.enforce_curv_cond
+                enforce_curv_cond=self.enforce_curv_cond
             )
+            if restrict_ix.size:
+                self._structured_diff[restrict_ix, restrict_ix] = 0
             self.A += self._structured_diff
             # Equation (2.2)
             self._update_hess_and_store_diff(hess + self.A)
@@ -479,7 +495,11 @@ class GNSBFGS(StructuredApproximation):
             self._update_hess_and_store_diff(hess + norm(r) * np.eye(len(y)))
 
 
-def broyden_class_update(y, s, mat, phi=0.0, enforce_pos_def=True):
+def broyden_class_update(y: np.ndarray,
+                         s: np.ndarray,
+                         mat: np.ndarray,
+                         phi: float = 0.0,
+                         enforce_curv_cond: bool = True):
     """
     Scale free implementation of the broyden class update scheme.
 
@@ -492,7 +512,7 @@ def broyden_class_update(y, s, mat, phi=0.0, enforce_pos_def=True):
     :param phi:
         convex combination parameter, interpolates between BFGS (phi=0) and
         DFP (phi=1).
-    :parameter enforce_pos_def:
+    :parameter enforce_curv_cond:
         boolean that controls whether the employed broyden class update
         should attempt to preserve positive definiteness. If set to True,
         updates from steps that violate the curvature condition will be
@@ -502,7 +522,7 @@ def broyden_class_update(y, s, mat, phi=0.0, enforce_pos_def=True):
     c = u.T.dot(s)
     b = y.T.dot(s)
 
-    if b <= 0 and enforce_pos_def:
+    if b <= 0 and enforce_curv_cond:
         return np.zeros_like(mat)
 
     update = np.outer(y, y.T) / b - np.outer(u, u.T) / c

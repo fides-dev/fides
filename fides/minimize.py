@@ -390,10 +390,10 @@ class Optimizer:
                 y[restr_ix] = 0
 
             if isinstance(self.hessian_update, IterativeHessianApproximation):
-                self.hessian_update.update(s=s, y=y)
+                self.hessian_update.update(s=s, y=y, restrict_ix=restr_ix)
             elif isinstance(self.hessian_update, HybridFixed):
                 self.hessian_update.update(
-                    s=s, y=y, hess=funout_new.hess,
+                    s=s, y=y, hess=funout_new.hess, restrict_ix=restr_ix,
                     iter_since_tr_update=self.iterations_since_tr_update
                 )
             elif isinstance(self.hessian_update, FX):
@@ -408,7 +408,8 @@ class Optimizer:
                     gamma[restr_ix] = 0
                 self.hessian_update.update(delta=s, gamma=gamma,
                                            r=funout_new.res, rprev=funout.res,
-                                           hess=funout_new.hess)
+                                           hess=funout_new.hess,
+                                           restrict_ix=restr_ix)
             elif isinstance(self.hessian_update, StructuredApproximation):
                 # SSM: Equation (43) in [Dennis et al 1989]
                 yb = (funout_new.sres - funout.sres).T.dot(funout_new.res)
