@@ -122,9 +122,16 @@ class Broyden(IterativeHessianApproximation):
     :parameter phi:
         convex combination parameter interpolating between BFGS (phi==0) and
         DFP (phi==1).
+    :parameter enforce_curv_cond:
+        boolean that controls whether the employed broyden class update
+        should attempt to preserve positive definiteness. If set to True,
+        updates from steps that violate the curvature condition will be
+        discarded.
     """
-    def __init__(self, phi: float, init_with_hess: Optional[bool] = False):
+    def __init__(self, phi: float, init_with_hess: Optional[bool] = False,
+                 enforce_curv_cond: Optional[bool] = True):
         self.phi = phi
+        self.enforce_curv_cond = enforce_curv_cond
         if phi < 0 or phi > 1:
             warnings.warn('Setting phi to values outside the interval [0, 1]'
                           'will not guarantee that positive definiteness is '
@@ -135,7 +142,8 @@ class Broyden(IterativeHessianApproximation):
         if y.T.dot(s) <= 0:
             self._diff = np.zeros_like(self._hess)
         else:
-            self._diff = broyden_class_update(y, s, self._hess, self.phi)
+            self._diff = broyden_class_update(y, s, self._hess, self.phi,
+                                              self.enforce_curv_cond)
 
 
 class BFGS(Broyden):
@@ -145,8 +153,10 @@ class BFGS(Broyden):
 
     This scheme only works with a function that returns (fval, grad)
     """
-    def __init__(self, init_with_hess: Optional[bool] = False):
-        super(BFGS, self).__init__(phi=0.0, init_with_hess=init_with_hess)
+    def __init__(self, init_with_hess: Optional[bool] = False,
+                 enforce_curv_cond: Optional[bool] = True):
+        super(BFGS, self).__init__(phi=0.0, init_with_hess=init_with_hess,
+                                   enforce_curv_cond=enforce_curv_cond)
 
 
 class DFP(Broyden):
@@ -156,8 +166,10 @@ class DFP(Broyden):
 
     This scheme only works with a function that returns (fval, grad)
     """
-    def __init__(self, init_with_hess: Optional[bool] = False):
-        super(DFP, self).__init__(phi=1.0, init_with_hess=init_with_hess)
+    def __init__(self, init_with_hess: Optional[bool] = False,
+                 enforce_curv_cond: Optional[bool] = True):
+        super(DFP, self).__init__(phi=1.0, init_with_hess=init_with_hess,
+                                  enforce_curv_cond=enforce_curv_cond)
 
 
 class SR1(IterativeHessianApproximation):
@@ -309,7 +321,8 @@ class FX(HybridSwitchApproximation):
 
 
 class StructuredApproximation(HessianApproximation):
-    def __init__(self, phi: Optional[float] = 0.0):
+    def __init__(self, phi: Optional[float] = 0.0,
+                 enforce_curv_cond: Optional[bool] = True):
         """
         This is the base class for structured secant methods (SSM). SSMs
         approximate the hessian by combining the Gauss-Newton component C(x)
@@ -319,9 +332,16 @@ class StructuredApproximation(HessianApproximation):
         :parameter phi:
             convex combination parameter interpolating between BFGS (phi==0)
             and DFP (phi==1) update schemes.
+
+        :parameter enforce_curv_cond:
+            boolean that controls whether the employed broyden class update
+            should attempt to preserve positive definiteness. If set to True,
+            updates from steps that violate the curvature condition will be
+            discarded.
         """
         self.A: np.ndarray = np.empty(0)
         self.phi = phi
+        self.enforce_curv_cond = enforce_curv_cond
         self._structured_diff = np.empty(0)
         if phi < 0 or phi > 1:
             warnings.warn('Setting phi to values outside the interval [0, 1]'
@@ -335,7 +355,22 @@ class StructuredApproximation(HessianApproximation):
         super(StructuredApproximation, self).init_mat(dim, hess)
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
-               hess: np.ndarray, yb: np.ndarray):
+               hess: np.ndarray, yb: np.ndarray, restrict_ix: np.ndarray):
+        """
+        Update the structured approximation
+        :param s:
+            step in optimization parameters
+        :param y:
+            step in gradient parameters
+        :param r:
+            residual vector
+        :param hess:
+            gauss-newton Hessian approximation
+        :param yb:
+            approximation to A*s, where A is structured approximation matrix
+        :param restrict_ix:
+            indices of parameters which should be ignored in the update
+        """
         raise NotImplementedError()  # pragma: no cover
 
     @property
@@ -346,7 +381,7 @@ class StructuredApproximation(HessianApproximation):
     def requires_hess(self):
         return True  # pragma: no cover
 
-    def get_structured_diff(self):
+    def get_structured_diff(self) -> np.ndarray:
         return self._structured_diff
 
     def _update_hess_and_store_diff(self, hess):
@@ -372,7 +407,10 @@ class SSM(StructuredApproximation):
         # Equation (13)
         if restrict_ix.size:
             ys[restrict_ix] = 0
-        self._structured_diff = broyden_class_update(ys, s, Bs, phi=self.phi)
+            Bs[restrict_ix, restrict_ix] = 0
+        self._structured_diff = broyden_class_update(
+            ys, s, Bs, phi=self.phi, enforce_pos_def=self.enforce_curv_cond
+        )
         self.A += self._structured_diff
         # B_+ = C(x_+) + A + BFGS update A (=A_+)
         self._update_hess_and_store_diff(hess + self.A)
@@ -396,15 +434,18 @@ class TSSM(StructuredApproximation):
         # Equation (2.10)
         if restrict_ix.size:
             ys[restrict_ix] = 0
-        self._structured_diff = broyden_class_update(ys, s, Bs,
-                                                     phi=self.phi)/norm(r)
+            Bs[restrict_ix, restrict_ix] = 0
+        self._structured_diff = broyden_class_update(
+            ys, s, Bs, phi=self.phi, enforce_pos_def=self.enforce_curv_cond
+        )/norm(r)
         self.A += self._structured_diff
         # Equation (2.9)
         self._update_hess_and_store_diff(hess + norm(r) * self.A)
 
 
 class GNSBFGS(StructuredApproximation):
-    def __init__(self, hybrid_tol: float = 1e-6):
+    def __init__(self, hybrid_tol: float = 1e-6,
+                 enforce_curv_cond: bool = True):
         """
         Hybrid Gauss-Newton Structured BFGS method as introduced by
         [Zhou & Chen 2010](https://doi.org/10.1137/090748470),
@@ -417,7 +458,7 @@ class GNSBFGS(StructuredApproximation):
             switching tolerance that controls switching between update methods
         """
         self.hybrid_tol: float = hybrid_tol
-        super(GNSBFGS, self).__init__(phi=0.0)
+        super(GNSBFGS, self).__init__(phi=0.0, enforce_curv_cond=enforce_curv_cond)
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
                hess: np.ndarray, yb: np.ndarray, restrict_ix: np.ndarray):
@@ -425,8 +466,10 @@ class GNSBFGS(StructuredApproximation):
         ratio = yb.T.dot(s)/s.dot(s)
         if ratio > self.hybrid_tol:
             # Equation (2.3)
-            self._structured_diff = broyden_class_update(yb, s, self.A,
-                                                         phi=self.phi)
+            self._structured_diff = broyden_class_update(
+                yb, s, self.A, phi=self.phi,
+                enforce_pos_def=self.enforce_curv_cond
+            )
             self.A += self._structured_diff
             # Equation (2.2)
             self._update_hess_and_store_diff(hess + self.A)
@@ -436,7 +479,7 @@ class GNSBFGS(StructuredApproximation):
             self._update_hess_and_store_diff(hess + norm(r) * np.eye(len(y)))
 
 
-def broyden_class_update(y, s, mat, phi=0.0):
+def broyden_class_update(y, s, mat, phi=0.0, enforce_pos_def=True):
     """
     Scale free implementation of the broyden class update scheme.
 
@@ -449,12 +492,17 @@ def broyden_class_update(y, s, mat, phi=0.0):
     :param phi:
         convex combination parameter, interpolates between BFGS (phi=0) and
         DFP (phi=1).
+    :parameter enforce_pos_def:
+        boolean that controls whether the employed broyden class update
+        should attempt to preserve positive definiteness. If set to True,
+        updates from steps that violate the curvature condition will be
+        discarded.
     """
     u = mat.dot(s)
     c = u.T.dot(s)
     b = y.T.dot(s)
 
-    if b <= 0:
+    if b <= 0 and enforce_pos_def:
         return np.zeros_like(mat)
 
     update = np.outer(y, y.T) / b - np.outer(u, u.T) / c
