@@ -19,6 +19,7 @@ from .hessian_approximation import (
 )
 from .constants import Options, ExitFlag, DEFAULT_OPTIONS
 from .logging import create_logger
+from collections import defaultdict
 
 from typing import Callable, Dict, Optional, Tuple, Union, List
 
@@ -215,7 +216,6 @@ class Optimizer:
 
         self.hessian_update: Union[HessianApproximation, None] = hessian_update
         self.iterations_since_tr_update: int = 0
-        self.hybrid_switch: bool = False
 
         self.starttime: float = np.nan
         self.iteration: int = 0
@@ -223,7 +223,8 @@ class Optimizer:
         self.exitflag: ExitFlag = ExitFlag.DID_NOT_RUN
         self.verbose: int = verbose
         self.logger: Union[logging.Logger, None] = None
-        self.history: Dict[str, List[Union[float, int, bool]]] = dict()
+        self.history: Dict[str, List[Union[float, int, bool]]] = \
+            defaultdict(list)
         self.start_id: str = ''
 
     def _reset(self):
@@ -234,7 +235,8 @@ class Optimizer:
         self.delta_iter = self.delta
         self.fval_min = np.inf
         self.logger = create_logger(self.verbose)
-        self.hybrid_switch = False
+        self.start_id = str(uuid.uuid1())
+        self.history = defaultdict(list)
 
     def minimize(self, x0: np.ndarray):
         """
@@ -378,6 +380,12 @@ class Optimizer:
         if self.hessian_update is not None:
             s = step.s + step.s0
             y = funout_new.grad - self.grad
+            ignore_ix = np.asarray(list(
+                step.reflection_indices.union(step.truncation_indices)
+            ))
+            if ignore_ix.size:
+                s[ignore_ix] = 0
+                y[ignore_ix] = 0
 
             if isinstance(self.hessian_update, IterativeHessianApproximation):
                 self.hessian_update.update(s=s, y=y)
@@ -660,12 +668,20 @@ class Optimizer:
             min_ev_hess_update, max_ev_hess_update = np.NaN, np.NaN
             min_ev_hess_supdate, max_ev_hess_supdate = np.NaN, np.NaN
             if self.hessian_update:
-                min_ev_hess_update, max_ev_hess_update = \
-                    _min_max_evs(self.hessian_update.get_diff())
+                if accepted:
+                    min_ev_hess_update, max_ev_hess_update = \
+                        _min_max_evs(self.hessian_update.get_diff())
+                else:
+                    min_ev_hess_update, max_ev_hess_update = 0.0, 0.0
 
                 if isinstance(self.hessian_update, StructuredApproximation):
-                    min_ev_hess_supdate, max_ev_hess_supdate = \
-                        _min_max_evs(self.hessian_update.get_structured_diff())
+                    if accepted:
+                        min_ev_hess_supdate, max_ev_hess_supdate = \
+                            _min_max_evs(
+                                self.hessian_update.get_structured_diff()
+                            )
+                    else:
+                        min_ev_hess_supdate, max_ev_hess_supdate = 0.0, 0.0
 
             update = {
                 'fval': self.fval,
@@ -684,6 +700,7 @@ class Optimizer:
                 'hess_update_max_ev': max_ev_hess_update,
                 'hess_struct_update_min_ev': min_ev_hess_supdate,
                 'hess_struct_update_max_ev': max_ev_hess_supdate,
+                'iterations_since_tr_update': self.iterations_since_tr_update,
             }
             for key, val in update.items():
                 self.history[key].append(val)
@@ -709,25 +726,6 @@ class Optimizer:
             f' | NaN '
             f' | {int(np.isfinite(self.fval))}'
         )
-        self.history = {
-            'fval': [],
-            'tr_ratio': [],
-            'tr_radius': [],
-            'normgrad': [],
-            'normstep': [],
-            'theta': [],
-            'alpha': [],
-            'reflections': [],
-            'truncations': [],
-            'accept': [],
-            'hess_min_ev': [],
-            'hess_max_ev': [],
-            'hess_update_min_ev': [],
-            'hess_update_max_ev': [],
-            'hess_struct_update_min_ev': [],
-            'hess_struct_update_max_ev': []
-        }
-        self.start_id = str(uuid.uuid1())
 
     def log_header(self):
         """
