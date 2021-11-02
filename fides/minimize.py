@@ -380,10 +380,13 @@ class Optimizer:
         if self.hessian_update is not None:
             s = step.s + step.s0
             y = funout_new.grad - self.grad
-            restr_ix = np.asarray(list(
-                step.reflection_indices.union(step.truncation_indices)
-            ))
-            if restr_ix.size and self.get_option(Options.RESTRICT_HESS_APPROX):
+            if self.get_option(Options.RESTRICT_HESS_APPROX):
+                restr_ix = np.asarray(list(
+                    step.reflection_indices.union(step.truncation_indices)
+                ))
+            else:
+                restr_ix = np.empty(0)
+            if restr_ix.size:
                 s[restr_ix] = 0
                 y[restr_ix] = 0
 
@@ -402,18 +405,23 @@ class Optimizer:
                 # r = res
                 gamma = funout_new.hess.dot(s) + \
                         (funout_new.sres - funout.sres).T.dot(funout_new.res)
+                if restr_ix.size:
+                    gamma[restr_ix] = 0
                 self.hessian_update.update(delta=s, gamma=gamma,
                                            r=funout_new.res, rprev=funout.res,
                                            hess=funout_new.hess)
             elif isinstance(self.hessian_update, StructuredApproximation):
                 # SSM: Equation (43) in [Dennis et al 1989]
                 yb = (funout_new.sres - funout.sres).T.dot(funout_new.res)
+                if restr_ix.size:
+                    yb[restr_ix] = 0
                 if isinstance(self.hessian_update, (TSSM, GNSBFGS)):
                     # TSSM: Equation (2.5) in [Huschens 1994]
                     # GNSBFGS: Equation (2.1) in [Zhou & Chen 2010]
                     yb *= norm(funout_new.res)/norm(funout.res)
                 self.hessian_update.update(s=s, y=y, yb=yb, r=funout_new.res,
-                                           hess=funout_new.hess)
+                                           hess=funout_new.hess,
+                                           restrict_ix=restr_ix)
             else:
                 raise NotImplementedError
 

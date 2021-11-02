@@ -364,12 +364,14 @@ class SSM(StructuredApproximation):
     """
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
-               hess: np.ndarray, yb: np.ndarray):
+               hess: np.ndarray, yb: np.ndarray, restrict_ix: np.ndarray):
         # B^S = A + C(x_+)
         Bs = hess + self.A
         # y^S = y^# + C(x_+)*s
         ys = yb + hess.dot(s)
         # Equation (13)
+        if restrict_ix.size:
+            ys[restrict_ix] = 0
         self._structured_diff = broyden_class_update(ys, s, Bs, phi=self.phi)
         self.A += self._structured_diff
         # B_+ = C(x_+) + A + BFGS update A (=A_+)
@@ -386,12 +388,14 @@ class TSSM(StructuredApproximation):
     """
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
-               hess: np.ndarray, yb: np.ndarray):
+               hess: np.ndarray, yb: np.ndarray, restrict_ix: np.ndarray):
         # Equation (2.7)
         Bs = hess + norm(r) * self.A
         # Equation (2.6)
         ys = hess.dot(s) + yb
         # Equation (2.10)
+        if restrict_ix.size:
+            ys[restrict_ix] = 0
         self._structured_diff = broyden_class_update(ys, s, Bs,
                                                      phi=self.phi)/norm(r)
         self.A += self._structured_diff
@@ -416,7 +420,7 @@ class GNSBFGS(StructuredApproximation):
         super(GNSBFGS, self).__init__(phi=0.0)
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
-               hess: np.ndarray, yb: np.ndarray):
+               hess: np.ndarray, yb: np.ndarray, restrict_ix: np.ndarray):
         # Equation (2.1)
         ratio = yb.T.dot(s)/s.dot(s)
         if ratio > self.hybrid_tol:
