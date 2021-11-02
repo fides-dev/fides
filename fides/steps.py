@@ -271,18 +271,20 @@ class TRStep2D(Step):
         posdef = s_newt.dot(self.shess.dot(s_newt)) > 0
         normalize(s_newt)
 
+        self.posdef_newt = True
         if n > 1:
             if not posdef:
                 # in this case we are in Case 2 of Fig 12 in
                 # [Coleman-Li1994]
                 logger.debug('Newton direction did not have negative '
-                             'using scaling * np.sign(sg) and ev to smallest '
-                             'eigenvalue instead.')
+                             'curvature using scaling * np.sign(sg) and ev '
+                             'to smallest eigenvalue instead.')
                 e, v = slinalg.eigs(self.shess, k=1, which='SR')
-                if np.min(e) < 0:
-                    s_newt = np.real(v[:, np.argmin(e)])
+                if np.min(np.real(e)) < 0:
+                    s_newt = np.real(v[:, np.argmin(np.real(e))])
                 normalize(s_newt)
                 s_grad = scaling * np.sign(sg) + (sg == 0)
+                self.posdef_newt = False
             else:
                 s_grad = sg.copy()
 
@@ -400,6 +402,7 @@ class TRStepReflected(Step):
         nss[step.iminbr] *= -1
         normalize(nss)
         self.subspace = np.expand_dims(nss, 1)
+
         for iminbr in step.iminbr:
             self.reflection_indices.add(iminbr)
 

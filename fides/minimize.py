@@ -700,7 +700,7 @@ class Optimizer:
                 'theta': step.theta,
                 'alpha': step.alpha,
                 'reflections': step.reflection_count,
-                'truncations': step.reflection_count,
+                'truncations': step.truncation_count,
                 'accept': accepted,
                 'hess_min_ev': min_ev_hess,
                 'hess_max_ev': max_ev_hess,
@@ -709,6 +709,10 @@ class Optimizer:
                 'hess_struct_update_min_ev': min_ev_hess_supdate,
                 'hess_struct_update_max_ev': max_ev_hess_supdate,
                 'iterations_since_tr_update': self.iterations_since_tr_update,
+                'step_type': step.type,
+                'subspace_dim': step.subspace.shape[1],
+                'posdef_newt': step.posdef_newt
+                if hasattr(step, 'posdef_newt') else False,
             }
             for key, val in update.items():
                 self.history[key].append(val)
