@@ -339,8 +339,7 @@ class Optimizer:
             with h5py.File(self.get_option(Options.HISTORY_FILE), 'a') as f:
                 g = f.create_group(self.start_id)
                 for key, vals in self.history.items():
-                    d = g.create_dataset(key, len(vals), dtype='f')
-                    d[:] = vals
+                    d = g.create_dataset(key, data=vals)
 
         return self.fval, self.x, self.grad, self.hess
 
