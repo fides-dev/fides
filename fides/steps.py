@@ -64,10 +64,10 @@ class Step:
     :ivar shess: Matrix of the full quadratic problem
     :ivar cg: Projection of the g_hat to the subspace
     :ivar chess: Projection of the B to the subspace
-    :ivar reflection_count: Number of reflections that were applied to
-        obtain this step
-    :ivar truncation_count: Number of reflections that were applied to
-        obtain this step
+    :ivar reflection_indices: Indices of variables for which reflection was
+        applied
+    :ivar truncation_indices: Indices of variables for which truncation was
+        applied
 
     :cvar type: Identifier that allows identification of subclasses
     """
@@ -144,9 +144,27 @@ class Step:
         self.s0: np.ndarray = np.zeros(sg.shape)
         self.ss0: np.ndarray = np.zeros(sg.shape)
 
-        self.reflection_count: int = 0
-        self.truncation_count: int = 0
+        self.reflection_indices: set = set()
+        self.truncation_indices: set = set()
         self.logger: Logger = logger
+
+    @property
+    def reflection_count(self) -> int:
+        """
+        Number of reflections that were applied to obtain this step
+        :return:
+            Number of reflections
+        """
+        return len(self.reflection_indices)
+
+    @property
+    def truncation_count(self) -> int:
+        """
+        Number of truncations that were applied to obtain this step
+        :return:
+            Number of truncations
+        """
+        return len(self.truncation_indices)
 
     def step_back(self):
         """
@@ -382,7 +400,8 @@ class TRStepReflected(Step):
         nss[step.iminbr] *= -1
         normalize(nss)
         self.subspace = np.expand_dims(nss, 1)
-        self.reflection_count = step.reflection_count + 1
+        for iminbr in step.iminbr:
+            self.reflection_indices.add(iminbr)
 
 
 class TRStepTruncated(Step):
@@ -419,7 +438,8 @@ class TRStepTruncated(Step):
             normalize(subspace[:, ix])
         self.subspace = subspace
 
-        self.truncation_count = step.truncation_count + len(iminbr)
+        for iminbr in step.iminbr:
+            self.truncation_indices.add(iminbr)
 
 
 class GradientStep(Step):
@@ -482,8 +502,8 @@ class RefinedStep(Step):
             step.theta * (lb - x) / scaling.diagonal(),
             step.theta * (ub - x) / scaling.diagonal()
         )
-        self.reflection_count = step.reflection_count
-        self.truncation_count = step.truncation_count
+        self.reflection_indices = step.reflection_indices
+        self.truncation_indices = step.truncation_indices
 
     def calculate(self):
         res = minimize(fun=lambda s: quadratic_form(self.shess, self.sg, s),

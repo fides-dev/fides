@@ -380,12 +380,12 @@ class Optimizer:
         if self.hessian_update is not None:
             s = step.s + step.s0
             y = funout_new.grad - self.grad
-            ignore_ix = np.asarray(list(
+            restr_ix = np.asarray(list(
                 step.reflection_indices.union(step.truncation_indices)
             ))
-            if ignore_ix.size:
-                s[ignore_ix] = 0
-                y[ignore_ix] = 0
+            if restr_ix.size and self.get_option(Options.RESTRICT_HESS_APPROX):
+                s[restr_ix] = 0
+                y[restr_ix] = 0
 
             if isinstance(self.hessian_update, IterativeHessianApproximation):
                 self.hessian_update.update(s=s, y=y)

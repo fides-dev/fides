@@ -90,14 +90,21 @@ class IterativeHessianApproximation(HessianApproximation):
     """
     Iterative update schemes that only use s and y values for update.
     """
-    def update(self, s, y):
+    def update(self, s, y) -> None:
+        """
+        Update the Hessian approximation
+        :param s:
+            step in optimization variables
+        :param y:
+            step in gradient
+        """
         self.compute_update(s, y)
         self.apply_update()
 
-    def compute_update(self, s, y):
+    def compute_update(self, s, y) -> None:
         raise NotImplementedError()  # pragma: no cover
 
-    def apply_update(self):
+    def apply_update(self) -> None:
         self._hess += self._diff
 
 
