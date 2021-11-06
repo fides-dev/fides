@@ -35,9 +35,6 @@ class Options(str, enum.Enum):
     # added to the set of possible stepback proposals
     HISTORY_FILE = 'history_file'  # when set, statistics for each start will
     # be saved to the specified file
-    RESTRICT_HESS_APPROX = 'restrict_hess_approx'  # whether iterative
-    # approximations update directions for which reflection or truncation
-    # was applied
 
 
 class SubSpaceDim(str, enum.Enum):

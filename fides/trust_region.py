@@ -83,6 +83,7 @@ def trust_region(x: np.ndarray,
         steptype: type of step that was selected for proposal
     """
     sg = scaling.dot(g)
+    # diag(g_k)*J^v_k Eq (2.5) [ColemanLi1994]
     g_dscaling = csc_matrix(np.diag(np.abs(g) * dv))
 
     steps = {

@@ -130,7 +130,6 @@ def unbounded_and_init():
                                       StepBackStrategy.TRUNCATE,
                                       StepBackStrategy.MIXED])
 @pytest.mark.parametrize("refine", [True, False])
-@pytest.mark.parametrize("restrict", [True, False])
 @pytest.mark.parametrize("sgradient", [True, False])
 @pytest.mark.parametrize("subspace_dim", [SubSpaceDim.STEIHAUG,
                                           SubSpaceDim.FULL,
@@ -163,7 +162,7 @@ def unbounded_and_init():
     (fletcher, GNSBFGS()),  # 21
 ])
 def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
-                              stepback, refine, sgradient, restrict):
+                              stepback, refine, sgradient):
     lb, ub, x0 = bounds_and_init
 
     if (x0 == 0).all() and fun is fletcher:
@@ -178,8 +177,7 @@ def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
                  fides.Options.STEPBACK_STRAT: stepback,
                  fides.Options.MAXITER: 2e2,
                  fides.Options.REFINE_STEPBACK: refine,
-                 fides.Options.SCALED_GRADIENT: sgradient,
-                 fides.Options.RESTRICT_HESS_APPROX: restrict},
+                 fides.Options.SCALED_GRADIENT: sgradient},
         resfun=happ.requires_resfun if happ is not None else False
     )
     opt.minimize(x0)

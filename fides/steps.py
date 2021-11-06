@@ -134,6 +134,7 @@ class Step:
 
         self.qpval: float = 0.0
 
+        # B_hat (Eq 2.5) [ColemanLi1996]
         self.shess: np.ndarray = np.asarray(scaling * hess * scaling
                                             + g_dscaling)
 
@@ -182,7 +183,7 @@ class Step:
             # br quantifies the distance to the boundary normalized
             # by the proposed step, this indicates the fraction of the step
             # that would put the respective variable at the boundary
-            # This is defined in [Coleman-Li1996] (3.1)
+            # This is defined in [Coleman-Li1994] (3.1)
             self.br[nonzero] = np.max(np.vstack([
                 (self.ub[nonzero] - self.x[nonzero])/self.s[nonzero],
                 (self.lb[nonzero] - self.x[nonzero])/self.s[nonzero]
@@ -268,7 +269,7 @@ class TRStep2D(Step):
         n = len(sg)
 
         s_newt = - linalg.lstsq(self.shess, sg)[0]
-        posdef = s_newt.dot(self.shess.dot(s_newt)) > 0
+        posdef = s_newt.dot(self.shess.dot(s_newt)) > -np.spacing
         normalize(s_newt)
 
         self.posdef_newt = True

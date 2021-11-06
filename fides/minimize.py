@@ -379,21 +379,12 @@ class Optimizer:
         if self.hessian_update is not None:
             s = step.s + step.s0
             y = funout_new.grad - self.grad
-            if self.get_option(Options.RESTRICT_HESS_APPROX):
-                restr_ix = np.asarray(list(
-                    step.reflection_indices.union(step.truncation_indices)
-                ))
-            else:
-                restr_ix = np.empty(0)
-            if restr_ix.size:
-                s[restr_ix] = 0
-                y[restr_ix] = 0
 
             if isinstance(self.hessian_update, IterativeHessianApproximation):
-                self.hessian_update.update(s=s, y=y, restrict_ix=restr_ix)
+                self.hessian_update.update(s=s, y=y)
             elif isinstance(self.hessian_update, HybridFixed):
                 self.hessian_update.update(
-                    s=s, y=y, hess=funout_new.hess, restrict_ix=restr_ix,
+                    s=s, y=y, hess=funout_new.hess,
                     iter_since_tr_update=self.iterations_since_tr_update
                 )
             elif isinstance(self.hessian_update, FX):
@@ -408,8 +399,7 @@ class Optimizer:
                     gamma[restr_ix] = 0
                 self.hessian_update.update(delta=s, gamma=gamma,
                                            r=funout_new.res, rprev=funout.res,
-                                           hess=funout_new.hess,
-                                           restrict_ix=restr_ix)
+                                           hess=funout_new.hess)
             elif isinstance(self.hessian_update, StructuredApproximation):
                 # SSM: Equation (43) in [Dennis et al 1989]
                 yb = (funout_new.sres - funout.sres).T.dot(funout_new.res)
@@ -420,8 +410,7 @@ class Optimizer:
                     # GNSBFGS: Equation (2.1) in [Zhou & Chen 2010]
                     yb *= norm(funout_new.res)/norm(funout.res)
                 self.hessian_update.update(s=s, y=y, yb=yb, r=funout_new.res,
-                                           hess=funout_new.hess,
-                                           restrict_ix=restr_ix)
+                                           hess=funout_new.hess)
             else:
                 raise NotImplementedError
 
