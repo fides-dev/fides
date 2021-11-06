@@ -246,7 +246,7 @@ class HybridApproximation(HessianApproximation):
 
 class HybridSwitchApproximation(HybridApproximation):
     def _switched_update(self, s: np.ndarray, y: np.ndarray,
-                        hess: np.ndarray):
+                         hess: np.ndarray):
         self.hessian_update.update(s, y)
         if self._switched:
             new_hess = self.hessian_update.get_mat()

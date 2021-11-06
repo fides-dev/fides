@@ -78,7 +78,6 @@ DEFAULT_OPTIONS = {
     Options.REFINE_STEPBACK: False,
     Options.SCALED_GRADIENT: False,
     Options.HISTORY_FILE: None,
-    Options.RESTRICT_HESS_APPROX: False,
 }
 
 
