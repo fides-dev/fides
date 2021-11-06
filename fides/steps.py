@@ -266,8 +266,9 @@ class TRStep2D(Step):
                  ub, lb, logger):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb, logger)
-        e, v = slinalg.eigs(self.shess, k=1, which='SR')
-        posdef = np.min(np.real(e)) > - np.sqrt(np.spacing(1))
+        sre, v = slinalg.eigs(self.shess, k=1, which='SR')
+        lme, _ = slinalg.eigs(self.shess, k=1, which='LM')
+        posdef = np.min(np.real(sre)) > - np.spacing(1) * np.max(np.abs(lme))
 
         s_newt = - linalg.lstsq(self.shess, sg)[0]
 
@@ -276,7 +277,7 @@ class TRStep2D(Step):
             if not posdef:
                 # in this case we are in Case 2 of Fig 12 in
                 # [Coleman-Li1994]
-                s_newt = np.real(v[:, np.argmin(np.real(e))])
+                s_newt = np.real(v[:, np.argmin(np.real(sre))])
                 s_grad = scaling * np.sign(sg) + (sg == 0)
 
                 self.posdef_newt = False
