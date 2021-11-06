@@ -98,13 +98,13 @@ class IterativeHessianApproximation(HessianApproximation):
         :param y:
             step in gradient
         """
-        self.compute_update(s, y)
-        self.apply_update()
+        self._compute_update(s, y)
+        self._apply_update()
 
-    def compute_update(self, s, y) -> None:
+    def _compute_update(self, s: np.ndarray, y: np.ndarray) -> None:
         raise NotImplementedError()  # pragma: no cover
 
-    def apply_update(self) -> None:
+    def _apply_update(self) -> None:
         self._hess += self._diff
 
 
@@ -138,7 +138,7 @@ class Broyden(IterativeHessianApproximation):
                           'preserved during updating.')
         super(Broyden, self).__init__(init_with_hess)
 
-    def compute_update(self, s, y):
+    def _compute_update(self, s: np.ndarray, y: np.ndarray):
         if y.T.dot(s) <= 0:
             self._diff = np.zeros_like(self._hess)
         else:
@@ -181,7 +181,7 @@ class SR1(IterativeHessianApproximation):
 
     This scheme only works with a function that returns (fval, grad)
     """
-    def compute_update(self, s, y):
+    def _compute_update(self, s: np.ndarray, y: np.ndarray):
         z = y - self._hess.dot(s)
         d = z.T.dot(s)
 
@@ -201,7 +201,7 @@ class BG(IterativeHessianApproximation):
 
     This scheme only works with a function that returns (fval, grad)
     """
-    def compute_update(self, s, y):
+    def _compute_update(self, s: np.ndarray, y: np.ndarray):
         z = y - self._hess.dot(s)
         self._diff = np.outer(z, s.T) / s.T.dot(s)
 
@@ -215,7 +215,7 @@ class BB(IterativeHessianApproximation):
 
     This scheme only works with a function that returns (fval, grad)
     """
-    def update(self, s, y):
+    def _update(self, s: np.ndarray, y: np.ndarray):
         b = y.T.dot(s)
         z = y - self._hess.dot(s)
         if b <= 0:
@@ -224,7 +224,7 @@ class BB(IterativeHessianApproximation):
             self._diff = np.outer(z, s.T) / b
 
 
-class HybridSwitchApproximation(HessianApproximation):
+class HybridApproximation(HessianApproximation):
     def __init__(self, happ: IterativeHessianApproximation = BFGS()):
         """
         Create a Hybrid Hessian update strategy that switches between an
@@ -234,36 +234,19 @@ class HybridSwitchApproximation(HessianApproximation):
             Iterative Hessian Approximation
         """
         self.hessian_update = happ
-        super(HybridSwitchApproximation, self).__init__()
+        super(HybridApproximation, self).__init__()
 
     def init_mat(self, dim: int, hess: Optional[np.ndarray] = None):
         self.hessian_update.init_mat(dim, hess)
-        super(HybridSwitchApproximation, self).init_mat(dim, hess)
+        super(HybridApproximation, self).init_mat(dim, hess)
 
     def requires_hess(self):
         return True  # pragma: no cover
 
 
-class HybridFixed(HybridSwitchApproximation):
-    def __init__(self,
-                 happ: IterativeHessianApproximation = BFGS(),
-                 switch_iteration: Optional[int] = 20):
-        """
-        Switch from a dynamic approximation that to the user provided
-        iterative scheme after a fixed number of iterations. The iterative
-        scheme is initialized and updated from the beginning, but only
-        employed after the specified number of iterations.
-
-        This scheme only works with a function that returns (fval, grad, hess)
-
-        :param switch_iteration:
-            Iteration after which this approximation is used
-        """
-        self.switch_iteration: int = switch_iteration
-        super(HybridFixed, self).__init__(happ)
-        self._switched = False
-
-    def update(self, s, y, hess, iter_since_tr_update):
+class HybridSwitchApproximation(HybridApproximation):
+    def _switched_update(self, s: np.ndarray, y: np.ndarray,
+                        hess: np.ndarray):
         self.hessian_update.update(s, y)
         if self._switched:
             new_hess = self.hessian_update.get_mat()
@@ -271,23 +254,68 @@ class HybridFixed(HybridSwitchApproximation):
             new_hess = hess
         self._diff = new_hess - self._hess
         self._hess = new_hess
+
+
+class HybridFixed(HybridSwitchApproximation):
+    def __init__(self,
+                 happ: IterativeHessianApproximation = BFGS(),
+                 switch_iteration: Optional[int] = 20):
+        """
+        Switch from a dynamic approximation to the user provided iterative
+        scheme after a fixed number of successive iterations without
+        trust-region update. The switching is non-reversible. The iterative
+        scheme is initialized and updated rom the beginning, but only
+        employed after the specified number of iterations.
+
+        This scheme only works with a function that returns (fval, grad, hess)
+
+        :param switch_iteration:
+            Number of iterations without trust region update after which
+            switch occurs.
+        """
+        self.switch_iteration: int = switch_iteration
+        super(HybridFixed, self).__init__(happ)
+        self._switched = False
+
+    def update(self, s: np.ndarray, y: np.ndarray, hess: np.ndarray,
+               iter_since_tr_update: int):
+        self._switched_update(s, y, hess)
         if not self._switched:
             self._switched = iter_since_tr_update >= self.switch_iteration
 
-    def get_mat(self) -> np.ndarray:
-        if self._switched:
-            return self.hessian_update.get_mat()
-        else:
-            return self._hess
 
-    def get_diff(self) -> np.ndarray:
-        if self._switched:
-            return self.hessian_update.get_diff()
-        else:
-            return self._diff
+class HybridFraction(HybridSwitchApproximation):
+    def __init__(self,
+                 happ: IterativeHessianApproximation = BFGS(),
+                 switch_threshold: Optional[float] = 0.8):
+        """
+        Switch from a dynamic approximation to the user provided iterative
+        scheme as soon as the fraction of iterations where the step is
+        accepted but the trust region is not update exceeds the user provided
+        threshold.Threshold check is only performed after 10 iterations.
+        The switching is  non-reversible. The iterative scheme is
+        initialized and updated rom the beginning, but only employed after
+        the switching.
+
+        This scheme only works with a function that returns (fval, grad, hess)
+
+        :param switch_threshold:
+            Threshold for fraction of iterations where step is accepted but
+            trust region is not updated, which when exceeded triggers switch
+            of approximation.
+        """
+        self.switch_threshold: float = switch_threshold
+        super(HybridFraction, self).__init__(happ)
+        self._switched = False
+
+    def update(self, s: np.ndarray, y: np.ndarray, hess: np.ndarray,
+               tr_nonupdates: int, iterations: int):
+        self._switched_update(s, y, hess)
+        if not self._switched and iterations > 10:
+            self._switched = tr_nonupdates/iterations > self.switch_threshold
 
 
-class FX(HybridSwitchApproximation):
+class FX(HybridApproximation):
     def __init__(self,
                  happ: IterativeHessianApproximation = BFGS(),
                  hybrid_tol: Optional[float] = 0.2):

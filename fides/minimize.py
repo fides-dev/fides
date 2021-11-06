@@ -14,8 +14,8 @@ from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 from .trust_region import trust_region, Step
 from .hessian_approximation import (
-    HessianApproximation, StructuredApproximation, HybridFixed, FX,
-    IterativeHessianApproximation, TSSM, GNSBFGS
+    HessianApproximation, StructuredApproximation, HybridFixed,
+    HybridFraction, FX, IterativeHessianApproximation, TSSM, GNSBFGS
 )
 from .constants import Options, ExitFlag, DEFAULT_OPTIONS
 from .logging import create_logger
@@ -216,6 +216,7 @@ class Optimizer:
 
         self.hessian_update: Union[HessianApproximation, None] = hessian_update
         self.iterations_since_tr_update: int = 0
+        self.n_intermediate_tr_radius: int = 0
 
         self.starttime: float = np.nan
         self.iteration: int = 0
@@ -230,6 +231,8 @@ class Optimizer:
     def _reset(self):
         self.starttime = time.time()
         self.iteration = 0
+        self.iterations_since_tr_update = 0
+        self.n_intermediate_tr_radius = 0
         self.converged = False
         self.delta = self.get_option(Options.DELTA_INIT)
         self.delta_iter = self.delta
@@ -387,6 +390,12 @@ class Optimizer:
                     s=s, y=y, hess=funout_new.hess,
                     iter_since_tr_update=self.iterations_since_tr_update
                 )
+            elif isinstance(self.hessian_update, HybridFraction):
+                self.hessian_update.update(
+                    s=s, y=y, hess=funout_new.hess,
+                    tr_nonupdates=self.n_intermediate_tr_radius,
+                    iterations=self.iteration
+                )
             elif isinstance(self.hessian_update, FX):
                 # Equation (1.16)
                 # A = sres
@@ -395,16 +404,12 @@ class Optimizer:
                 # r = res
                 gamma = funout_new.hess.dot(s) + \
                         (funout_new.sres - funout.sres).T.dot(funout_new.res)
-                if restr_ix.size:
-                    gamma[restr_ix] = 0
                 self.hessian_update.update(delta=s, gamma=gamma,
                                            r=funout_new.res, rprev=funout.res,
                                            hess=funout_new.hess)
             elif isinstance(self.hessian_update, StructuredApproximation):
                 # SSM: Equation (43) in [Dennis et al 1989]
                 yb = (funout_new.sres - funout.sres).T.dot(funout_new.res)
-                if restr_ix.size:
-                    yb[restr_ix] = 0
                 if isinstance(self.hessian_update, (TSSM, GNSBFGS)):
                     # TSSM: Equation (2.5)/(2.6) in [Huschens 1994]
                     # GNSBFGS: Equation (2.1) in [Zhou & Chen 2010]
@@ -475,6 +480,9 @@ class Optimizer:
                     nsx / 4
                 ])
                 self.iterations_since_tr_update = 0
+            elif self.tr_ratio > self.get_option(Options.MU) and \
+                    self.tr_ratio < self.get_option(Options.ETA):
+                self.n_intermediate_tr_radius += 1
             return self.tr_ratio > 0.0 and step.qpval <= 0
 
     def check_convergence(self, step: Step, funout: Funout) -> None:
