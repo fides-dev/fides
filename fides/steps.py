@@ -266,29 +266,24 @@ class TRStep2D(Step):
                  ub, lb, logger):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb, logger)
-        n = len(sg)
+        e, v = slinalg.eigs(self.shess, k=1, which='SR')
+        posdef = np.min(np.real(e)) > - np.sqrt(np.spacing(1))
 
         s_newt = - linalg.lstsq(self.shess, sg)[0]
-        posdef = s_newt.dot(self.shess.dot(s_newt)) > -np.spacing
-        normalize(s_newt)
 
         self.posdef_newt = True
-        if n > 1:
+        if len(sg) > 1:
             if not posdef:
                 # in this case we are in Case 2 of Fig 12 in
                 # [Coleman-Li1994]
-                logger.debug('Newton direction did not have negative '
-                             'curvature using scaling * np.sign(sg) and ev '
-                             'to smallest eigenvalue instead.')
-                e, v = slinalg.eigs(self.shess, k=1, which='SR')
-                if np.min(np.real(e)) < 0:
-                    s_newt = np.real(v[:, np.argmin(np.real(e))])
-                normalize(s_newt)
+                s_newt = np.real(v[:, np.argmin(np.real(e))])
                 s_grad = scaling * np.sign(sg) + (sg == 0)
+
                 self.posdef_newt = False
             else:
                 s_grad = sg.copy()
 
+            normalize(s_newt)
             # orthonormalize, this ensures that S.T.dot(S) = I and we
             # can use S/S.T for transformation
             s_grad = s_grad - s_newt * (s_newt.dot(s_grad))
