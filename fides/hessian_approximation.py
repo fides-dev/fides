@@ -342,24 +342,24 @@ class FX(HybridApproximation):
 
     def update(self, delta: np.ndarray, gamma: np.ndarray,
                r: np.ndarray, rprev: np.ndarray, hess: np.ndarray) -> None:
-            """
-            Update the Hessian approximation
+        """
+        Update the Hessian approximation
 
-            :param delta:
-                step in optimization variables
+        :param delta:
+            step in optimization variables
 
-            :param gamma:
-                step in gradient
+        :param gamma:
+            step in gradient
 
-            :param r:
-                residuals after current step
+        :param r:
+            residuals after current step
 
-            :param rprev:
-                residuals befor current step
+        :param rprev:
+            residuals befor current step
 
-            :param hess:
-                user-provided (Gauss-Newton) Hessian approximation
-            """
+        :param hess:
+            user-provided (Gauss-Newton) Hessian approximation
+        """
         # Equation (3.5)
         ratio = (rprev.dot(rprev) - r.dot(r))/rprev.dot(rprev)
         if ratio >= self.hybrid_tol:
