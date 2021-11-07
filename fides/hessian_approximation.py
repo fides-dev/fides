@@ -29,7 +29,7 @@ class HessianApproximation:
         self._diff: np.ndarray = np.empty(0)
         self.init_with_hess = init_with_hess
 
-    def init_mat(self, dim: int, hess: Optional[np.ndarray] = None):
+    def init_mat(self, dim: int, hess: Optional[np.ndarray] = None) -> None:
         """
         Initializes this approximation instance and checks the dimensionality
 
@@ -52,6 +52,7 @@ class HessianApproximation:
     def get_mat(self) -> np.ndarray:
         """
         Getter for the Hessian approximation
+
         :return:
             Hessian approximation
         """
@@ -60,14 +61,16 @@ class HessianApproximation:
     def get_diff(self) -> np.ndarray:
         """
         Getter for the Hessian approximation update
+
         :return:
             Hessian approximation update
         """
         return self._diff
 
-    def set_mat(self, mat: np.ndarray):
+    def set_mat(self, mat: np.ndarray) -> None:
         """
         Setter for the Hessian approximation
+
         :param mat:
             Hessian approximation
         """
@@ -355,7 +358,7 @@ class FX(HybridApproximation):
                 residuals befor current step
 
             :param hess:
-                user-provided Hessian approximation
+                user-provided (Gauss-Newton) Hessian approximation
             """
         # Equation (3.5)
         ratio = (rprev.dot(rprev) - r.dot(r))/rprev.dot(rprev)
@@ -409,9 +412,10 @@ class StructuredApproximation(HessianApproximation):
         super(StructuredApproximation, self).init_mat(dim, hess)
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
-               hess: np.ndarray, yb: np.ndarray):
+               hess: np.ndarray, yb: np.ndarray) -> None:
         """
         Update the structured approximation
+
         :param s:
             step in optimization parameters
         :param y:
@@ -419,7 +423,7 @@ class StructuredApproximation(HessianApproximation):
         :param r:
             residual vector
         :param hess:
-            gauss-newton Hessian approximation
+            user-provided (Gauss-Newton) Hessian approximation
         :param yb:
             approximation to A*s, where A is structured approximation matrix
         """
@@ -451,7 +455,7 @@ class SSM(StructuredApproximation):
     """
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
-               hess: np.ndarray, yb: np.ndarray):
+               hess: np.ndarray, yb: np.ndarray) -> None:
         # B^S = A + C(x_+)
         Bs = hess + self.A
         # y^S = y^# + C(x_+)*s
@@ -475,7 +479,7 @@ class TSSM(StructuredApproximation):
     """
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
-               hess: np.ndarray, yb: np.ndarray):
+               hess: np.ndarray, yb: np.ndarray) -> None:
         # Equation (2.7)
         Bs = hess + norm(r) * self.A
         # Equation (2.6)
@@ -508,7 +512,7 @@ class GNSBFGS(StructuredApproximation):
                                       enforce_curv_cond=enforce_curv_cond)
 
     def update(self, s: np.ndarray, y: np.ndarray, r: np.ndarray,
-               hess: np.ndarray, yb: np.ndarray):
+               hess: np.ndarray, yb: np.ndarray) -> None:
         # Equation (2.1)
         ratio = yb.T.dot(s)/s.dot(s)
         if ratio > self.hybrid_tol:
@@ -530,7 +534,7 @@ def broyden_class_update(y: np.ndarray,
                          s: np.ndarray,
                          mat: np.ndarray,
                          phi: float = 0.0,
-                         enforce_curv_cond: bool = True):
+                         enforce_curv_cond: bool = True) -> np.ndarray:
     """
     Scale free implementation of the broyden class update scheme.
 
