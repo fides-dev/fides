@@ -215,7 +215,7 @@ class BB(IterativeHessianApproximation):
 
     This scheme only works with a function that returns (fval, grad)
     """
-    def _update(self, s: np.ndarray, y: np.ndarray):
+    def update(self, s: np.ndarray, y: np.ndarray):
         b = y.T.dot(s)
         z = y - self._hess.dot(s)
         if b <= 0:
