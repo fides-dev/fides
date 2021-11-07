@@ -285,37 +285,27 @@ class TRStep2D(Step):
                 return
 
             # Case 1 of Fig 12 in [ColemanLi1994]
-            normalize(s_newt)
-
             s_grad = sg.copy()
             # orthonormalize, this ensures that S.T.dot(S) = I and we
             # can use S/S.T for transformation
-            s_grad = s_grad - s_newt * s_newt.dot(s_grad)
-            # if non-zero, add s_grad to subspace
-            if norm(s_grad) > np.spacing(1):
-                normalize(s_grad)
-                self.subspace = np.vstack([s_newt, s_grad]).T
-            else:
-                # s_newt and s_grad are parallel but we already projected
-                # s_grad, so use s_newt here
-                self.subspace = np.expand_dims(s_newt, 1)
         else:
             self.posdef_newt = False
             # Case 2 of Fig 12 in [ColemanLi1994]
             # Eigenvectors to negative eigenvalues are constraint
             # compatible according to Theorem 5 (3)
-            w_k = np.real(v[:, np.argmin(np.real(sre))])
-            z_k = scaling.dot(np.sign(sg) + (sg == 0))
-            normalize(z_k)
-            if norm(z_k - w_k * w_k.dot(z_k)) < np.max(
-                [norm(sg), - np.spacing(1) * np.min(np.real(sre))]
-            ):
-                self.subspace = np.expand_dims(z_k, 1)
-            else:
-                # orthonormalize w_k
-                w_k = w_k - z_k * z_k.dot(w_k)
-                normalize(w_k)
-                self.subspace = np.vstack([z_k, w_k]).T
+            s_newt = np.real(v[:, np.argmin(np.real(sre))])
+            s_grad = scaling.dot(np.sign(sg) + (sg == 0))
+
+        normalize(s_newt)
+        s_grad = s_grad - s_newt * s_newt.dot(s_grad)
+        # if non-zero, add s_grad to subspace
+        if norm(s_grad) > np.spacing(1):
+            normalize(s_grad)
+            self.subspace = np.vstack([s_newt, s_grad]).T
+        else:
+            # s_newt and s_grad are parallel but we already projected
+            # s_grad, so use s_newt here
+            self.subspace = np.expand_dims(s_newt, 1)
 
 
 class CGStep(Step):
