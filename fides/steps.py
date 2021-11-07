@@ -270,33 +270,52 @@ class TRStep2D(Step):
         lme, _ = slinalg.eigs(self.shess, k=1, which='LM')
         posdef = np.min(np.real(sre)) > - np.spacing(1) * np.max(np.abs(lme))
 
-        s_newt = - linalg.lstsq(self.shess, sg)[0]
-
         self.posdef_newt = True
-        if len(sg) > 1:
-            if not posdef:
-                # in this case we are in Case 2 of Fig 12 in
-                # [Coleman-Li1994]
-                s_newt = np.real(v[:, np.argmin(np.real(sre))])
-                s_grad = scaling * np.sign(sg) + (sg == 0)
+        if len(sg) == 1:
+            s_newt = - sg[0]/self.shess[0]
+            self.subspace = np.expand_dims(s_newt, 1)
+            return
 
-                self.posdef_newt = False
-            else:
-                s_grad = sg.copy()
+        if posdef:
+            s_newt = - linalg.lstsq(self.shess, sg)[0]
 
+            if norm(s_newt) < delta:
+                # Case 0 of Fig 12 in [ColemanLi1994]
+                self.subspace = np.expand_dims(s_newt, 1)
+                return
+
+            # Case 1 of Fig 12 in [ColemanLi1994]
             normalize(s_newt)
+
+            s_grad = sg.copy()
             # orthonormalize, this ensures that S.T.dot(S) = I and we
             # can use S/S.T for transformation
-            s_grad = s_grad - s_newt * (s_newt.dot(s_grad))
-            normalize(s_grad)
+            s_grad = s_grad - s_newt * s_newt.dot(s_grad)
             # if non-zero, add s_grad to subspace
-            if np.any(s_grad != 0):
+            if norm(s_grad) > np.spacing(1):
+                normalize(s_grad)
                 self.subspace = np.vstack([s_newt, s_grad]).T
-                return
             else:
-                logger.debug('Singular subspace, continuing with 1D subspace.')
-
-        self.subspace = np.expand_dims(s_newt, 1)
+                # s_newt and s_grad are parallel but we already projected
+                # s_grad, so use s_newt here
+                self.subspace = np.expand_dims(s_newt, 1)
+        else:
+            self.posdef_newt = False
+            # Case 2 of Fig 12 in [ColemanLi1994]
+            # Eigenvectors to negative eigenvalues are constraint
+            # compatible according to Theorem 5 (3)
+            w_k = np.real(v[:, np.argmin(np.real(sre))])
+            z_k = scaling.dot(np.sign(sg) + (sg == 0))
+            normalize(z_k)
+            if norm(z_k - w_k * w_k.dot(z_k)) < np.max(
+                [norm(sg), - np.spacing(1) * np.min(np.real(sre))]
+            ):
+                self.subspace = np.expand_dims(z_k, 1)
+            else:
+                # orthonormalize w_k
+                w_k = w_k - z_k * z_k.dot(w_k)
+                normalize(w_k)
+                self.subspace = np.vstack([z_k, w_k]).T
 
 
 class CGStep(Step):
@@ -454,22 +473,6 @@ class GradientStep(Step):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb, logger)
         s_grad = sg.copy()
-        normalize(s_grad)
-        self.subspace = np.expand_dims(s_grad, 1)
-
-
-class ScaledGradientStep(Step):
-    """
-    This class provides the machinery to compute a gradient step.
-    """
-
-    type = 'dg'
-
-    def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb, logger):
-        super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb, logger)
-        s_grad = scaling*sg.copy()
         normalize(s_grad)
         self.subspace = np.expand_dims(s_grad, 1)
 

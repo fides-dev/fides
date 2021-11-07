@@ -31,8 +31,6 @@ class Options(str, enum.Enum):
     GAMMA2 = 'gamma2'  # factor by which trust region radius will be increased
     REFINE_STEPBACK = 'refine_stepback'  # whether stepbacks are refined via
     # optimization
-    SCALED_GRADIENT = 'scaled_gradient'  # whether scaled gradient should be
-    # added to the set of possible stepback proposals
     HISTORY_FILE = 'history_file'  # when set, statistics for each start will
     # be saved to the specified file
 
@@ -76,7 +74,6 @@ DEFAULT_OPTIONS = {
     Options.GAMMA1: 1/4,  # [NodedalWright2006]
     Options.GAMMA2: 2,  # [NodedalWright2006]
     Options.REFINE_STEPBACK: False,
-    Options.SCALED_GRADIENT: False,
     Options.HISTORY_FILE: None,
 }
 

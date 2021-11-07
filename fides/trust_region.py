@@ -13,7 +13,7 @@ from scipy.sparse import csc_matrix
 
 from .constants import SubSpaceDim, StepBackStrategy
 from .steps import (
-    Step, GradientStep, ScaledGradientStep, TRStep2D, TRStepFull,
+    Step, GradientStep, TRStep2D, TRStepFull,
     TRStepReflected, TRStepSteihaug
 )
 from .stepback import stepback_refine, stepback_reflect, stepback_truncate
@@ -31,7 +31,6 @@ def trust_region(x: np.ndarray,
                  subspace_dim: SubSpaceDim,
                  stepback_strategy: StepBackStrategy,
                  refine_stepback: bool,
-                 use_scaled_gradient: bool,
                  logger: logging.Logger) -> Step:
     """
     Compute a step according to the solution of the trust-region subproblem.
@@ -68,9 +67,6 @@ def trust_region(x: np.ndarray,
     :param refine_stepback:
         If set to True, proposed steps that are computed via the specified
         stepback_strategy will be refined via optimization.
-    :param use_scaled_gradient:
-        If set to True, the scaled gradient will be added to the set of
-        proposal steps
     :param logger:
         logging.Logger instance to be used for logging
 
@@ -107,12 +103,6 @@ def trust_region(x: np.ndarray,
                               theta, ub, lb, logger)
         g_step.calculate()
         steps.append(g_step)
-        if use_scaled_gradient:
-            dg_step = ScaledGradientStep(x, sg, hess, scaling, g_dscaling,
-                                         delta, theta, ub, lb, logger)
-            dg_step.calculate()
-            steps.append(dg_step)
-
         if stepback_strategy == StepBackStrategy.SINGLE_REFLECT:
             rtr_step = TRStepReflected(x, sg, hess, scaling, g_dscaling, delta,
                                        theta, ub, lb, tr_step)
