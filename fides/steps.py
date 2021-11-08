@@ -266,12 +266,12 @@ class TRStep2D(Step):
                  ub, lb, logger):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb, logger)
-        s_newt, _, _, evs = linalg.lstsq(self.shess, sg)
+        s_newt, _, _, _ = linalg.lstsq(self.shess, sg)
         s_newt *= -1
         # lstsq only returns absolute ev values
-        sre, v = slinalg.eigs(self.shess, k=1, which='SR')
-        self.posdef_newt = np.min(np.real(sre)) > \
-            - np.spacing(1) * np.max(np.abs(evs))
+        e, v = np.linalg.eig(self.shess)
+        self.posdef_newt = np.min(np.real(e)) > \
+            - np.spacing(1) * np.max(np.abs(e))
 
         if len(sg) == 1:
             s_newt = - sg[0]/self.shess[0]
@@ -294,7 +294,7 @@ class TRStep2D(Step):
             # Case 2 of Fig 12 in [ColemanLi1994]
             # Eigenvectors to negative eigenvalues are constraint
             # compatible according to Theorem 5 (3)
-            s_newt = np.real(v[:, np.argmin(np.real(sre))])
+            s_newt = np.real(v[:, np.argmin(np.real(e))])
             s_grad = scaling.dot(np.sign(sg) + (sg == 0))
 
         normalize(s_newt)
