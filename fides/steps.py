@@ -8,7 +8,6 @@ This module provides the machinery to calculate different trust-region(
 
 import numpy as np
 import scipy.linalg as linalg
-import scipy.sparse.linalg as slinalg
 
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
