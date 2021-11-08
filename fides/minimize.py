@@ -76,6 +76,11 @@ class Funout:
         if not np.isscalar(self.fval):
             raise ValueError('Provided objective function must return a '
                              'scalar!')
+
+        if np.isscalar(self.grad):
+            raise ValueError('Provided objective function gradient must '
+                             'return a vector!')
+
         if not self.grad.ndim == 1:
             raise ValueError('Provided objective function must return a '
                              'gradient vector with x.ndim == 1, was '
@@ -88,6 +93,10 @@ class Funout:
 
         if self.hess is None:
             return
+
+        if np.isscalar(self.hess):
+            raise ValueError('Provided objective function Hessian must '
+                             'return a matrix!')
 
         if not self.hess.ndim == 2:
             raise ValueError('Provided objective function must return a '
@@ -137,7 +146,7 @@ class Optimizer:
                  fun: Callable,
                  ub: np.ndarray,
                  lb: np.ndarray,
-                 verbose: Optional[int] = logging.DEBUG,
+                 verbose: Optional[int] = logging.INFO,
                  options: Optional[Dict] = None,
                  funargs: Optional[Dict] = None,
                  hessian_update: Optional[HessianApproximation] = None,
