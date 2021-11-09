@@ -13,10 +13,10 @@ from scipy.sparse import csc_matrix
 
 from .constants import SubSpaceDim, StepBackStrategy
 from .steps import (
-    Step, GradientStep, TRStep2D, TRStepFull,
+    Step, GradientStep, TRStep2D, TRStepFull, RefinedStep,
     TRStepReflected, TRStepSteihaug
 )
-from .stepback import stepback_refine, stepback_reflect, stepback_truncate
+from .stepback import stepback_reflect, stepback_truncate
 
 
 def trust_region(x: np.ndarray,
@@ -30,7 +30,6 @@ def trust_region(x: np.ndarray,
                  ub: np.ndarray,
                  subspace_dim: SubSpaceDim,
                  stepback_strategy: StepBackStrategy,
-                 refine_stepback: bool,
                  logger: logging.Logger) -> Step:
     """
     Compute a step according to the solution of the trust-region subproblem.
@@ -64,33 +63,25 @@ def trust_region(x: np.ndarray,
     :param stepback_strategy:
         Strategy that is applied when the proposed step exceeds the
         optimization boundary.
-    :param refine_stepback:
-        If set to True, proposed steps that are computed via the specified
-        stepback_strategy will be refined via optimization.
     :param logger:
         logging.Logger instance to be used for logging
 
     :return:
         s: proposed step,
-        ss: rescaled proposed step,
-        qpval: expected function value according to local quadratic
-        approximation,
-        subspace: computed subspace for reuse if proposed step is not accepted,
-        steptype: type of step that was selected for proposal
     """
     sg = scaling.dot(g)
     # diag(g_k)*J^v_k Eq (2.5) [ColemanLi1994]
     g_dscaling = csc_matrix(np.diag(np.abs(g) * dv))
 
-    steps = {
+    step_options = {
         SubSpaceDim.TWO: TRStep2D,
         SubSpaceDim.FULL: TRStepFull,
         SubSpaceDim.STEIHAUG: TRStepSteihaug,
     }
-    if subspace_dim not in steps:
+    if subspace_dim not in step_options:
         raise ValueError('Invalid choice of subspace dimension.')
-    tr_step = steps[subspace_dim](x, sg, hess, scaling, g_dscaling, delta,
-                                  theta, ub, lb, logger)
+    tr_step = step_options[subspace_dim](x, sg, hess, scaling, g_dscaling,
+                                         delta, theta, ub, lb, logger)
     tr_step.calculate()
 
     # in case of truncation, we hit the boundary and we check both the
@@ -115,17 +106,21 @@ def trust_region(x: np.ndarray,
                 tr_step, x, sg, hess, scaling, g_dscaling, delta, theta, ub,
                 lb
             ))
+
         if stepback_strategy in [StepBackStrategy.TRUNCATE,
                                  StepBackStrategy.MIXED]:
             steps.extend(stepback_truncate(
                 tr_step, x, sg, hess, scaling, g_dscaling, delta, theta, ub,
                 lb
             ))
-        if refine_stepback:
-            steps.extend(stepback_refine(
-                steps, x, sg, hess, scaling, g_dscaling, delta, theta, ub,
-                lb
-            ))
+
+        if stepback_strategy == StepBackStrategy.REFINE:
+            if tr_step.subspace.shape[1] > 1:
+                ref_step = RefinedStep(
+                    x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, tr_step
+                )
+                ref_step.calculate()
+                steps.append(ref_step)
 
     if len(steps) > 1:
         rcountstrs = [str(step.reflection_count)

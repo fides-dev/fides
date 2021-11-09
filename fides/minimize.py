@@ -17,7 +17,9 @@ from .hessian_approximation import (
     HessianApproximation, StructuredApproximation, HybridFixed,
     HybridFraction, FX, IterativeHessianApproximation, TSSM, GNSBFGS
 )
-from .constants import Options, ExitFlag, DEFAULT_OPTIONS
+from .constants import (
+    Options, ExitFlag, DEFAULT_OPTIONS, StepBackStrategy, SubSpaceDim
+)
 from .logging import create_logger
 from collections import defaultdict
 
@@ -210,6 +212,12 @@ class Optimizer:
 
         self.options: Dict = options
 
+        if (self.get_option(Options.SUBSPACE_DIM) == SubSpaceDim.STEIHAUG and
+                self.get_option(Options.STEPBACK_STRAT) ==
+                StepBackStrategy.REFINE):
+            raise ValueError('Selected base step is not compatible with '
+                             'refinement.')
+
         self.delta: float = self.get_option(Options.DELTA_INIT)
         self.delta_iter: float = self.delta
 
@@ -320,7 +328,6 @@ class Optimizer:
                     self.delta_iter, dv, theta, self.lb, self.ub,
                     subspace_dim=self.get_option(Options.SUBSPACE_DIM),
                     stepback_strategy=self.get_option(Options.STEPBACK_STRAT),
-                    refine_stepback=self.get_option(Options.REFINE_STEPBACK),
                     logger=self.logger
                 )
 

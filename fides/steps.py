@@ -11,7 +11,9 @@ import scipy.linalg as linalg
 
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
-from scipy.optimize import Bounds, NonlinearConstraint, minimize
+from scipy.optimize import (
+    Bounds, NonlinearConstraint, LinearConstraint, minimize
+)
 
 from logging import Logger
 from .subproblem import (
@@ -479,36 +481,40 @@ class RefinedStep(Step):
                  ub, lb, step):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb, step.logger)
-        s_grad = sg.copy()
-        normalize(s_grad)
-        self.subspace = np.expand_dims(s_grad, 1)
+        self.subspace: np.ndarray = step.subspace
+        self.chess: np.ndarray = step.chess
+        self.cg: np.ndarray = step.cg
         self.constraints = [
             NonlinearConstraint(
-                fun=lambda xs: (norm(xs) - delta) * np.ones((1,)),
-                jac=lambda xs: np.expand_dims(xs, 1).T / norm(xs),
+                fun=lambda xc: (norm(self.subspace.dot(xc)) - delta) *
+                    np.ones((1,)),
+                jac=lambda xc: np.expand_dims(self.subspace.dot(xc), 1).T /
+                    norm(self.subspace.dot(xc)),
                 lb=-np.ones((1,)) * np.inf,
                 ub=np.zeros((1,)),
+            ),
+            LinearConstraint(
+                A=self.subspace,
+                lb=(lb - x) / scaling.diagonal(),
+                ub=(ub - x) / scaling.diagonal()
             )
         ]
-        self.guess = step.ss + step.ss0
-        self.bounds = Bounds(
-            step.theta * (lb - x) / scaling.diagonal(),
-            step.theta * (ub - x) / scaling.diagonal()
-        )
-        self.reflection_indices = step.reflection_indices
-        self.truncation_indices = step.truncation_indices
+        self.guess: np.ndarray = step.sc
+        self.qpval0: float = step.qpval
+        self.reflection_indices: int = step.reflection_indices
+        self.truncation_indices: int = step.truncation_indices
 
     def calculate(self):
-        res = minimize(fun=lambda s: quadratic_form(self.shess, self.sg, s),
-                       jac=lambda s: self.shess.dot(s) + self.sg,
-                       hess=lambda s: self.shess,
-                       x0=self.guess,
-                       method='trust-constr',
-                       bounds=self.bounds,
-                       constraints=self.constraints,
-                       options={'verbose': 0, 'maxiter': 10})
-        self.ss = res.x
-        self.s = self.scaling.dot(res.x)
-        self.sc = self.ss
+        res = minimize(fun=lambda c: quadratic_form(self.chess, self.cg, c),
+                      jac=lambda c: self.chess.dot(c) + self.cg,
+                      hess=lambda c: self.chess,
+                      x0=self.guess,
+                      method='trust-constr',
+                      constraints=self.constraints,
+                      options={'verbose': 0, 'maxiter': 100,
+                               'gtol': 0, 'xtol': 0})
+        self.sc = res.x
+        self.ss = self.subspace.dot(self.sc)
+        self.s = self.scaling.dot(self.ss)
         self.step_back()
         self.qpval = quadratic_form(self.shess, self.sg, self.ss)
