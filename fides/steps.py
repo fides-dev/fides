@@ -486,7 +486,8 @@ class RefinedStep(Step):
             NonlinearConstraint(
                 fun=lambda xc: (norm(self.subspace.dot(xc)) - delta) *
                 np.ones((1,)),
-                jac=lambda xc: np.expand_dims(self.subspace.dot(xc), 1).T /
+                jac=lambda xc:
+                np.expand_dims(self.subspace.dot(xc), 1).T.dot(self.subspace) /
                 norm(self.subspace.dot(xc)),
                 lb=-np.ones((1,)) * np.inf,
                 ub=np.zeros((1,)),
