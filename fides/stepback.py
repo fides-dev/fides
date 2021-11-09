@@ -8,9 +8,9 @@ had to be truncated due to non-compliance with boundary constraints.
 
 import numpy as np
 from scipy.sparse import csc_matrix
-from typing import List, Sequence
+from typing import List
 
-from .steps import Step, TRStepReflected, TRStepTruncated, RefinedStep
+from .steps import Step, TRStepReflected, TRStepTruncated
 
 
 def stepback_reflect(tr_step: Step,

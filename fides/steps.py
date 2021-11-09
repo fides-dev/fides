@@ -487,9 +487,9 @@ class RefinedStep(Step):
         self.constraints = [
             NonlinearConstraint(
                 fun=lambda xc: (norm(self.subspace.dot(xc)) - delta) *
-                    np.ones((1,)),
+                                np.ones((1,)),
                 jac=lambda xc: np.expand_dims(self.subspace.dot(xc), 1).T /
-                    norm(self.subspace.dot(xc)),
+                                              norm(self.subspace.dot(xc)),
                 lb=-np.ones((1,)) * np.inf,
                 ub=np.zeros((1,)),
             ),
@@ -506,13 +506,13 @@ class RefinedStep(Step):
 
     def calculate(self):
         res = minimize(fun=lambda c: quadratic_form(self.chess, self.cg, c),
-                      jac=lambda c: self.chess.dot(c) + self.cg,
-                      hess=lambda c: self.chess,
-                      x0=self.guess,
-                      method='trust-constr',
-                      constraints=self.constraints,
-                      options={'verbose': 0, 'maxiter': 100,
-                               'gtol': 0, 'xtol': 0})
+                       jac=lambda c: self.chess.dot(c) + self.cg,
+                       hess=lambda c: self.chess,
+                       x0=self.guess,
+                       method='trust-constr',
+                       constraints=self.constraints,
+                       options={'verbose': 0, 'maxiter': 100,
+                                'gtol': 0, 'xtol': 0})
         self.sc = res.x
         self.ss = self.subspace.dot(self.sc)
         self.s = self.scaling.dot(self.ss)
