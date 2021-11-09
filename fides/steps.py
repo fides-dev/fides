@@ -11,9 +11,7 @@ import scipy.linalg as linalg
 
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
-from scipy.optimize import (
-    Bounds, NonlinearConstraint, LinearConstraint, minimize
-)
+from scipy.optimize import NonlinearConstraint, LinearConstraint, minimize
 
 from logging import Logger
 from .subproblem import (
@@ -487,9 +485,9 @@ class RefinedStep(Step):
         self.constraints = [
             NonlinearConstraint(
                 fun=lambda xc: (norm(self.subspace.dot(xc)) - delta) *
-                                np.ones((1,)),
+                np.ones((1,)),
                 jac=lambda xc: np.expand_dims(self.subspace.dot(xc), 1).T /
-                                              norm(self.subspace.dot(xc)),
+                norm(self.subspace.dot(xc)),
                 lb=-np.ones((1,)) * np.inf,
                 ub=np.zeros((1,)),
             ),
