@@ -245,7 +245,7 @@ class Optimizer:
             defaultdict(list)
         self.start_id: str = ''
 
-    def _reset(self):
+    def _reset(self, start_id: Optional[str] = None):
         self.starttime = time.time()
         self.iteration = 0
         self.iterations_since_tr_update = 0
@@ -255,10 +255,12 @@ class Optimizer:
         self.delta_iter = self.delta
         self.fval_min = np.inf
         self.logger = create_logger(self.verbose)
-        self.start_id = str(uuid.uuid1())
+        if not start_id:
+            start_id = str(uuid.uuid1())
+        self.start_id = start_id
         self.history = defaultdict(list)
 
-    def minimize(self, x0: np.ndarray):
+    def minimize(self, x0: np.ndarray, start_id: Optional[str] = None):
         """
         Minimize the objective function using the interior trust-region
         reflective algorithm described by [ColemanLi1994] and [ColemanLi1996]
@@ -283,7 +285,7 @@ class Optimizer:
             grad: final gradient,
             hess: final Hessian (approximation)
         """
-        self._reset()
+        self._reset(start_id)
 
         self.x = np.array(x0).copy()
         if self.x.ndim > 1:
