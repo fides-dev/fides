@@ -675,8 +675,6 @@ class Optimizer:
             f' | {normg:.2E}'
             f' | {normdx:.2E}'
             f' | {step.type}{" " * steptypespaces}'
-            f' | {" " * reflspaces}{step.reflection_count}'
-            f' | {" " * trunspaces}{step.truncation_count}'
             f' | {int(accepted)}'
         )
 
@@ -744,8 +742,6 @@ class Optimizer:
             f' | {norm(self.grad):.2E}'
             f' |   NaN   '
             f' | NaN '
-            f' | NaN '
-            f' | NaN '
             f' | {int(np.isfinite(self.fval))}'
         )
 
@@ -759,7 +755,7 @@ class Optimizer:
         self.logger.info(
             f'{" " * iterspaces} iter '
             f'|    fval    | fval diff | pred diff | tr ratio  '
-            f'|  delta   |  ||g||   | ||step|| | step | refl | trun | accept'
+            f'|  delta   |  ||g||   | ||step|| | step | accept'
         )
 
     def check_finite(self, funout: Optional[Funout] = None):
