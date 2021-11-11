@@ -1,6 +1,6 @@
 from fides import (
     Optimizer, BFGS, SR1, DFP, BB, BG, Broyden, GNSBFGS, HybridFixed,
-    FX, SSM, TSSM, SubSpaceDim, StepBackStrategy
+    HybridFraction, FX, SSM, TSSM, SubSpaceDim, StepBackStrategy
 )
 import numpy as np
 
@@ -8,6 +8,8 @@ import logging
 import pytest
 import fides
 import time
+import h5py
+import os
 
 
 def rosen(x):
@@ -126,9 +128,8 @@ def unbounded_and_init():
 @pytest.mark.parametrize("stepback", [StepBackStrategy.REFLECT,
                                       StepBackStrategy.SINGLE_REFLECT,
                                       StepBackStrategy.TRUNCATE,
-                                      StepBackStrategy.MIXED])
-@pytest.mark.parametrize("refine", [True, False])
-@pytest.mark.parametrize("sgradient", [True, False])
+                                      StepBackStrategy.MIXED,
+                                      StepBackStrategy.REFINE])
 @pytest.mark.parametrize("subspace_dim", [SubSpaceDim.STEIHAUG,
                                           SubSpaceDim.FULL,
                                           SubSpaceDim.TWO])
@@ -147,37 +148,46 @@ def unbounded_and_init():
     (rosenboth, HybridFixed(SR1())),  # 8
     (rosenboth, HybridFixed(BFGS(init_with_hess=True))),  # 9
     (rosenboth, HybridFixed(SR1(init_with_hess=True))),  # 10
-    (fletcher, FX(BFGS())),  # 11
-    (fletcher, FX(SR1())),  # 12
-    (fletcher, FX(BFGS(init_with_hess=True))),  # 13
-    (fletcher, FX(SR1(init_with_hess=True))),  # 14
-    (fletcher, SSM(0.0)),  # 15
-    (fletcher, SSM(0.5)),  # 16
-    (fletcher, SSM(1.0)),  # 17
-    (fletcher, TSSM(0.0)),  # 18
-    (fletcher, TSSM(0.5)),  # 19
-    (fletcher, TSSM(1.0)),  # 20
-    (fletcher, GNSBFGS()),  # 21
+    (rosenboth, HybridFraction(BFGS())),  # 11
+    (rosenboth, HybridFraction(SR1())),  # 12
+    (rosenboth, HybridFraction(BFGS(init_with_hess=True))),  # 13
+    (rosenboth, HybridFraction(SR1(init_with_hess=True))),  # 14
+    (fletcher, FX(BFGS())),  # 15
+    (fletcher, FX(SR1())),  # 16
+    (fletcher, FX(BFGS(init_with_hess=True))),  # 17
+    (fletcher, FX(SR1(init_with_hess=True))),  # 18
+    (fletcher, SSM(0.0)),  # 19
+    (fletcher, SSM(0.5)),  # 20
+    (fletcher, SSM(1.0)),  # 21
+    (fletcher, TSSM(0.0)),  # 22
+    (fletcher, TSSM(0.5)),  # 23
+    (fletcher, TSSM(1.0)),  # 24
+    (fletcher, GNSBFGS()),  # 25
 ])
 def test_minimize_hess_approx(bounds_and_init, fun, happ, subspace_dim,
-                              stepback, refine, sgradient):
+                              stepback):
     lb, ub, x0 = bounds_and_init
 
     if (x0 == 0).all() and fun is fletcher:
         x0 += 1
 
-    opt = Optimizer(
-        fun, ub=ub, lb=lb, verbose=logging.WARNING,
+    kwargs = dict(
+        fun=fun, ub=ub, lb=lb, verbose=logging.WARNING,
         hessian_update=happ if happ is not None else None,
         options={fides.Options.FATOL: 0,
                  fides.Options.FRTOL: 1e-12 if fun is fletcher else 1e-8,
                  fides.Options.SUBSPACE_DIM: subspace_dim,
                  fides.Options.STEPBACK_STRAT: stepback,
-                 fides.Options.MAXITER: 2e2,
-                 fides.Options.REFINE_STEPBACK: refine,
-                 fides.Options.SCALED_GRADIENT: sgradient},
+                 fides.Options.MAXITER: 2e2},
         resfun=happ.requires_resfun if happ is not None else False
     )
+    if not (subspace_dim == fides.SubSpaceDim.STEIHAUG and
+            stepback == fides.StepBackStrategy.REFINE):
+        opt = Optimizer(**kwargs)
+    else:
+        with pytest.raises(ValueError):
+            Optimizer(**kwargs)
+        return
     opt.minimize(x0)
     assert opt.fval >= opt.fval_min
 
@@ -209,7 +219,6 @@ def test_multistart(subspace_dim, stepback):
         options={fides.Options.FATOL: 0,
                  fides.Options.SUBSPACE_DIM: subspace_dim,
                  fides.Options.STEPBACK_STRAT: stepback,
-                 fides.Options.REFINE_STEPBACK: False,
                  fides.Options.MAXITER: 1e3}
     )
     for _ in range(int(1e2)):
@@ -323,6 +332,40 @@ def test_maxiter_maxtime():
     opt.minimize(x0)
     assert opt.exitflag == fides.ExitFlag.MAXTIME
     del opt.options[fides.Options.MAXTIME]
+
+
+def test_history():
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    fun = fletcher
+
+    h5file = 'history.h5'
+
+    opt = Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={fides.Options.FATOL: 0,
+                 fides.Options.HISTORY_FILE: h5file},
+        hessian_update=GNSBFGS(),
+        resfun=True
+    )
+    opt.minimize(x0)
+    opt.minimize(x0)
+    with h5py.File(h5file, 'r') as f:
+        assert len(f.keys()) == 2  # one group per optimization
+
+    # create new optimizer to check we are appending
+    opt = Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={fides.Options.FATOL: 0,
+                 fides.Options.HISTORY_FILE: h5file},
+        hessian_update=GNSBFGS(),
+        resfun=True
+    )
+    opt.minimize(x0)
+    opt.minimize(x0)
+    opt.minimize(x0)
+    with h5py.File(h5file, 'r') as f:
+        assert len(f.keys()) == 5
+    os.remove(h5file)
 
 
 def test_wrong_options():

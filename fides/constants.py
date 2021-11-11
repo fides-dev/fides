@@ -25,14 +25,12 @@ class Options(str, enum.Enum):
     STEPBACK_STRAT = 'stepback_strategy'  #: method to use for stepback
     THETA_MAX = 'theta_max'  #: maximal fraction of step that would hit bounds
     DELTA_INIT = 'delta_init'  #: initial trust region radius
-    MU = 'mu'  # acceptance threshold for trust region ratio
-    ETA = 'eta'  # trust region increase threshold for trust region ratio
-    GAMMA1 = 'gamma1'  # factor by which trust region radius will be decreased
-    GAMMA2 = 'gamma2'  # factor by which trust region radius will be increased
-    REFINE_STEPBACK = 'refine_stepback'  # whether stepbacks are refined via
-    # optimization
-    SCALED_GRADIENT = 'scaled_gradient'  # whether scaled gradient should be
-    # added to the set of possible stepback proposals
+    MU = 'mu'  #: acceptance threshold for trust region ratio
+    ETA = 'eta'  #: trust region increase threshold for trust region ratio
+    GAMMA1 = 'gamma1'  #: factor by which trust region radius will be decreased
+    GAMMA2 = 'gamma2'  #: factor by which trust region radius will be increased
+    HISTORY_FILE = 'history_file'  #: when set, statistics for each start will
+    # be saved to the specified file
 
 
 class SubSpaceDim(str, enum.Enum):
@@ -55,6 +53,7 @@ class StepBackStrategy(str, enum.Enum):
     TRUNCATE = 'truncate'  #: truncate step at boundary and re-solve
     # restricted subproblem
     MIXED = 'mixed'  #: mix reflections and truncations
+    REFINE = 'refine'  #: perform optimization to refine step
 
 
 DEFAULT_OPTIONS = {
@@ -73,8 +72,7 @@ DEFAULT_OPTIONS = {
     Options.ETA: 0.75,  # [NodedalWright2006]
     Options.GAMMA1: 1/4,  # [NodedalWright2006]
     Options.GAMMA2: 2,  # [NodedalWright2006]
-    Options.REFINE_STEPBACK: False,
-    Options.SCALED_GRADIENT: False,
+    Options.HISTORY_FILE: None,
 }
 
 

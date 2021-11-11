@@ -8,9 +8,9 @@ had to be truncated due to non-compliance with boundary constraints.
 
 import numpy as np
 from scipy.sparse import csc_matrix
-from typing import List, Sequence
+from typing import List
 
-from .steps import Step, TRStepReflected, TRStepTruncated, RefinedStep
+from .steps import Step, TRStepReflected, TRStepTruncated
 
 
 def stepback_reflect(tr_step: Step,
@@ -121,51 +121,3 @@ def stepback_truncate(tr_step: Step,
         steps.append(rtt_step)
 
     return steps
-
-
-def stepback_refine(steps: Sequence[Step],
-                    x: np.ndarray,
-                    sg: np.ndarray,
-                    hess: np.ndarray,
-                    scaling: csc_matrix,
-                    g_dscaling: csc_matrix,
-                    delta: float,
-                    theta: float,
-                    ub: np.ndarray,
-                    lb: np.ndarray) -> List[Step]:
-    """
-    Refine a promising subset of the provided steps based on trust-constr
-    optimization
-
-    :param steps:
-        Reference trust region step that will be reflect
-    :param x:
-        Current values of the optimization variables
-    :param sg:
-        Rescaled objective function gradient at x
-    :param hess:
-        (Approximate) objective function Hessian at x
-    :param g_dscaling:
-        Unscaled gradient multiplied by derivative of scaling
-        transformation
-    :param scaling:
-        Scaling transformation according to distance to boundary
-    :param delta:
-        Trust region radius, note that this applies after scaling
-        transformation
-    :param theta:
-        parameter regulating stepback
-    :param lb:
-        lower optimization variable boundaries
-    :param ub:
-        upper optimization variable boundaries
-
-    :return:
-        New proposal steps
-    """
-    idx = np.nanargmin([step.qpval for step in steps])
-    step = RefinedStep(
-        x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, steps[idx]
-    )
-    step.calculate()
-    return [step]

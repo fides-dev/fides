@@ -8,11 +8,10 @@ This module provides the machinery to calculate different trust-region(
 
 import numpy as np
 import scipy.linalg as linalg
-import scipy.sparse.linalg as slinalg
 
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
-from scipy.optimize import Bounds, NonlinearConstraint, minimize
+from scipy.optimize import NonlinearConstraint, LinearConstraint, minimize
 
 from logging import Logger
 from .subproblem import (
@@ -64,10 +63,10 @@ class Step:
     :ivar shess: Matrix of the full quadratic problem
     :ivar cg: Projection of the g_hat to the subspace
     :ivar chess: Projection of the B to the subspace
-    :ivar reflection_count: Number of reflections that were applied to
-        obtain this step
-    :ivar truncation_count: Number of reflections that were applied to
-        obtain this step
+    :ivar reflection_indices: Indices of variables for which reflection was
+        applied
+    :ivar truncation_indices: Indices of variables for which truncation was
+        applied
 
     :cvar type: Identifier that allows identification of subclasses
     """
@@ -134,6 +133,7 @@ class Step:
 
         self.qpval: float = 0.0
 
+        # B_hat (Eq 2.5) [ColemanLi1996]
         self.shess: np.ndarray = np.asarray(scaling * hess * scaling
                                             + g_dscaling)
 
@@ -144,9 +144,27 @@ class Step:
         self.s0: np.ndarray = np.zeros(sg.shape)
         self.ss0: np.ndarray = np.zeros(sg.shape)
 
-        self.reflection_count: int = 0
-        self.truncation_count: int = 0
+        self.reflection_indices: set = set()
+        self.truncation_indices: set = set()
         self.logger: Logger = logger
+
+    @property
+    def reflection_count(self) -> int:
+        """
+        Number of reflections that were applied to obtain this step
+        :return:
+            Number of reflections
+        """
+        return len(self.reflection_indices)
+
+    @property
+    def truncation_count(self) -> int:
+        """
+        Number of truncations that were applied to obtain this step
+        :return:
+            Number of truncations
+        """
+        return len(self.truncation_indices)
 
     def step_back(self):
         """
@@ -164,7 +182,7 @@ class Step:
             # br quantifies the distance to the boundary normalized
             # by the proposed step, this indicates the fraction of the step
             # that would put the respective variable at the boundary
-            # This is defined in [Coleman-Li1996] (3.1)
+            # This is defined in [Coleman-Li1994] (3.1)
             self.br[nonzero] = np.max(np.vstack([
                 (self.ub[nonzero] - self.x[nonzero])/self.s[nonzero],
                 (self.lb[nonzero] - self.x[nonzero])/self.s[nonzero]
@@ -247,39 +265,47 @@ class TRStep2D(Step):
                  ub, lb, logger):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb, logger)
-        n = len(sg)
+        s_newt, _, _, _ = linalg.lstsq(self.shess, sg)
+        s_newt *= -1
+        # lstsq only returns absolute ev values
+        e, v = np.linalg.eig(self.shess)
+        self.posdef_newt = np.min(np.real(e)) > \
+            - np.spacing(1) * np.max(np.abs(e))
 
-        s_newt = - linalg.lstsq(self.shess, sg)[0]
-        posdef = s_newt.dot(self.shess.dot(s_newt)) > 0
-        normalize(s_newt)
+        if len(sg) == 1:
+            s_newt = - sg[0]/self.shess[0]
+            self.subspace = np.expand_dims(s_newt, 1)
+            return
 
-        if n > 1:
-            if not posdef:
-                # in this case we are in Case 2 of Fig 12 in
-                # [Coleman-Li1994]
-                logger.debug('Newton direction did not have negative '
-                             'using scaling * np.sign(sg) and ev to smallest '
-                             'eigenvalue instead.')
-                e, v = slinalg.eigs(self.shess, k=1, which='SR')
-                if np.min(e) < 0:
-                    s_newt = np.real(v[:, np.argmin(e)])
-                normalize(s_newt)
-                s_grad = scaling * np.sign(sg) + (sg == 0)
-            else:
-                s_grad = sg.copy()
+        if self.posdef_newt:
+            s_newt = - linalg.lstsq(self.shess, sg)[0]
 
+            if norm(s_newt) < delta:
+                # Case 0 of Fig 12 in [ColemanLi1994]
+                self.subspace = np.expand_dims(s_newt, 1)
+                return
+
+            # Case 1 of Fig 12 in [ColemanLi1994]
+            s_grad = sg.copy()
             # orthonormalize, this ensures that S.T.dot(S) = I and we
             # can use S/S.T for transformation
-            s_grad = s_grad - s_newt * (s_newt.dot(s_grad))
-            normalize(s_grad)
-            # if non-zero, add s_grad to subspace
-            if np.any(s_grad != 0):
-                self.subspace = np.vstack([s_newt, s_grad]).T
-                return
-            else:
-                logger.debug('Singular subspace, continuing with 1D subspace.')
+        else:
+            # Case 2 of Fig 12 in [ColemanLi1994]
+            # Eigenvectors to negative eigenvalues are constraint
+            # compatible according to Theorem 5 (3)
+            s_newt = np.real(v[:, np.argmin(np.real(e))])
+            s_grad = scaling.dot(np.sign(sg) + (sg == 0))
 
-        self.subspace = np.expand_dims(s_newt, 1)
+        normalize(s_newt)
+        s_grad = s_grad - s_newt * s_newt.dot(s_grad)
+        # if non-zero, add s_grad to subspace
+        if norm(s_grad) > np.spacing(1):
+            normalize(s_grad)
+            self.subspace = np.vstack([s_newt, s_grad]).T
+        else:
+            # s_newt and s_grad are parallel but we already projected
+            # s_grad, so use s_newt here
+            self.subspace = np.expand_dims(s_newt, 1)
 
 
 class CGStep(Step):
@@ -382,7 +408,9 @@ class TRStepReflected(Step):
         nss[step.iminbr] *= -1
         normalize(nss)
         self.subspace = np.expand_dims(nss, 1)
-        self.reflection_count = step.reflection_count + 1
+
+        for iminbr in step.iminbr:
+            self.reflection_indices.add(iminbr)
 
 
 class TRStepTruncated(Step):
@@ -419,7 +447,8 @@ class TRStepTruncated(Step):
             normalize(subspace[:, ix])
         self.subspace = subspace
 
-        self.truncation_count = step.truncation_count + len(iminbr)
+        for iminbr in step.iminbr:
+            self.truncation_indices.add(iminbr)
 
 
 class GradientStep(Step):
@@ -438,22 +467,6 @@ class GradientStep(Step):
         self.subspace = np.expand_dims(s_grad, 1)
 
 
-class ScaledGradientStep(Step):
-    """
-    This class provides the machinery to compute a gradient step.
-    """
-
-    type = 'dg'
-
-    def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb, logger):
-        super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb, logger)
-        s_grad = scaling*sg.copy()
-        normalize(s_grad)
-        self.subspace = np.expand_dims(s_grad, 1)
-
-
 class RefinedStep(Step):
     """
     This class provides the machinery to refine a step based on interior
@@ -466,36 +479,41 @@ class RefinedStep(Step):
                  ub, lb, step):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb, step.logger)
-        s_grad = sg.copy()
-        normalize(s_grad)
-        self.subspace = np.expand_dims(s_grad, 1)
+        self.subspace: np.ndarray = step.subspace
+        self.chess: np.ndarray = step.chess
+        self.cg: np.ndarray = step.cg
         self.constraints = [
             NonlinearConstraint(
-                fun=lambda xs: (norm(xs) - delta) * np.ones((1,)),
-                jac=lambda xs: np.expand_dims(xs, 1).T / norm(xs),
+                fun=lambda xc: (norm(self.subspace.dot(xc)) - delta) *
+                np.ones((1,)),
+                jac=lambda xc:
+                np.expand_dims(self.subspace.dot(xc), 1).T.dot(self.subspace) /
+                norm(self.subspace.dot(xc)),
                 lb=-np.ones((1,)) * np.inf,
                 ub=np.zeros((1,)),
+            ),
+            LinearConstraint(
+                A=self.subspace,
+                lb=(lb - x) / scaling.diagonal(),
+                ub=(ub - x) / scaling.diagonal()
             )
         ]
-        self.guess = step.ss + step.ss0
-        self.bounds = Bounds(
-            step.theta * (lb - x) / scaling.diagonal(),
-            step.theta * (ub - x) / scaling.diagonal()
-        )
-        self.reflection_count = step.reflection_count
-        self.truncation_count = step.truncation_count
+        self.guess: np.ndarray = step.sc
+        self.qpval0: float = step.qpval
+        self.reflection_indices: int = step.reflection_indices
+        self.truncation_indices: int = step.truncation_indices
 
     def calculate(self):
-        res = minimize(fun=lambda s: quadratic_form(self.shess, self.sg, s),
-                       jac=lambda s: self.shess.dot(s) + self.sg,
-                       hess=lambda s: self.shess,
+        res = minimize(fun=lambda c: quadratic_form(self.chess, self.cg, c),
+                       jac=lambda c: self.chess.dot(c) + self.cg,
+                       hess=lambda c: self.chess,
                        x0=self.guess,
                        method='trust-constr',
-                       bounds=self.bounds,
                        constraints=self.constraints,
-                       options={'verbose': 0, 'maxiter': 10})
-        self.ss = res.x
-        self.s = self.scaling.dot(res.x)
-        self.sc = self.ss
+                       options={'verbose': 0, 'maxiter': 100,
+                                'gtol': 0, 'xtol': 0})
+        self.sc = res.x
+        self.ss = self.subspace.dot(self.sc)
+        self.s = self.scaling.dot(self.ss)
         self.step_back()
         self.qpval = quadratic_form(self.shess, self.sg, self.ss)
