@@ -352,6 +352,9 @@ class Optimizer:
             if accepted:
                 self.update(step, funout_new, funout)
                 funout = funout_new
+            
+                if self.get_option(Options.HISTORY_FILE):
+                    self.track_history(accepted, step, funout)
 
         if self.get_option(Options.HISTORY_FILE):
             with h5py.File(self.get_option(Options.HISTORY_FILE), 'a') as f:
@@ -659,10 +662,6 @@ class Optimizer:
         iterspaces = max(len(str(self.get_option(Options.MAXITER))), 5) - \
             len(str(self.iteration))
         steptypespaces = 4 - len(step.type)
-        reflspaces, trunspaces = [
-            4 - len(str(count))
-            for count in [step.reflection_count, step.truncation_count]
-        ]
 
         fval = funout.fval
         if not np.isfinite(fval):
@@ -680,52 +679,51 @@ class Optimizer:
             f' | {int(accepted)}'
         )
 
-        if self.get_option(Options.HISTORY_FILE):
+    def track_history(self, accepted: bool, step: Step, funout: Funout):
+        min_ev_hess, max_ev_hess = _min_max_evs(self.hess)
+        min_ev_hess_update, max_ev_hess_update = np.NaN, np.NaN
+        min_ev_hess_supdate, max_ev_hess_supdate = np.NaN, np.NaN
+        if self.hessian_update:
+            if accepted:
+                min_ev_hess_update, max_ev_hess_update = \
+                    _min_max_evs(self.hessian_update.get_diff())
+            else:
+                min_ev_hess_update, max_ev_hess_update = 0.0, 0.0
 
-            min_ev_hess, max_ev_hess = _min_max_evs(self.hess)
-            min_ev_hess_update, max_ev_hess_update = np.NaN, np.NaN
-            min_ev_hess_supdate, max_ev_hess_supdate = np.NaN, np.NaN
-            if self.hessian_update:
+            if isinstance(self.hessian_update, StructuredApproximation):
                 if accepted:
-                    min_ev_hess_update, max_ev_hess_update = \
-                        _min_max_evs(self.hessian_update.get_diff())
+                    min_ev_hess_supdate, max_ev_hess_supdate = \
+                        _min_max_evs(
+                            self.hessian_update.get_structured_diff()
+                        )
                 else:
-                    min_ev_hess_update, max_ev_hess_update = 0.0, 0.0
+                    min_ev_hess_supdate, max_ev_hess_supdate = 0.0, 0.0
 
-                if isinstance(self.hessian_update, StructuredApproximation):
-                    if accepted:
-                        min_ev_hess_supdate, max_ev_hess_supdate = \
-                            _min_max_evs(
-                                self.hessian_update.get_structured_diff()
-                            )
-                    else:
-                        min_ev_hess_supdate, max_ev_hess_supdate = 0.0, 0.0
-
-            update = {
-                'fval': self.fval,
-                'tr_ratio': self.tr_ratio,
-                'tr_radius': self.delta_iter,
-                'normgrad': normg,
-                'normstep': normdx,
-                'theta': step.theta,
-                'alpha': step.alpha,
-                'reflections': step.reflection_count,
-                'truncations': step.truncation_count,
-                'accept': accepted,
-                'hess_min_ev': min_ev_hess,
-                'hess_max_ev': max_ev_hess,
-                'hess_update_min_ev': min_ev_hess_update,
-                'hess_update_max_ev': max_ev_hess_update,
-                'hess_struct_update_min_ev': min_ev_hess_supdate,
-                'hess_struct_update_max_ev': max_ev_hess_supdate,
-                'iterations_since_tr_update': self.iterations_since_tr_update,
-                'step_type': step.type,
-                'subspace_dim': step.subspace.shape[1],
-                'posdef_newt': step.posdef_newt
-                if hasattr(step, 'posdef_newt') else False,
-            }
-            for key, val in update.items():
-                self.history[key].append(val)
+        update = {
+            'fval': self.fval,
+            'tr_ratio': self.tr_ratio,
+            'tr_radius': self.delta_iter,
+            'normgrad': normg,
+            'normstep': normdx,
+            'theta': step.theta,
+            'alpha': step.alpha,
+            'reflections': step.reflection_count,
+            'truncations': step.truncation_count,
+            'accept': accepted,
+            'hess_min_ev': min_ev_hess,
+            'hess_max_ev': max_ev_hess,
+            'hess_update_min_ev': min_ev_hess_update,
+            'hess_update_max_ev': max_ev_hess_update,
+            'hess_struct_update_min_ev': min_ev_hess_supdate,
+            'hess_struct_update_max_ev': max_ev_hess_supdate,
+            'iterations_since_tr_update': self.iterations_since_tr_update,
+            'step_type': step.type,
+            'subspace_dim': step.subspace.shape[1],
+            'posdef_newt': step.posdef_newt
+            if hasattr(step, 'posdef_newt') else False,
+        }
+        for key, val in update.items():
+            self.history[key].append(val)
 
     def log_step_initial(self):
         """
