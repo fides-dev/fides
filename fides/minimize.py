@@ -680,6 +680,9 @@ class Optimizer:
         )
 
     def track_history(self, accepted: bool, step: Step, funout: Funout):
+        normdx = norm(step.s + step.s0)
+        normg = norm(self.grad)
+
         min_ev_hess, max_ev_hess = _min_max_evs(self.hess)
         min_ev_hess_update, max_ev_hess_update = np.NaN, np.NaN
         min_ev_hess_supdate, max_ev_hess_supdate = np.NaN, np.NaN
