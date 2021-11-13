@@ -352,9 +352,9 @@ class Optimizer:
             if accepted:
                 self.update(step, funout_new, funout)
                 funout = funout_new
-            
-                if self.get_option(Options.HISTORY_FILE):
-                    self.track_history(accepted, step, funout)
+
+            if self.get_option(Options.HISTORY_FILE):
+                self.track_history(accepted, step, funout)
 
         if self.get_option(Options.HISTORY_FILE):
             with h5py.File(self.get_option(Options.HISTORY_FILE), 'a') as f:
