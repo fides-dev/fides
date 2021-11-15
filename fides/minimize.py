@@ -722,8 +722,7 @@ class Optimizer:
             'iterations_since_tr_update': self.iterations_since_tr_update,
             'step_type': step.type,
             'subspace_dim': step.subspace.shape[1],
-            'posdef_newt': step.posdef_newt
-            if hasattr(step, 'posdef_newt') else False,
+            'posdef': step.posdef if hasattr(step, 'posdef') else False,
             'cond_hess': np.linalg.cond(self.hess),
             'cond_shess': np.linalg.cond(step.shess),
         }

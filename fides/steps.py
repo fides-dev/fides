@@ -269,15 +269,14 @@ class TRStep2D(Step):
         s_newt *= -1
         # lstsq only returns absolute ev values
         e, v = np.linalg.eig(self.shess)
-        self.posdef_newt = np.min(np.real(e)) > \
-            - np.spacing(1) * np.max(np.abs(e))
+        self.posdef = np.min(np.real(e)) > - np.spacing(1) * np.max(np.abs(e))
 
         if len(sg) == 1:
             s_newt = - sg[0]/self.shess[0]
             self.subspace = np.expand_dims(s_newt, 1)
             return
 
-        if self.posdef_newt:
+        if self.posdef:
             s_newt = - linalg.lstsq(self.shess, sg)[0]
 
             if norm(s_newt) < delta:
