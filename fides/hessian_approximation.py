@@ -294,7 +294,7 @@ class HybridFraction(HybridSwitchApproximation):
         Switch from a dynamic approximation to the user provided iterative
         scheme as soon as the fraction of iterations where the step is
         accepted but the trust region is not update exceeds the user provided
-        threshold.Threshold check is only performed after 10 iterations.
+        threshold.Threshold check is only performed after 25 iterations.
         The switching is  non-reversible. The iterative scheme is
         initialized and updated rom the beginning, but only employed after
         the switching.
@@ -313,7 +313,7 @@ class HybridFraction(HybridSwitchApproximation):
     def update(self, s: np.ndarray, y: np.ndarray, hess: np.ndarray,
                tr_nonupdates: int, iterations: int):
         self._switched_update(s, y, hess)
-        if not self._switched and iterations > 10:
+        if not self._switched and iterations > 25:
             self._switched = tr_nonupdates/iterations > self.switch_threshold
 
 
