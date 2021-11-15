@@ -144,11 +144,8 @@ class Broyden(IterativeHessianApproximation):
         super(Broyden, self).__init__(init_with_hess)
 
     def _compute_update(self, s: np.ndarray, y: np.ndarray):
-        if y.T.dot(s) <= 0:
-            self._diff = np.zeros_like(self._hess)
-        else:
-            self._diff = broyden_class_update(y, s, self._hess, self.phi,
-                                              self.enforce_curv_cond)
+        self._diff = broyden_class_update(y, s, self._hess, self.phi,
+                                          self.enforce_curv_cond)
 
 
 class BFGS(Broyden):
