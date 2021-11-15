@@ -354,7 +354,7 @@ class Optimizer:
                 funout = funout_new
 
             if self.get_option(Options.HISTORY_FILE):
-                self.track_history(accepted, step, funout)
+                self.track_history(accepted, step, funout_new)
 
         if self.get_option(Options.HISTORY_FILE):
             with h5py.File(self.get_option(Options.HISTORY_FILE), 'a') as f:
@@ -703,7 +703,7 @@ class Optimizer:
                     min_ev_hess_supdate, max_ev_hess_supdate = 0.0, 0.0
 
         update = {
-            'fval': self.fval,
+            'fval': funout.fval,
             'tr_ratio': self.tr_ratio,
             'tr_radius': self.delta_iter,
             'normgrad': normg,
