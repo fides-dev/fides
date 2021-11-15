@@ -724,6 +724,8 @@ class Optimizer:
             'subspace_dim': step.subspace.shape[1],
             'posdef_newt': step.posdef_newt
             if hasattr(step, 'posdef_newt') else False,
+            'cond_hess': np.linalg.cond(self.hess),
+            'cond_shess': np.linalg.cond(step.shess),
         }
         for key, val in update.items():
             self.history[key].append(val)
