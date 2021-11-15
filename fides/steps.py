@@ -282,6 +282,7 @@ class TRStep2D(Step):
 
             if norm(s_newt) < delta:
                 # Case 0 of Fig 12 in [ColemanLi1994]
+                normalize(s_newt)
                 self.subspace = np.expand_dims(s_newt, 1)
                 return
 
