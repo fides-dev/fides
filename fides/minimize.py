@@ -845,4 +845,4 @@ class Optimizer:
 
 def _min_max_evs(mat: np.ndarray):
     evs = np.linalg.eigvals(mat)
-    return np.min(evs), np.max(evs)
+    return np.real(np.min(evs)), np.real(np.max(evs))
