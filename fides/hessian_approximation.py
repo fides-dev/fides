@@ -56,7 +56,7 @@ class HessianApproximation:
         :return:
             Hessian approximation
         """
-        return self._hess
+        return self._hess.copy()
 
     def get_diff(self) -> np.ndarray:
         """
@@ -65,7 +65,7 @@ class HessianApproximation:
         :return:
             Hessian approximation update
         """
-        return self._diff
+        return self._diff.copy()
 
     def set_mat(self, mat: np.ndarray) -> None:
         """
@@ -78,7 +78,7 @@ class HessianApproximation:
             raise ValueError('Passed matrix had inconsistent '
                              f'shape, was {mat.shape}, '
                              f'but should be {self._hess.shape}.')
-        self._hess = mat
+        self._hess = mat.copy()
 
     @property
     def requires_resfun(self):
@@ -87,6 +87,10 @@ class HessianApproximation:
     @property
     def requires_hess(self):
         return False  # pragma: no cover
+
+    def _update_hess_and_store_diff(self, hess):
+        self._diff = hess - self._hess
+        self._hess = hess.copy()
 
 
 class IterativeHessianApproximation(HessianApproximation):
@@ -254,8 +258,7 @@ class HybridSwitchApproximation(HybridApproximation):
             new_hess = self.hessian_update.get_mat()
         else:
             new_hess = hess
-        self._diff = new_hess - self._hess
-        self._hess = new_hess
+        self._update_hess_and_store_diff(new_hess)
 
 
 class HybridFixed(HybridSwitchApproximation):
@@ -436,10 +439,6 @@ class StructuredApproximation(HessianApproximation):
 
     def get_structured_diff(self) -> np.ndarray:
         return self._structured_diff
-
-    def _update_hess_and_store_diff(self, hess):
-        self._diff = hess - self._hess
-        self._hess = hess
 
 
 class SSM(StructuredApproximation):

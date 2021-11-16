@@ -300,7 +300,7 @@ class Optimizer:
             self.hessian_update.init_mat(len(self.x), funout.hess)
             self.hess = self.hessian_update.get_mat()
         else:
-            self.hess = funout.hess
+            self.hess = funout.hess.copy()
 
         funout.checkdims()
 
@@ -439,7 +439,7 @@ class Optimizer:
 
             self.hess = self.hessian_update.get_mat()
         else:
-            self.hess = funout_new.hess
+            self.hess = funout_new.hess.copy()
         self.check_in_bounds(funout_new.x)
         self.fval = funout_new.fval
         self.x = funout_new.x
