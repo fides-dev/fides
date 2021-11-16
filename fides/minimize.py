@@ -723,6 +723,7 @@ class Optimizer:
             'step_type': step.type,
             'subspace_dim': step.subspace.shape[1],
             'posdef': step.posdef if hasattr(step, 'posdef') else False,
+            'newton': step.newton if hasattr(step, 'newton') else False,
             'cond_hess': np.linalg.cond(self.hess),
             'cond_shess': np.linalg.cond(step.shess),
         }

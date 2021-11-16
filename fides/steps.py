@@ -276,12 +276,15 @@ class TRStep2D(Step):
             self.subspace = np.expand_dims(s_newt, 1)
             return
 
+        self.newton = False
+
         if self.posdef:
             s_newt = - linalg.lstsq(self.shess, sg)[0]
 
             if norm(s_newt) < delta:
                 # Case 0 of Fig 12 in [ColemanLi1994]
                 normalize(s_newt)
+                self.newton = True
                 self.subspace = np.expand_dims(s_newt, 1)
                 return
 
