@@ -117,8 +117,8 @@ class Step:
         self.og_sc: Union[np.ndarray, None] = None
         self.og_ss: Union[np.ndarray, None] = None
 
-        self.sg: np.ndarray = sg
-        self.scaling: csc_matrix = scaling
+        self.sg: np.ndarray = sg.copy()
+        self.scaling: csc_matrix = scaling.copy()
 
         self.delta: float = delta
         self.theta: float = theta
@@ -265,23 +265,25 @@ class TRStep2D(Step):
                  ub, lb, logger):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb, logger)
-        s_newt, _, _, _ = linalg.lstsq(self.shess, sg)
-        s_newt *= -1
+        s_newt = - linalg.lstsq(self.shess, sg)[0]
         # lstsq only returns absolute ev values
         e, v = np.linalg.eig(self.shess)
-        self.posdef_newt = np.min(np.real(e)) > \
-            - np.spacing(1) * np.max(np.abs(e))
+        self.posdef = np.min(np.real(e)) > - np.spacing(1) * np.max(np.abs(e))
 
         if len(sg) == 1:
             s_newt = - sg[0]/self.shess[0]
             self.subspace = np.expand_dims(s_newt, 1)
             return
 
-        if self.posdef_newt:
+        self.newton = False
+
+        if self.posdef:
             s_newt = - linalg.lstsq(self.shess, sg)[0]
 
             if norm(s_newt) < delta:
                 # Case 0 of Fig 12 in [ColemanLi1994]
+                normalize(s_newt)
+                self.newton = True
                 self.subspace = np.expand_dims(s_newt, 1)
                 return
 
@@ -376,8 +378,8 @@ class TRStepSteihaug(CGStep):
             beta = rp2 / r2
 
             d = -rp + beta * d
-            z = zp
-            r = rp
+            z = zp.copy()
+            r = rp.copy()
 
 
 class TRStepReflected(Step):
@@ -479,9 +481,9 @@ class RefinedStep(Step):
                  ub, lb, step):
         super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
                          ub, lb, step.logger)
-        self.subspace: np.ndarray = step.subspace
-        self.chess: np.ndarray = step.chess
-        self.cg: np.ndarray = step.cg
+        self.subspace: np.ndarray = step.subspace.copy()
+        self.chess: np.ndarray = step.chess.copy()
+        self.cg: np.ndarray = step.cg.copy()
         self.constraints = [
             NonlinearConstraint(
                 fun=lambda xc: (norm(self.subspace.dot(xc)) - delta) *
@@ -498,7 +500,7 @@ class RefinedStep(Step):
                 ub=(ub - x) / scaling.diagonal()
             )
         ]
-        self.guess: np.ndarray = step.sc
+        self.guess: np.ndarray = step.sc.copy()
         self.qpval0: float = step.qpval
         self.reflection_indices: int = step.reflection_indices
         self.truncation_indices: int = step.truncation_indices

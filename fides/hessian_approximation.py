@@ -56,7 +56,7 @@ class HessianApproximation:
         :return:
             Hessian approximation
         """
-        return self._hess
+        return self._hess.copy()
 
     def get_diff(self) -> np.ndarray:
         """
@@ -65,7 +65,7 @@ class HessianApproximation:
         :return:
             Hessian approximation update
         """
-        return self._diff
+        return self._diff.copy()
 
     def set_mat(self, mat: np.ndarray) -> None:
         """
@@ -78,7 +78,7 @@ class HessianApproximation:
             raise ValueError('Passed matrix had inconsistent '
                              f'shape, was {mat.shape}, '
                              f'but should be {self._hess.shape}.')
-        self._hess = mat
+        self._hess = mat.copy()
 
     @property
     def requires_resfun(self):
@@ -87,6 +87,10 @@ class HessianApproximation:
     @property
     def requires_hess(self):
         return False  # pragma: no cover
+
+    def _update_hess_and_store_diff(self, hess):
+        self._diff = hess - self._hess
+        self._hess = hess.copy()
 
 
 class IterativeHessianApproximation(HessianApproximation):
@@ -144,11 +148,8 @@ class Broyden(IterativeHessianApproximation):
         super(Broyden, self).__init__(init_with_hess)
 
     def _compute_update(self, s: np.ndarray, y: np.ndarray):
-        if y.T.dot(s) <= 0:
-            self._diff = np.zeros_like(self._hess)
-        else:
-            self._diff = broyden_class_update(y, s, self._hess, self.phi,
-                                              self.enforce_curv_cond)
+        self._diff = broyden_class_update(y, s, self._hess, self.phi,
+                                          self.enforce_curv_cond)
 
 
 class BFGS(Broyden):
@@ -257,8 +258,7 @@ class HybridSwitchApproximation(HybridApproximation):
             new_hess = self.hessian_update.get_mat()
         else:
             new_hess = hess
-        self._diff = new_hess - self._hess
-        self._hess = new_hess
+        self._update_hess_and_store_diff(new_hess)
 
 
 class HybridFixed(HybridSwitchApproximation):
@@ -297,7 +297,7 @@ class HybridFraction(HybridSwitchApproximation):
         Switch from a dynamic approximation to the user provided iterative
         scheme as soon as the fraction of iterations where the step is
         accepted but the trust region is not update exceeds the user provided
-        threshold.Threshold check is only performed after 10 iterations.
+        threshold.Threshold check is only performed after 25 iterations.
         The switching is  non-reversible. The iterative scheme is
         initialized and updated rom the beginning, but only employed after
         the switching.
@@ -316,7 +316,7 @@ class HybridFraction(HybridSwitchApproximation):
     def update(self, s: np.ndarray, y: np.ndarray, hess: np.ndarray,
                tr_nonupdates: int, iterations: int):
         self._switched_update(s, y, hess)
-        if not self._switched and iterations > 10:
+        if not self._switched and iterations > 25:
             self._switched = tr_nonupdates/iterations > self.switch_threshold
 
 
@@ -439,10 +439,6 @@ class StructuredApproximation(HessianApproximation):
 
     def get_structured_diff(self) -> np.ndarray:
         return self._structured_diff
-
-    def _update_hess_and_store_diff(self, hess):
-        self._diff = hess - self._hess
-        self._hess = hess
 
 
 class SSM(StructuredApproximation):
