@@ -23,6 +23,7 @@ from .constants import (
 from .logging import create_logger
 from collections import defaultdict
 from numbers import Real, Integral
+from pathlib import PosixPath, WindowsPath
 from typing import Callable, Dict, Optional, Tuple, Union, List
 
 
@@ -862,7 +863,7 @@ def validate_options(options: Dict):
         Options.ETA: Real,
         Options.GAMMA1: Real,
         Options.GAMMA2: Real,
-        Options.HISTORY_FILE: object,
+        Options.HISTORY_FILE: (str, PosixPath, WindowsPath),
     }
     for option_key, option_value in options.items():
         try:
