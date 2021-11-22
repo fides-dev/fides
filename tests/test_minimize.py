@@ -1,6 +1,6 @@
 from fides import (
     Optimizer, BFGS, SR1, DFP, BB, BG, Broyden, GNSBFGS, HybridFixed,
-    HybridFraction, FX, SSM, TSSM, SubSpaceDim, StepBackStrategy
+    HybridFraction, FX, SSM, TSSM, SubSpaceDim, StepBackStrategy, Options
 )
 import numpy as np
 
@@ -376,4 +376,9 @@ def test_wrong_options():
         Optimizer(
             fun, ub=ub, lb=lb, verbose=logging.INFO,
             options={'option_doesnt_exist': 1}
+        )
+    with pytest.raises(TypeError):
+        Optimizer(
+            fun, ub=ub, lb=lb, verbose=logging.INFO,
+            options={Options.FATOL: 'not a number'}
         )

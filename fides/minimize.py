@@ -22,7 +22,7 @@ from .constants import (
 )
 from .logging import create_logger
 from collections import defaultdict
-
+from numbers import Real, Integral
 from typing import Callable, Dict, Optional, Tuple, Union, List
 
 
@@ -204,11 +204,7 @@ class Optimizer:
         if options is None:
             options = {}
 
-        for option in options:
-            try:
-                Options(option)
-            except ValueError:
-                raise ValueError(f'{option} is not a valid options field.')
+        validate_options(options)
 
         self.options: Dict = options
 
@@ -846,3 +842,38 @@ class Optimizer:
 def _min_max_evs(mat: np.ndarray):
     evs = np.linalg.eigvals(mat)
     return np.real(np.min(evs)), np.real(np.max(evs))
+
+
+def validate_options(options: Dict):
+    """Check if the chosen options are valid"""
+    expected_types = {
+        Options.MAXITER: Integral,
+        Options.MAXTIME: Real,
+        Options.FATOL: Real,
+        Options.FRTOL: Real,
+        Options.XTOL: Real,
+        Options.GATOL: Real,
+        Options.GRTOL: Real,
+        Options.SUBSPACE_DIM: SubSpaceDim,
+        Options.STEPBACK_STRAT: StepBackStrategy,
+        Options.THETA_MAX: Real,
+        Options.DELTA_INIT: Real,
+        Options.MU: Real,
+        Options.ETA: Real,
+        Options.GAMMA1: Real,
+        Options.GAMMA2: Real,
+        Options.HISTORY_FILE: object,
+    }
+    for option_key, option_value in options.items():
+        try:
+            option = Options(option_key)
+        except ValueError:
+            raise ValueError(f'{option_key} is not a valid options field.')
+
+        expected_type = expected_types[option]
+        if not isinstance(option_value, expected_type):
+            if expected_type == Integral and int(option_value) == option_value:
+                continue
+            raise TypeError(f'Type mismatch for option {option_key}. '
+                            f'Expected {expected_type} but got '
+                            f'{type(option_value)}')
