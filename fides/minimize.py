@@ -634,7 +634,7 @@ class Optimizer:
         # this implements scaling for variables that are constrained by
         # bounds ( i and ii in Definition 2) bounds is equal to lb if grad <
         # 0 ub if grad >= 0
-        bounds = self.lb
+        bounds = self.lb.copy()
         bounds[self.grad >= 0] = self.ub[self.grad >= 0]
         bounded = np.isfinite(bounds)
         v[bounded] = self.x[bounded] - bounds[bounded]
