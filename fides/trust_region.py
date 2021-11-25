@@ -114,7 +114,8 @@ def trust_region(x: np.ndarray,
                 lb
             ))
 
-        if stepback_strategy == StepBackStrategy.REFINE:
+        if stepback_strategy == StepBackStrategy.REFINE and \
+                tr_step.subspace.shape[1] > 1:
             ref_step = RefinedStep(
                 x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb,
                 tr_step
