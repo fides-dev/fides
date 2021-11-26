@@ -496,8 +496,8 @@ class RefinedStep(Step):
             ),
             LinearConstraint(
                 A=self.subspace,
-                lb=(lb - x) / scaling.diagonal(),
-                ub=(ub - x) / scaling.diagonal()
+                lb=self.theta * (lb - x) / scaling.diagonal(),
+                ub=self.theta * (ub - x) / scaling.diagonal()
             )
         ]
         self.guess: np.ndarray = step.sc.copy()
