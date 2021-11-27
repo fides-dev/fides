@@ -8,6 +8,11 @@ constants that are used in multiple other modules
 import enum
 import numpy as np
 
+from numbers import Real, Integral
+from pathlib import PosixPath, WindowsPath
+
+from typing import Dict
+
 
 class Options(str, enum.Enum):
     """
@@ -91,3 +96,38 @@ class ExitFlag(int, enum.Enum):
     FTOL = 1  #: Converged according to fval difference
     XTOL = 2  #: Converged according to x difference
     GTOL = 3  #: Converged according to gradient norm
+
+
+def validate_options(options: Dict):
+    """Check if the chosen options are valid"""
+    expected_types = {
+        Options.MAXITER: Integral,
+        Options.MAXTIME: Real,
+        Options.FATOL: Real,
+        Options.FRTOL: Real,
+        Options.XTOL: Real,
+        Options.GATOL: Real,
+        Options.GRTOL: Real,
+        Options.SUBSPACE_DIM: (SubSpaceDim, str),
+        Options.STEPBACK_STRAT: (StepBackStrategy, str),
+        Options.THETA_MAX: Real,
+        Options.DELTA_INIT: Real,
+        Options.MU: Real,
+        Options.ETA: Real,
+        Options.GAMMA1: Real,
+        Options.GAMMA2: Real,
+        Options.HISTORY_FILE: (str, PosixPath, WindowsPath),
+    }
+    for option_key, option_value in options.items():
+        try:
+            option = Options(option_key)
+        except ValueError:
+            raise ValueError(f'{option_key} is not a valid options field.')
+
+        expected_type = expected_types[option]
+        if not isinstance(option_value, expected_type):
+            if expected_type == Integral and int(option_value) == option_value:
+                continue
+            raise TypeError(f'Type mismatch for option {option_key}. '
+                            f'Expected {expected_type} but got '
+                            f'{type(option_value)}')

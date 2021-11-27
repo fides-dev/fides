@@ -382,3 +382,20 @@ def test_wrong_options():
             fun, ub=ub, lb=lb, verbose=logging.INFO,
             options={Options.FATOL: 'not a number'}
         )
+
+    # check we can pass floats for ints
+    Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={Options.MAXITER: 1e4}
+    )
+    with pytest.raises(ValueError):
+        Optimizer(
+            fun, ub=ub, lb=lb, verbose=logging.INFO,
+            options={Options.SUBSPACE_DIM: 'invalid_subspace'}
+        )
+
+    # check we can pass strings for enums
+    Optimizer(
+        fun, ub=ub, lb=lb, verbose=logging.INFO,
+        options={Options.SUBSPACE_DIM: '2D'}
+    )
