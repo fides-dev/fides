@@ -124,6 +124,12 @@ def validate_options(options: Dict):
         except ValueError:
             raise ValueError(f'{option_key} is not a valid options field.')
 
+        if option_key is Options.SUBSPACE_DIM:
+            option_value = SubSpaceDim(option_value)
+
+        if option_key is Options.STEPBACK_STRAT:
+            option_value = StepBackStrategy(option_value)
+
         expected_type = expected_types[option]
         if not isinstance(option_value, expected_type):
             if expected_type == Integral and int(option_value) == option_value:

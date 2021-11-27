@@ -78,8 +78,6 @@ def trust_region(x: np.ndarray,
         SubSpaceDim.FULL: TRStepFull,
         SubSpaceDim.STEIHAUG: TRStepSteihaug,
     }
-    if subspace_dim not in step_options:
-        raise ValueError('Invalid choice of subspace dimension.')
     tr_step = step_options[subspace_dim](x, sg, hess, scaling, g_dscaling,
                                          delta, theta, ub, lb, logger)
     tr_step.calculate()

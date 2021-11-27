@@ -831,12 +831,6 @@ class Optimizer:
                                    f'{diff[ix]} {pointstr}')
 
     def get_option(self, option):
-        if option not in Options:
-            raise ValueError(f'{option} is not a valid option name.')
-
-        if option not in DEFAULT_OPTIONS:
-            raise ValueError(f'{option} is missing its default option.')
-
         return self.options.get(option, DEFAULT_OPTIONS.get(option))
 
 
