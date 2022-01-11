@@ -30,8 +30,8 @@ def create_logger(level: int) -> logging.Logger:
     # optimization instances and avoid deadlocks
     logger = logging.getLogger(f'fides_{logger_count}')
     ch = logging.StreamHandler()
-    formatter = logging.basicConfig(
-        format='%(asctime)s fides(%(levelname)s) %(message)s',
+    formatter = logging.Formatter(
+        fmt='%(asctime)s fides(%(levelname)s) %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     ch.setFormatter(formatter)
