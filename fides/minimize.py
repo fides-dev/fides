@@ -475,29 +475,32 @@ class Optimizer:
             self.iterations_since_tr_update = 0
             return False
         else:
-            qpval = 0.5 * stepsx.dot(dv * np.abs(grad) * stepsx)
-            self.tr_ratio = (fval + qpval - self.fval) / step.qpval
+            aug = 0.5 * stepsx.dot(dv * np.abs(grad) * stepsx)
+            actual_decrease = self.fval - fval - aug
+            predicted_decrease = -step.qpval
+            if predicted_decrease <= 0.0:
+                self.tr_ratio = 0.0
+            else:
+                self.tr_ratio = actual_decrease / predicted_decrease
 
             interior_solution = nsx < self.delta_iter * 0.9
 
-            # values as proposed in algorithm 4.1 in Nocedal & Wright
             if self.tr_ratio >= self.get_option(Options.ETA) \
-                    and not interior_solution and step.qpval <= 0:
+                    and not interior_solution:
                 # increase radius
                 self.delta = self.get_option(Options.GAMMA2) * self.delta
                 self.iterations_since_tr_update = 0
-            elif self.tr_ratio <= self.get_option(Options.MU) or \
-                    step.qpval > 0:
+            elif self.tr_ratio <= self.get_option(Options.MU):
                 # decrease radius
                 self.delta = np.nanmin([
                     self.delta * self.get_option(Options.GAMMA1),
                     nsx / 4
                 ])
                 self.iterations_since_tr_update = 0
-            elif self.tr_ratio > self.get_option(Options.MU) and \
-                    self.tr_ratio < self.get_option(Options.ETA):
+            elif self.get_option(Options.MU) < self.tr_ratio < \
+                    self.get_option(Options.ETA):
                 self.n_intermediate_tr_radius += 1
-            return self.tr_ratio > 0.0 and step.qpval <= 0
+            return self.tr_ratio > 0.0
 
     def check_convergence(self, step: Step, funout: Funout) -> None:
         """
@@ -521,7 +524,7 @@ class Optimizer:
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
 
-        if self.delta <= self.delta_iter and \
+        if self.tr_ratio > self.get_option(Options.MU) and \
                 np.abs(fval - self.fval) < fatol + frtol*np.abs(self.fval):
             self.exitflag = ExitFlag.FTOL
             self.logger.warning(
