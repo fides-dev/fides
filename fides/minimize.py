@@ -475,29 +475,32 @@ class Optimizer:
             self.iterations_since_tr_update = 0
             return False
         else:
-            qpval = 0.5 * stepsx.dot(dv * np.abs(grad) * stepsx)
-            self.tr_ratio = (fval + qpval - self.fval) / step.qpval
+            aug = 0.5 * stepsx.dot(dv * np.abs(grad) * stepsx)
+            actual_decrease = self.fval - fval - aug
+            predicted_decrease = -step.qpval
+            if predicted_decrease <= 0.0:
+                self.tr_ratio = 0.0
+            else:
+                self.tr_ratio = actual_decrease / predicted_decrease
 
             interior_solution = nsx < self.delta_iter * 0.9
 
-            # values as proposed in algorithm 4.1 in Nocedal & Wright
             if self.tr_ratio >= self.get_option(Options.ETA) \
-                    and not interior_solution and step.qpval <= 0:
+                    and not interior_solution:
                 # increase radius
                 self.delta = self.get_option(Options.GAMMA2) * self.delta
                 self.iterations_since_tr_update = 0
-            elif self.tr_ratio <= self.get_option(Options.MU) or \
-                    step.qpval > 0:
+            elif self.tr_ratio <= self.get_option(Options.MU):
                 # decrease radius
                 self.delta = np.nanmin([
                     self.delta * self.get_option(Options.GAMMA1),
                     nsx / 4
                 ])
                 self.iterations_since_tr_update = 0
-            elif self.tr_ratio > self.get_option(Options.MU) and \
-                    self.tr_ratio < self.get_option(Options.ETA):
+            elif self.get_option(Options.MU) < self.tr_ratio < \
+                    self.get_option(Options.ETA):
                 self.n_intermediate_tr_radius += 1
-            return self.tr_ratio > 0.0 and step.qpval <= 0
+            return self.tr_ratio > 0.0
 
     def check_convergence(self, step: Step, funout: Funout) -> None:
         """
@@ -521,7 +524,7 @@ class Optimizer:
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
 
-        if self.delta <= self.delta_iter and \
+        if self.tr_ratio > self.get_option(Options.MU) and \
                 np.abs(fval - self.fval) < fatol + frtol*np.abs(self.fval):
             self.exitflag = ExitFlag.FTOL
             self.logger.warning(
@@ -657,7 +660,7 @@ class Optimizer:
         normg = norm(self.grad)
 
         iterspaces = max(len(str(self.get_option(Options.MAXITER))), 5) - \
-            len(str(self.iteration))
+            len(str(self.iteration)) - 1
         steptypespaces = 4 - len(step.type)
 
         fval = funout.fval
@@ -665,15 +668,14 @@ class Optimizer:
             fval = self.fval
         self.logger.info(
             f'{" " * iterspaces}{self.iteration}'
-            f' | {fval if accepted else self.fval:+.3E}'
-            f' | {(fval - self.fval):+.2E}'
-            f' | {step.qpval:+.2E}'
-            f' | {self.tr_ratio:+.2E}'
-            f' | {self.delta_iter:.2E}'
-            f' | {normg:.2E}'
-            f' | {normdx:.2E}'
-            f' | {step.type}{" " * steptypespaces}'
-            f' | {int(accepted)}'
+            f'| {fval if accepted else self.fval:+.2E} '
+            f'| {(fval - self.fval):+.1E} '
+            f'| {self.tr_ratio:+.1E} '
+            f'| {self.delta_iter:.1E} '
+            f'| {normg:.1E} '
+            f'| {normdx:.1E} '
+            f'|{" " * steptypespaces}{step.type} '
+            f'|{int(accepted)}'
         )
 
     def track_history(self, accepted: bool, step: Step, funout: Funout):
@@ -733,18 +735,17 @@ class Optimizer:
         """
 
         iterspaces = max(len(str(self.get_option(Options.MAXITER))), 5) - \
-            len(str(self.iteration))
+            len(str(self.iteration)) - 1
         self.logger.info(
             f'{" " * iterspaces}{self.iteration}'
-            f' | {self.fval:+.3E}'
-            f' |    NaN   '
-            f' |    NaN   '
-            f' |    NaN   '
-            f' | {self.delta:.2E}'
-            f' | {norm(self.grad):.2E}'
-            f' |   NaN   '
-            f' | NaN '
-            f' | {int(np.isfinite(self.fval))}'
+            f'| {self.fval:+.2E} '
+            f'|    NaN   '
+            f'|    NaN   '
+            f'| {self.delta:.1E} '
+            f'| {norm(self.grad):.1E} '
+            f'|   NaN   '
+            f'| NaN '
+            f'|{int(np.isfinite(self.fval))}'
         )
 
     def log_header(self):
@@ -752,12 +753,12 @@ class Optimizer:
         Prints the header for diagnostic information, should complement
         :py:func:`Optimizer.log_step`.
         """
-        iterspaces = len(str(self.get_option(Options.MAXITER))) - 5
+        iterspaces = max(len(str(self.get_option(Options.MAXITER))) - 5, 0)
 
         self.logger.info(
-            f'{" " * iterspaces} iter '
-            f'|    fval    | fval diff | pred diff | tr ratio  '
-            f'|  delta   |  ||g||   | ||step|| | step | accept'
+            f'{" " * iterspaces}iter'
+            f'|    fval   |   fdiff  | tr ratio '
+            f'|tr radius|  ||g||  | ||step||| step|acc'
         )
 
     def check_finite(self, funout: Optional[Funout] = None):

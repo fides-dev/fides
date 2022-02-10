@@ -31,7 +31,8 @@ def create_logger(level: int) -> logging.Logger:
     logger = logging.getLogger(f'fides_{logger_count}')
     ch = logging.StreamHandler()
     formatter = logging.Formatter(
-        '%(asctime)s - fides - %(levelname)s - %(message)s'
+        fmt='%(asctime)s fides(%(levelname)s) %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
     )
     ch.setFormatter(formatter)
     logger.addHandler(ch)
