@@ -527,7 +527,7 @@ class Optimizer:
         if self.tr_ratio > self.get_option(Options.MU) and \
                 np.abs(fval - self.fval) < fatol + frtol*np.abs(self.fval):
             self.exitflag = ExitFlag.FTOL
-            self.logger.warning(
+            self.logger.info(
                 'Stopping as function difference '
                 f'{np.abs(self.fval - fval):.2E} was smaller than specified '
                 f'tolerances (atol={fatol:.2E}, rtol={frtol:.2E})'
@@ -536,7 +536,7 @@ class Optimizer:
 
         elif self.iteration > 1 and nsx < xtol:
             self.exitflag = ExitFlag.XTOL
-            self.logger.warning(
+            self.logger.info(
                 'Stopping as norm of step '
                 f'{nsx} was smaller than specified '
                 f'tolerance (tol={xtol:.2E})'
@@ -545,7 +545,7 @@ class Optimizer:
 
         elif gnorm <= gatol:
             self.exitflag = ExitFlag.GTOL
-            self.logger.warning(
+            self.logger.info(
                 'Stopping as gradient norm satisfies absolute convergence '
                 f'criteria: {gnorm:.2E} < {gatol:.2E}'
             )
@@ -553,7 +553,7 @@ class Optimizer:
 
         elif gnorm <= grtol * np.abs(self.fval):
             self.exitflag = ExitFlag.GTOL
-            self.logger.warning(
+            self.logger.info(
                 'Stopping as gradient norm satisfies relative convergence '
                 f'criteria: {gnorm:.2E} < {grtol:.2E} * '
                 f'{np.abs(self.fval):.2E}'
