@@ -6,20 +6,21 @@ This module provides the machinery to calculate different trust-region(
 """
 
 
+from logging import Logger
+from typing import Union
+
 import numpy as np
 import scipy.linalg as linalg
-
 from numpy.linalg import norm
+from scipy.optimize import LinearConstraint, NonlinearConstraint, minimize
 from scipy.sparse import csc_matrix
-from scipy.optimize import NonlinearConstraint, LinearConstraint, minimize
 
-from logging import Logger
 from .subproblem import (
-    solve_1d_trust_region_subproblem, solve_nd_trust_region_subproblem,
-    get_1d_trust_region_boundary_solution, quadratic_form
+    get_1d_trust_region_boundary_solution,
+    quadratic_form,
+    solve_1d_trust_region_subproblem,
+    solve_nd_trust_region_subproblem,
 )
-
-from typing import Union
 
 
 def normalize(v: np.ndarray) -> None:
@@ -31,7 +32,7 @@ def normalize(v: np.ndarray) -> None:
     """
     nv = norm(v)
     if nv > 0:
-        v[:] = v/nv  # change inplace
+        v[:] = v / nv  # change inplace
 
 
 class Step:
@@ -70,19 +71,22 @@ class Step:
 
     :cvar type: Identifier that allows identification of subclasses
     """
+
     type = 'step'
 
-    def __init__(self,
-                 x: np.ndarray,
-                 sg: np.ndarray,
-                 hess: np.ndarray,
-                 scaling: csc_matrix,
-                 g_dscaling: csc_matrix,
-                 delta: float,
-                 theta: float,
-                 ub: np.ndarray,
-                 lb: np.ndarray,
-                 logger: Logger):
+    def __init__(
+        self,
+        x: np.ndarray,
+        sg: np.ndarray,
+        hess: np.ndarray,
+        scaling: csc_matrix,
+        g_dscaling: csc_matrix,
+        delta: float,
+        theta: float,
+        ub: np.ndarray,
+        lb: np.ndarray,
+        logger: Logger,
+    ):
         """
 
         :param x:
@@ -134,8 +138,9 @@ class Step:
         self.qpval: float = 0.0
 
         # B_hat (Eq 2.5) [ColemanLi1996]
-        self.shess: np.ndarray = np.asarray(scaling * hess * scaling
-                                            + g_dscaling)
+        self.shess: np.ndarray = np.asarray(
+            scaling * hess * scaling + g_dscaling
+        )
 
         self.cg: Union[np.ndarray, None] = None
         self.chess: Union[np.ndarray, None] = None
@@ -183,10 +188,15 @@ class Step:
             # by the proposed step, this indicates the fraction of the step
             # that would put the respective variable at the boundary
             # This is defined in [Coleman-Li1994] (3.1)
-            self.br[nonzero] = np.max(np.vstack([
-                (self.ub[nonzero] - self.x[nonzero])/self.s[nonzero],
-                (self.lb[nonzero] - self.x[nonzero])/self.s[nonzero]
-            ]), axis=0)
+            self.br[nonzero] = np.max(
+                np.vstack(
+                    [
+                        (self.ub[nonzero] - self.x[nonzero]) / self.s[nonzero],
+                        (self.lb[nonzero] - self.x[nonzero]) / self.s[nonzero],
+                    ]
+                ),
+                axis=0,
+            )
         self.minbr = np.min(self.br)
         self.iminbr = np.where(self.br == self.minbr)[0]
         # compute the minimum of the step
@@ -216,9 +226,10 @@ class Step:
             return
         if self.subspace.shape[1] > 1:
             self.sc, _ = solve_nd_trust_region_subproblem(
-                self.chess, self.cg,
-                np.sqrt(max(self.delta ** 2 - norm(self.ss0) ** 2, 0.0)),
-                self.logger
+                self.chess,
+                self.cg,
+                np.sqrt(max(self.delta**2 - norm(self.ss0) ** 2, 0.0)),
+                self.logger,
             )
         else:
             self.sc = solve_1d_trust_region_subproblem(
@@ -246,10 +257,12 @@ class TRStepFull(Step):
 
     type = 'nd'
 
-    def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb, logger):
-        super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb, logger)
+    def __init__(
+        self, x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
+    ):
+        super().__init__(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
+        )
         self.subspace = np.eye(hess.shape[0])
 
 
@@ -261,24 +274,26 @@ class TRStep2D(Step):
 
     type = '2d'
 
-    def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb, logger):
-        super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb, logger)
-        s_newt = - linalg.lstsq(self.shess, sg)[0]
+    def __init__(
+        self, x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
+    ):
+        super().__init__(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
+        )
+        s_newt = -linalg.lstsq(self.shess, sg)[0]
         # lstsq only returns absolute ev values
         e, v = np.linalg.eig(self.shess)
-        self.posdef = np.min(np.real(e)) > - np.spacing(1) * np.max(np.abs(e))
+        self.posdef = np.min(np.real(e)) > -np.spacing(1) * np.max(np.abs(e))
 
         if len(sg) == 1:
-            s_newt = - sg[0]/self.shess[0]
+            s_newt = -sg[0] / self.shess[0]
             self.subspace = np.expand_dims(s_newt, 1)
             return
 
         self.newton = False
 
         if self.posdef:
-            s_newt = - linalg.lstsq(self.shess, sg)[0]
+            s_newt = -linalg.lstsq(self.shess, sg)[0]
 
             if norm(s_newt) < delta:
                 # Case 0 of Fig 12 in [ColemanLi1994]
@@ -361,12 +376,15 @@ class TRStepSteihaug(CGStep):
                 self.subspace = np.expand_dims(d, 1)
                 self.ss0 = z
                 self.sc = get_1d_trust_region_boundary_solution(
-                    self.shess, self.sg, self.subspace[:, 0], self.ss0,
-                    self.delta
+                    self.shess,
+                    self.sg,
+                    self.subspace[:, 0],
+                    self.ss0,
+                    self.delta,
                 ) * np.ones((1,))
                 self.ss = self.subspace.dot(self.sc)
                 return
-            rp = r + alpha*bd
+            rp = r + alpha * bd
             rp2 = np.dot(rp, rp)
             if np.sqrt(rp2) < eps:
                 normalize(d)
@@ -390,14 +408,26 @@ class TRStepReflected(Step):
 
     type = 'trr'
 
-    def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb, step: Step):
+    def __init__(
+        self,
+        x,
+        sg,
+        hess,
+        scaling,
+        g_dscaling,
+        delta,
+        theta,
+        ub,
+        lb,
+        step: Step,
+    ):
         """
         :param step:
             Trust-region step that is reflected
         """
-        super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb, step.logger)
+        super().__init__(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, step.logger
+        )
 
         alpha = min(step.minbr, 1)
         self.s0 = alpha * step.og_s + step.s0
@@ -423,14 +453,26 @@ class TRStepTruncated(Step):
 
     type = 'trt'
 
-    def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb, step: Step):
+    def __init__(
+        self,
+        x,
+        sg,
+        hess,
+        scaling,
+        g_dscaling,
+        delta,
+        theta,
+        ub,
+        lb,
+        step: Step,
+    ):
         """
         :param step:
             Trust-region step that is reduced
         """
-        super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb, step.logger)
+        super().__init__(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, step.logger
+        )
 
         self.s0 = step.s0.copy()
         self.ss0 = step.ss0.copy()
@@ -460,10 +502,12 @@ class GradientStep(Step):
 
     type = 'g'
 
-    def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb, logger):
-        super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb, logger)
+    def __init__(
+        self, x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
+    ):
+        super().__init__(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
+        )
         s_grad = sg.copy()
         normalize(s_grad)
         self.subspace = np.expand_dims(s_grad, 1)
@@ -477,28 +521,31 @@ class RefinedStep(Step):
 
     type = 'ref'
 
-    def __init__(self, x, sg, hess, scaling, g_dscaling, delta, theta,
-                 ub, lb, step):
-        super().__init__(x, sg, hess, scaling, g_dscaling, delta, theta,
-                         ub, lb, step.logger)
+    def __init__(
+        self, x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, step
+    ):
+        super().__init__(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, step.logger
+        )
         self.subspace: np.ndarray = step.subspace.copy()
         self.chess: np.ndarray = step.chess.copy()
         self.cg: np.ndarray = step.cg.copy()
         self.constraints = [
             NonlinearConstraint(
-                fun=lambda xc: (norm(self.subspace.dot(xc)) - delta) *
-                np.ones((1,)),
-                jac=lambda xc:
-                np.expand_dims(self.subspace.dot(xc), 1).T.dot(self.subspace) /
-                norm(self.subspace.dot(xc)),
+                fun=lambda xc: (norm(self.subspace.dot(xc)) - delta)
+                * np.ones((1,)),
+                jac=lambda xc: np.expand_dims(self.subspace.dot(xc), 1).T.dot(
+                    self.subspace
+                )
+                / norm(self.subspace.dot(xc)),
                 lb=-np.ones((1,)) * np.inf,
                 ub=np.zeros((1,)),
             ),
             LinearConstraint(
                 A=self.subspace,
                 lb=self.theta * (lb - x) / scaling.diagonal(),
-                ub=self.theta * (ub - x) / scaling.diagonal()
-            )
+                ub=self.theta * (ub - x) / scaling.diagonal(),
+            ),
         ]
         self.guess: np.ndarray = step.sc.copy()
         self.qpval0: float = step.qpval
@@ -506,14 +553,15 @@ class RefinedStep(Step):
         self.truncation_indices: int = step.truncation_indices
 
     def calculate(self):
-        res = minimize(fun=lambda c: quadratic_form(self.chess, self.cg, c),
-                       jac=lambda c: self.chess.dot(c) + self.cg,
-                       hess=lambda c: self.chess,
-                       x0=self.guess,
-                       method='trust-constr',
-                       constraints=self.constraints,
-                       options={'verbose': 0, 'maxiter': 100,
-                                'gtol': 0, 'xtol': 0})
+        res = minimize(
+            fun=lambda c: quadratic_form(self.chess, self.cg, c),
+            jac=lambda c: self.chess.dot(c) + self.cg,
+            hess=lambda c: self.chess,
+            x0=self.guess,
+            method='trust-constr',
+            constraints=self.constraints,
+            options={'verbose': 0, 'maxiter': 100, 'gtol': 0, 'xtol': 0},
+        )
         self.sc = res.x
         self.ss = self.subspace.dot(self.sc)
         self.s = self.scaling.dot(self.ss)

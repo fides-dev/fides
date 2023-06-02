@@ -4,31 +4,43 @@ Minimization
 This module performs the optimization given a step proposal.
 """
 
-import time
-
-import numpy as np
 import logging
+import time
 import uuid
+from collections import defaultdict
+from typing import Callable, Dict, List, Optional, Tuple, Union
+
 import h5py
+import numpy as np
 from numpy.linalg import norm
 from scipy.sparse import csc_matrix
-from .trust_region import trust_region, Step
-from .hessian_approximation import (
-    HessianApproximation, StructuredApproximation, HybridFixed,
-    HybridFraction, FX, IterativeHessianApproximation, TSSM, GNSBFGS
-)
+
 from .constants import (
-    Options, ExitFlag, DEFAULT_OPTIONS, StepBackStrategy, SubSpaceDim,
-    validate_options
+    DEFAULT_OPTIONS,
+    ExitFlag,
+    Options,
+    StepBackStrategy,
+    SubSpaceDim,
+    validate_options,
+)
+from .hessian_approximation import (
+    FX,
+    GNSBFGS,
+    TSSM,
+    HessianApproximation,
+    HybridFixed,
+    HybridFraction,
+    IterativeHessianApproximation,
+    StructuredApproximation,
 )
 from .logging import create_logger
-from collections import defaultdict
-from typing import Callable, Dict, Optional, Tuple, Union, List
+from .trust_region import Step, trust_region
 
 
 class FunEvaluator:
-    def __init__(self, fun: Callable, nargout: int, resfun: bool,
-                 funargs: dict):
+    def __init__(
+        self, fun: Callable, nargout: int, resfun: bool, funargs: dict
+    ):
         self.fun = fun
         self.nargout = nargout
         self.resfun = resfun
@@ -41,18 +53,26 @@ class FunEvaluator:
 
         if not isinstance(ret, tuple) or len(ret) != self.nargout:
             nargout = len(ret) if isinstance(ret, tuple) else 1
-            raise ValueError(f'Provided function returned {nargout} values, '
-                             f'but was expected to return {self.nargout}.'
-                             f'Please make sure the provided function is '
-                             f'compatible with the employed Hessian '
-                             f'Approximation Scheme. If no Hessian '
-                             f'Approximation Scheme is employed, the function '
-                             f'needs to return 3 values (fval, grad, hess).')
+            raise ValueError(
+                f'Provided function returned {nargout} values, '
+                f'but was expected to return {self.nargout}.'
+                f'Please make sure the provided function is '
+                f'compatible with the employed Hessian '
+                f'Approximation Scheme. If no Hessian '
+                f'Approximation Scheme is employed, the function '
+                f'needs to return 3 values (fval, grad, hess).'
+            )
 
         if self.resfun:
             res, sres = ret
-            return Funout(fval=0.5 * res.T.dot(res), grad=res.T.dot(sres),
-                          hess=sres.T.dot(sres), res=res, sres=sres, x=x)
+            return Funout(
+                fval=0.5 * res.T.dot(res),
+                grad=res.T.dot(sres),
+                hess=sres.T.dot(sres),
+                res=res,
+                sres=sres,
+                x=x,
+            )
         else:
             if self.nargout == 3:
                 fval, grad, hess = ret
@@ -63,10 +83,15 @@ class FunEvaluator:
 
 
 class Funout:
-    def __init__(self, fval: float, grad: np.ndarray, x: np.ndarray,
-                 hess: Optional[np.ndarray] = None,
-                 res: Optional[np.ndarray] = None,
-                 sres: Optional[np.ndarray] = None,):
+    def __init__(
+        self,
+        fval: float,
+        grad: np.ndarray,
+        x: np.ndarray,
+        hess: Optional[np.ndarray] = None,
+        res: Optional[np.ndarray] = None,
+        sres: Optional[np.ndarray] = None,
+    ):
         self.fval = fval
         self.grad = grad
         self.hess = hess
@@ -76,44 +101,57 @@ class Funout:
 
     def checkdims(self):
         if not np.isscalar(self.fval):
-            raise ValueError('Provided objective function must return a '
-                             'scalar!')
+            raise ValueError(
+                'Provided objective function must return a ' 'scalar!'
+            )
 
         if np.isscalar(self.grad):
-            raise ValueError('Provided objective function gradient must '
-                             'return a vector!')
+            raise ValueError(
+                'Provided objective function gradient must ' 'return a vector!'
+            )
 
         if not self.grad.ndim == 1:
-            raise ValueError('Provided objective function must return a '
-                             'gradient vector with x.ndim == 1, was '
-                             f'{self.grad.ndim}!')
+            raise ValueError(
+                'Provided objective function must return a '
+                'gradient vector with x.ndim == 1, was '
+                f'{self.grad.ndim}!'
+            )
         if not len(self.grad) == len(self.x):
-            raise ValueError('Provided objective function must return a '
-                             'gradient vector of the same shape as x, '
-                             f'x has {len(self.x)} entries but gradient has '
-                             f'{len(self.grad)}!')
+            raise ValueError(
+                'Provided objective function must return a '
+                'gradient vector of the same shape as x, '
+                f'x has {len(self.x)} entries but gradient has '
+                f'{len(self.grad)}!'
+            )
 
         if self.hess is None:
             return
 
         if np.isscalar(self.hess):
-            raise ValueError('Provided objective function Hessian must '
-                             'return a matrix!')
+            raise ValueError(
+                'Provided objective function Hessian must ' 'return a matrix!'
+            )
 
         if not self.hess.ndim == 2:
-            raise ValueError('Provided objective function must return a '
-                             'Hessian matrix with x.ndim == 2, was '
-                             f'{self.hess.ndim}!')
+            raise ValueError(
+                'Provided objective function must return a '
+                'Hessian matrix with x.ndim == 2, was '
+                f'{self.hess.ndim}!'
+            )
 
         if not self.hess.shape[0] == self.hess.shape[1]:
-            raise ValueError('Provided objective function must return a '
-                             'square Hessian matrix!')
+            raise ValueError(
+                'Provided objective function must return a '
+                'square Hessian matrix!'
+            )
 
         if not self.hess.shape[0] == len(self.x):
-            raise ValueError('Provided objective function must return a '
-                             'square Hessian matrix with same dimension as x. '
-                             f'x has {len(self.x)} entries but Hessian has '
-                             f'{self.hess.shape[0]}!')
+            raise ValueError(
+                'Provided objective function must return a '
+                'square Hessian matrix with same dimension as x. '
+                f'x has {len(self.x)} entries but Hessian has '
+                f'{self.hess.shape[0]}!'
+            )
 
     def __repr__(self):
         return f'Funout(fval={self.fval}, grad={self.grad}, hess={self.hess})'
@@ -144,15 +182,18 @@ class Optimizer:
     :ivar verbose: Verbosity level for logging
     :ivar logger: logger instance
     """
-    def __init__(self,
-                 fun: Callable,
-                 ub: np.ndarray,
-                 lb: np.ndarray,
-                 verbose: Optional[int] = logging.INFO,
-                 options: Optional[Dict] = None,
-                 funargs: Optional[Dict] = None,
-                 hessian_update: Optional[HessianApproximation] = None,
-                 resfun: bool = False):
+
+    def __init__(
+        self,
+        fun: Callable,
+        ub: np.ndarray,
+        lb: np.ndarray,
+        verbose: Optional[int] = logging.INFO,
+        options: Optional[Dict] = None,
+        funargs: Optional[Dict] = None,
+        hessian_update: Optional[HessianApproximation] = None,
+        resfun: bool = False,
+    ):
         """
         Create an optimizer object
 
@@ -183,20 +224,31 @@ class Optimizer:
             Boolean flag indicating whether fun returns function values
             (False, default) or residuals (True).
         """
-        nargout = 3 if hessian_update is None or (
-            hessian_update.requires_hess and not hessian_update.requires_resfun
-        ) else 2
+        nargout = (
+            3
+            if hessian_update is None
+            or (
+                hessian_update.requires_hess
+                and not hessian_update.requires_resfun
+            )
+            else 2
+        )
 
-        self.fevaler = FunEvaluator(fun=fun, nargout=nargout, resfun=resfun,
-                                    funargs=funargs)
+        self.fevaler = FunEvaluator(
+            fun=fun, nargout=nargout, resfun=resfun, funargs=funargs
+        )
 
-        if hessian_update is not None and \
-                resfun != hessian_update.requires_resfun:
-            raise ValueError(f'Hessian update scheme {type(hessian_update)} '
-                             f'requires an objective function that returns '
-                             f'(residual, residual derivative). Please make'
-                             f'sure that is the case and then call this '
-                             f'function with argument resfun set to `True`.')
+        if (
+            hessian_update is not None
+            and resfun != hessian_update.requires_resfun
+        ):
+            raise ValueError(
+                f'Hessian update scheme {type(hessian_update)} '
+                f'requires an objective function that returns '
+                f'(residual, residual derivative). Please make'
+                f'sure that is the case and then call this '
+                f'function with argument resfun set to `True`.'
+            )
 
         self.lb: np.ndarray = np.array(lb)
         self.ub: np.ndarray = np.array(ub)
@@ -208,11 +260,14 @@ class Optimizer:
 
         self.options: Dict = options
 
-        if (self.get_option(Options.SUBSPACE_DIM) == SubSpaceDim.STEIHAUG and
-                self.get_option(Options.STEPBACK_STRAT) ==
-                StepBackStrategy.REFINE):
-            raise ValueError('Selected base step is not compatible with '
-                             'refinement.')
+        if (
+            self.get_option(Options.SUBSPACE_DIM) == SubSpaceDim.STEIHAUG
+            and self.get_option(Options.STEPBACK_STRAT)
+            == StepBackStrategy.REFINE
+        ):
+            raise ValueError(
+                'Selected base step is not compatible with ' 'refinement.'
+            )
 
         self.delta: float = self.get_option(Options.DELTA_INIT)
         self.delta_iter: float = self.delta
@@ -237,8 +292,9 @@ class Optimizer:
         self.exitflag: ExitFlag = ExitFlag.DID_NOT_RUN
         self.verbose: int = verbose
         self.logger: Union[logging.Logger, None] = None
-        self.history: Dict[str, List[Union[float, int, bool]]] = \
-            defaultdict(list)
+        self.history: Dict[str, List[Union[float, int, bool]]] = defaultdict(
+            list
+        )
         self.start_id: str = ''
 
     def _reset(self, start_id: Optional[str] = None):
@@ -315,19 +371,27 @@ class Optimizer:
             v, dv = self.get_affine_scaling()
 
             scaling = csc_matrix(np.diag(np.sqrt(np.abs(v))))
-            theta = max(self.get_option(Options.THETA_MAX),
-                        1 - norm(v * self.grad, np.inf))
+            theta = max(
+                self.get_option(Options.THETA_MAX),
+                1 - norm(v * self.grad, np.inf),
+            )
 
             self.check_finite()
 
-            step = \
-                trust_region(
-                    self.x, self.grad, self.hess, scaling,
-                    self.delta_iter, dv, theta, self.lb, self.ub,
-                    subspace_dim=self.get_option(Options.SUBSPACE_DIM),
-                    stepback_strategy=self.get_option(Options.STEPBACK_STRAT),
-                    logger=self.logger
-                )
+            step = trust_region(
+                self.x,
+                self.grad,
+                self.hess,
+                scaling,
+                self.delta_iter,
+                dv,
+                theta,
+                self.lb,
+                self.ub,
+                subspace_dim=self.get_option(Options.SUBSPACE_DIM),
+                stepback_strategy=self.get_option(Options.STEPBACK_STRAT),
+                logger=self.logger,
+            )
 
             x_new = self.x + step.s + step.s0
             funout_new = self.fevaler(x_new)
@@ -375,10 +439,7 @@ class Optimizer:
             self.fval_min = funout.fval
             self.grad_min = funout.grad
 
-    def update(self,
-               step: Step,
-               funout_new: Funout,
-               funout: Funout) -> None:
+    def update(self, step: Step, funout_new: Funout, funout: Funout) -> None:
         """
         Update self according to employed step
 
@@ -401,14 +462,18 @@ class Optimizer:
                 self.hessian_update.update(s=s, y=y)
             elif isinstance(self.hessian_update, HybridFixed):
                 self.hessian_update.update(
-                    s=s, y=y, hess=funout_new.hess,
-                    iter_since_tr_update=self.iterations_since_tr_update
+                    s=s,
+                    y=y,
+                    hess=funout_new.hess,
+                    iter_since_tr_update=self.iterations_since_tr_update,
                 )
             elif isinstance(self.hessian_update, HybridFraction):
                 self.hessian_update.update(
-                    s=s, y=y, hess=funout_new.hess,
+                    s=s,
+                    y=y,
+                    hess=funout_new.hess,
                     tr_nonupdates=self.n_intermediate_tr_radius,
-                    iterations=self.iteration
+                    iterations=self.iteration,
                 )
             elif isinstance(self.hessian_update, FX):
                 # Equation (1.16)
@@ -416,20 +481,26 @@ class Optimizer:
                 # M = hess
                 # \delta = s
                 # r = res
-                gamma = funout_new.hess.dot(s) + \
-                        (funout_new.sres - funout.sres).T.dot(funout_new.res)
-                self.hessian_update.update(delta=s, gamma=gamma,
-                                           r=funout_new.res, rprev=funout.res,
-                                           hess=funout_new.hess)
+                gamma = funout_new.hess.dot(s) + (
+                    funout_new.sres - funout.sres
+                ).T.dot(funout_new.res)
+                self.hessian_update.update(
+                    delta=s,
+                    gamma=gamma,
+                    r=funout_new.res,
+                    rprev=funout.res,
+                    hess=funout_new.hess,
+                )
             elif isinstance(self.hessian_update, StructuredApproximation):
                 # SSM: Equation (43) in [Dennis et al 1989]
                 yb = (funout_new.sres - funout.sres).T.dot(funout_new.res)
                 if isinstance(self.hessian_update, (TSSM, GNSBFGS)):
                     # TSSM: Equation (2.5)/(2.6) in [Huschens 1994]
                     # GNSBFGS: Equation (2.1) in [Zhou & Chen 2010]
-                    yb *= norm(funout_new.res)/norm(funout.res)
-                self.hessian_update.update(s=s, y=y, yb=yb, r=funout_new.res,
-                                           hess=funout_new.hess)
+                    yb *= norm(funout_new.res) / norm(funout.res)
+                self.hessian_update.update(
+                    s=s, y=y, yb=yb, r=funout_new.res, hess=funout_new.hess
+                )
             else:
                 raise NotImplementedError
 
@@ -442,10 +513,9 @@ class Optimizer:
         self.grad = funout_new.grad
         self.make_non_degenerate()
 
-    def update_tr_radius(self,
-                         funout: Funout,
-                         step: Step,
-                         dv: np.ndarray) -> bool:
+    def update_tr_radius(
+        self, funout: Funout, step: Step, dv: np.ndarray
+    ) -> bool:
         """
         Update the trust region radius
 
@@ -468,10 +538,9 @@ class Optimizer:
         self.iterations_since_tr_update += 1
         if not np.isfinite(fval):
             self.tr_ratio = 0
-            self.delta = np.nanmin([
-                self.delta * self.get_option(Options.GAMMA1),
-                nsx / 4
-            ])
+            self.delta = np.nanmin(
+                [self.delta * self.get_option(Options.GAMMA1), nsx / 4]
+            )
             self.iterations_since_tr_update = 0
             return False
         else:
@@ -485,20 +554,24 @@ class Optimizer:
 
             interior_solution = nsx < self.delta_iter * 0.9
 
-            if self.tr_ratio >= self.get_option(Options.ETA) \
-                    and not interior_solution:
+            if (
+                self.tr_ratio >= self.get_option(Options.ETA)
+                and not interior_solution
+            ):
                 # increase radius
                 self.delta = self.get_option(Options.GAMMA2) * self.delta
                 self.iterations_since_tr_update = 0
             elif self.tr_ratio <= self.get_option(Options.MU):
                 # decrease radius
-                self.delta = np.nanmin([
-                    self.delta * self.get_option(Options.GAMMA1),
-                    nsx / 4
-                ])
+                self.delta = np.nanmin(
+                    [self.delta * self.get_option(Options.GAMMA1), nsx / 4]
+                )
                 self.iterations_since_tr_update = 0
-            elif self.get_option(Options.MU) < self.tr_ratio < \
-                    self.get_option(Options.ETA):
+            elif (
+                self.get_option(Options.MU)
+                < self.tr_ratio
+                < self.get_option(Options.ETA)
+            ):
                 self.n_intermediate_tr_radius += 1
             return self.tr_ratio > 0.0
 
@@ -524,8 +597,9 @@ class Optimizer:
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
 
-        if self.tr_ratio > self.get_option(Options.MU) and \
-                np.abs(fval - self.fval) < fatol + frtol*np.abs(self.fval):
+        if self.tr_ratio > self.get_option(Options.MU) and np.abs(
+            fval - self.fval
+        ) < fatol + frtol * np.abs(self.fval):
             self.exitflag = ExitFlag.FTOL
             self.logger.info(
                 'Stopping as function difference '
@@ -586,7 +660,7 @@ class Optimizer:
         time_elapsed = time.time() - self.starttime
         maxtime = self.get_option(Options.MAXTIME)
         time_remaining = maxtime - time_elapsed
-        avg_iter_time = time_elapsed/(self.iteration + (self.iteration == 0))
+        avg_iter_time = time_elapsed / (self.iteration + (self.iteration == 0))
         if time_remaining < avg_iter_time:
             self.exitflag = ExitFlag.MAXTIME
             self.logger.warning(
@@ -612,8 +686,10 @@ class Optimizer:
 
         :param eps: degeneracy threshold
         """
-        if np.min(np.abs(self.ub - self.x)) < eps or \
-                np.min(np.abs(self.x - self.lb)) < eps:
+        if (
+            np.min(np.abs(self.ub - self.x)) < eps
+            or np.min(np.abs(self.x - self.lb)) < eps
+        ):
             upperi = (self.ub - self.x) < eps
             loweri = (self.x - self.lb) < eps
             self.x[upperi] = self.x[upperi] - eps
@@ -659,8 +735,11 @@ class Optimizer:
         normdx = norm(step.s + step.s0)
         normg = norm(self.grad)
 
-        iterspaces = max(len(str(self.get_option(Options.MAXITER))), 5) - \
-            len(str(self.iteration)) - 1
+        iterspaces = (
+            max(len(str(self.get_option(Options.MAXITER))), 5)
+            - len(str(self.iteration))
+            - 1
+        )
         steptypespaces = 4 - len(step.type)
 
         fval = funout.fval
@@ -687,17 +766,17 @@ class Optimizer:
         min_ev_hess_supdate, max_ev_hess_supdate = np.NaN, np.NaN
         if self.hessian_update:
             if accepted:
-                min_ev_hess_update, max_ev_hess_update = \
-                    _min_max_evs(self.hessian_update.get_diff())
+                min_ev_hess_update, max_ev_hess_update = _min_max_evs(
+                    self.hessian_update.get_diff()
+                )
             else:
                 min_ev_hess_update, max_ev_hess_update = 0.0, 0.0
 
             if isinstance(self.hessian_update, StructuredApproximation):
                 if accepted:
-                    min_ev_hess_supdate, max_ev_hess_supdate = \
-                        _min_max_evs(
-                            self.hessian_update.get_structured_diff()
-                        )
+                    min_ev_hess_supdate, max_ev_hess_supdate = _min_max_evs(
+                        self.hessian_update.get_structured_diff()
+                    )
                 else:
                     min_ev_hess_supdate, max_ev_hess_supdate = 0.0, 0.0
 
@@ -734,8 +813,11 @@ class Optimizer:
         Prints diagnostic information about the initial step to the log
         """
 
-        iterspaces = max(len(str(self.get_option(Options.MAXITER))), 5) - \
-            len(str(self.iteration)) - 1
+        iterspaces = (
+            max(len(str(self.get_option(Options.MAXITER))), 5)
+            - len(str(self.iteration))
+            - 1
+        )
         self.logger.info(
             f'{" " * iterspaces}{self.iteration}'
             f'| {self.fval:+.2E} '
@@ -785,15 +867,19 @@ class Optimizer:
 
         if not np.isfinite(fval):
             self.exitflag = ExitFlag.NOT_FINITE
-            raise RuntimeError(f'Encountered non-finite function {self.fval} '
-                               f'value {pointstr}')
+            raise RuntimeError(
+                f'Encountered non-finite function {self.fval} '
+                f'value {pointstr}'
+            )
 
         if not np.isfinite(grad).all():
             self.exitflag = ExitFlag.NOT_FINITE
             ix = np.where(np.logical_not(np.isfinite(grad)))
-            raise RuntimeError('Encountered non-finite gradient entries'
-                               f' {grad[ix]} for indices {ix} '
-                               f'{pointstr}')
+            raise RuntimeError(
+                'Encountered non-finite gradient entries'
+                f' {grad[ix]} for indices {ix} '
+                f'{pointstr}'
+            )
 
         if hess is None:
             return
@@ -801,9 +887,11 @@ class Optimizer:
         if not np.isfinite(hess).all():
             self.exitflag = ExitFlag.NOT_FINITE
             ix = np.where(np.logical_not(np.isfinite(hess)))
-            raise RuntimeError('Encountered non-finite gradient hessian'
-                               f' {hess[ix]} for indices {ix} '
-                               f'{pointstr}')
+            raise RuntimeError(
+                'Encountered non-finite gradient hessian'
+                f' {hess[ix]} for indices {ix} '
+                f'{pointstr}'
+            )
 
     def check_in_bounds(self, x: Optional[np.ndarray] = None):
         """
@@ -821,15 +909,17 @@ class Optimizer:
         else:
             pointstr = f'at iteration {self.iteration}.'
 
-        for ref, sign, name in zip([self.ub, self.lb],
-                                   [-1.0, 1.0],
-                                   ['upper bounds', 'lower bounds']):
+        for ref, sign, name in zip(
+            [self.ub, self.lb], [-1.0, 1.0], ['upper bounds', 'lower bounds']
+        ):
             diff = sign * (ref - x)
             if not np.all(diff <= 0):
                 ix = np.where(diff > 0)[0]
                 self.exitflag = ExitFlag.EXCEEDED_BOUNDARY
-                raise RuntimeError(f'Exceeded {name} for indices {ix} by '
-                                   f'{diff[ix]} {pointstr}')
+                raise RuntimeError(
+                    f'Exceeded {name} for indices {ix} by '
+                    f'{diff[ix]} {pointstr}'
+                )
 
     def get_option(self, option):
         return self.options.get(option, DEFAULT_OPTIONS.get(option))

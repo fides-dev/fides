@@ -5,7 +5,7 @@
 fides is released under the 3-Clause BSD License (BSD-3-Clause) with the
 following terms:
 
-Copyright (c) 2020-2021, Fabian Fröhlich
+Copyright (c) 2020-2023, Fabian Fröhlich
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:

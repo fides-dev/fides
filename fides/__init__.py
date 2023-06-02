@@ -4,12 +4,23 @@ Fides
 Fides is an interior trust-region reflective optimizer
 """
 
-# flake8: noqa
-from .minimize import Optimizer
+from .constants import ExitFlag, Options, StepBackStrategy, SubSpaceDim
 from .hessian_approximation import (
-    SR1, BFGS, DFP, FX, HybridFixed, HybridFraction, GNSBFGS, BB, BG, Broyden,
-    SSM, TSSM
+    BB,
+    BFGS,
+    BG,
+    DFP,
+    FX,
+    GNSBFGS,
+    SR1,
+    SSM,
+    TSSM,
+    Broyden,
+    HybridFixed,
+    HybridFraction,
 )
 from .logging import create_logger
+
+# flake8: noqa
+from .minimize import Optimizer
 from .version import __version__
-from .constants import Options, SubSpaceDim, StepBackStrategy, ExitFlag

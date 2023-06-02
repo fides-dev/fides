@@ -6,23 +6,26 @@ that can be used to compute longer steps in case the initially proposed step
 had to be truncated due to non-compliance with boundary constraints.
 """
 
+from typing import List
+
 import numpy as np
 from scipy.sparse import csc_matrix
-from typing import List
 
 from .steps import Step, TRStepReflected, TRStepTruncated
 
 
-def stepback_reflect(tr_step: Step,
-                     x: np.ndarray,
-                     sg: np.ndarray,
-                     hess: np.ndarray,
-                     scaling: csc_matrix,
-                     g_dscaling: csc_matrix,
-                     delta: float,
-                     theta: float,
-                     ub: np.ndarray,
-                     lb: np.ndarray) -> List[Step]:
+def stepback_reflect(
+    tr_step: Step,
+    x: np.ndarray,
+    sg: np.ndarray,
+    hess: np.ndarray,
+    scaling: csc_matrix,
+    g_dscaling: csc_matrix,
+    delta: float,
+    theta: float,
+    ub: np.ndarray,
+    lb: np.ndarray,
+) -> List[Step]:
     """
     Compute new proposal steps according to a reflection strategy.
 
@@ -52,8 +55,9 @@ def stepback_reflect(tr_step: Step,
     :return:
         New proposal steps
     """
-    rtr_step = TRStepReflected(x, sg, hess, scaling, g_dscaling, delta,
-                               theta, ub, lb, tr_step)
+    rtr_step = TRStepReflected(
+        x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, tr_step
+    )
     rtr_step.calculate()
     steps = [rtr_step]
     for ireflection in range(len(x) - 1):
@@ -61,24 +65,27 @@ def stepback_reflect(tr_step: Step,
             break
         # recursively add more reflections
         rtr_old = rtr_step
-        rtr_step = TRStepReflected(x, sg, hess, scaling, g_dscaling, delta,
-                                   theta, ub, lb, rtr_old)
+        rtr_step = TRStepReflected(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, rtr_old
+        )
         rtr_step.calculate()
         steps.append(rtr_step)
 
     return steps
 
 
-def stepback_truncate(tr_step: Step,
-                      x: np.ndarray,
-                      sg: np.ndarray,
-                      hess: np.ndarray,
-                      scaling: csc_matrix,
-                      g_dscaling: csc_matrix,
-                      delta: float,
-                      theta: float,
-                      ub: np.ndarray,
-                      lb: np.ndarray) -> List[Step]:
+def stepback_truncate(
+    tr_step: Step,
+    x: np.ndarray,
+    sg: np.ndarray,
+    hess: np.ndarray,
+    scaling: csc_matrix,
+    g_dscaling: csc_matrix,
+    delta: float,
+    theta: float,
+    ub: np.ndarray,
+    lb: np.ndarray,
+) -> List[Step]:
     """
     Compute new proposal steps according to a truncation strategy.
 
@@ -108,15 +115,17 @@ def stepback_truncate(tr_step: Step,
     :return:
         New proposal steps
     """
-    rtt_step = TRStepTruncated(x, sg, hess, scaling, g_dscaling, delta,
-                               theta, ub, lb, tr_step)
+    rtt_step = TRStepTruncated(
+        x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, tr_step
+    )
     rtt_step.calculate()
     steps = [rtt_step]
     while rtt_step.subspace.shape[1] > 0:
         if rtt_step.alpha == 1.0:
             break
-        rtt_step = TRStepTruncated(x, sg, hess, scaling, g_dscaling, delta,
-                                   theta, ub, lb, rtt_step)
+        rtt_step = TRStepTruncated(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, rtt_step
+        )
         rtt_step.calculate()
         steps.append(rtt_step)
 
