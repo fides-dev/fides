@@ -62,7 +62,7 @@ extensions = [
 intersphinx_mapping = {
     'numpy': ('https://numpy.org/devdocs/', None),
     'python': ('https://docs.python.org/3', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/reference', None)
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -121,7 +121,7 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ['_static']
-#html_favicon = ""
+# html_favicon = ""
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -145,15 +145,12 @@ latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',
-
     # The font size ('10pt', '11pt' or '12pt').
     #
     # 'pointsize': '10pt',
-
     # Additional stuff for the LaTeX preamble.
     #
     # 'preamble': '',
-
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
@@ -163,18 +160,14 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'Fides.tex', title,
-     author, 'manual'),
+    (master_doc, 'Fides.tex', title, author, 'manual'),
 ]
 
 # -- Options for manual page output ------------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, 'fides', title,
-     [author], 1)
-]
+man_pages = [(master_doc, 'fides', title, [author], 1)]
 
 # -- Options for Texinfo output ----------------------------------------------
 
@@ -182,9 +175,15 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'Fides', title,
-     author, 'Fides', 'Inter Trust Region optimization in python.',
-     'Miscellaneous'),
+    (
+        master_doc,
+        'Fides',
+        title,
+        author,
+        'Fides',
+        'Inter Trust Region optimization in python.',
+        'Miscellaneous',
+    ),
 ]
 
 

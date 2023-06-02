@@ -6,12 +6,11 @@ constants that are used in multiple other modules
 """
 
 import enum
-import numpy as np
-
-from numbers import Real, Integral
+from numbers import Integral, Real
 from pathlib import PosixPath, WindowsPath
-
 from typing import Dict
+
+import numpy as np
 
 
 class Options(str, enum.Enum):
@@ -19,6 +18,7 @@ class Options(str, enum.Enum):
     Defines all the fields that can be specified in Options to
     :py:class:`Optimizer`
     """
+
     MAXITER = 'maxiter'  #: maximum number of allowed iterations
     MAXTIME = 'maxtime'  #: maximum amount of walltime in seconds
     FATOL = 'fatol'  #: absolute tolerance for convergence based on fval
@@ -53,6 +53,7 @@ class StepBackStrategy(str, enum.Enum):
     Defines the possible choices of search refinement if proposed step
     reaches optimization boundary
     """
+
     SINGLE_REFLECT = 'reflect_single'  #: single reflection at boundary
     REFLECT = 'reflect'  #: recursive reflections at boundary
     TRUNCATE = 'truncate'  #: truncate step at boundary and re-solve
@@ -75,7 +76,7 @@ DEFAULT_OPTIONS = {
     Options.DELTA_INIT: 1.0,
     Options.MU: 0.25,  # [NodedalWright2006]
     Options.ETA: 0.75,  # [NodedalWright2006]
-    Options.GAMMA1: 1/4,  # [NodedalWright2006]
+    Options.GAMMA1: 1 / 4,  # [NodedalWright2006]
     Options.GAMMA2: 2,  # [NodedalWright2006]
     Options.HISTORY_FILE: None,
 }
@@ -87,6 +88,7 @@ class ExitFlag(int, enum.Enum):
     optimization exited. Negative value indicate errors while positive
     values indicate convergence.
     """
+
     DID_NOT_RUN = 0  #: Optimizer did not run
     MAXITER = -1  #: Reached maximum number of allowed iterations
     MAXTIME = -2  #: Expected to reach maximum allowed time in next iteration
@@ -134,6 +136,8 @@ def validate_options(options: Dict):
         if not isinstance(option_value, expected_type):
             if expected_type == Integral and int(option_value) == option_value:
                 continue
-            raise TypeError(f'Type mismatch for option {option_key}. '
-                            f'Expected {expected_type} but got '
-                            f'{type(option_value)}')
+            raise TypeError(
+                f'Type mismatch for option {option_key}. '
+                f'Expected {expected_type} but got '
+                f'{type(option_value)}'
+            )

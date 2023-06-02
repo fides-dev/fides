@@ -6,31 +6,38 @@ This module provides the machinery to evaluate different trust-region(
 performance according to the quadratic approximation of the objective function
 """
 
-import numpy as np
 import logging
 
+import numpy as np
 from scipy.sparse import csc_matrix
 
-from .constants import SubSpaceDim, StepBackStrategy
-from .steps import (
-    Step, GradientStep, TRStep2D, TRStepFull, RefinedStep,
-    TRStepReflected, TRStepSteihaug
-)
+from .constants import StepBackStrategy, SubSpaceDim
 from .stepback import stepback_reflect, stepback_truncate
+from .steps import (
+    GradientStep,
+    RefinedStep,
+    Step,
+    TRStep2D,
+    TRStepFull,
+    TRStepReflected,
+    TRStepSteihaug,
+)
 
 
-def trust_region(x: np.ndarray,
-                 g: np.ndarray,
-                 hess: np.ndarray,
-                 scaling: csc_matrix,
-                 delta: float,
-                 dv: np.ndarray,
-                 theta: float,
-                 lb: np.ndarray,
-                 ub: np.ndarray,
-                 subspace_dim: SubSpaceDim,
-                 stepback_strategy: StepBackStrategy,
-                 logger: logging.Logger) -> Step:
+def trust_region(
+    x: np.ndarray,
+    g: np.ndarray,
+    hess: np.ndarray,
+    scaling: csc_matrix,
+    delta: float,
+    dv: np.ndarray,
+    theta: float,
+    lb: np.ndarray,
+    ub: np.ndarray,
+    subspace_dim: SubSpaceDim,
+    stepback_strategy: StepBackStrategy,
+    logger: logging.Logger,
+) -> Step:
     """
     Compute a step according to the solution of the trust-region subproblem.
     If step-back is necessary, gradient and reflected trust region step are
@@ -78,8 +85,9 @@ def trust_region(x: np.ndarray,
         SubSpaceDim.FULL: TRStepFull,
         SubSpaceDim.STEIHAUG: TRStepSteihaug,
     }
-    tr_step = step_options[subspace_dim](x, sg, hess, scaling, g_dscaling,
-                                         delta, theta, ub, lb, logger)
+    tr_step = step_options[subspace_dim](
+        x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
+    )
     tr_step.calculate()
 
     # in case of truncation, we hit the boundary and we check both the
@@ -88,49 +96,81 @@ def trust_region(x: np.ndarray,
 
     steps = [tr_step]
     if tr_step.alpha < 1.0 and len(g) > 1:
-        g_step = GradientStep(x, sg, hess, scaling, g_dscaling, delta,
-                              theta, ub, lb, logger)
+        g_step = GradientStep(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
+        )
         g_step.calculate()
         steps.append(g_step)
         if stepback_strategy == StepBackStrategy.SINGLE_REFLECT:
-            rtr_step = TRStepReflected(x, sg, hess, scaling, g_dscaling, delta,
-                                       theta, ub, lb, tr_step)
+            rtr_step = TRStepReflected(
+                x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, tr_step
+            )
             rtr_step.calculate()
             steps.append(rtr_step)
 
-        if stepback_strategy in [StepBackStrategy.REFLECT,
-                                 StepBackStrategy.MIXED]:
-            steps.extend(stepback_reflect(
-                tr_step, x, sg, hess, scaling, g_dscaling, delta, theta, ub,
-                lb
-            ))
+        if stepback_strategy in [
+            StepBackStrategy.REFLECT,
+            StepBackStrategy.MIXED,
+        ]:
+            steps.extend(
+                stepback_reflect(
+                    tr_step,
+                    x,
+                    sg,
+                    hess,
+                    scaling,
+                    g_dscaling,
+                    delta,
+                    theta,
+                    ub,
+                    lb,
+                )
+            )
 
-        if stepback_strategy in [StepBackStrategy.TRUNCATE,
-                                 StepBackStrategy.MIXED]:
-            steps.extend(stepback_truncate(
-                tr_step, x, sg, hess, scaling, g_dscaling, delta, theta, ub,
-                lb
-            ))
+        if stepback_strategy in [
+            StepBackStrategy.TRUNCATE,
+            StepBackStrategy.MIXED,
+        ]:
+            steps.extend(
+                stepback_truncate(
+                    tr_step,
+                    x,
+                    sg,
+                    hess,
+                    scaling,
+                    g_dscaling,
+                    delta,
+                    theta,
+                    ub,
+                    lb,
+                )
+            )
 
-        if stepback_strategy == StepBackStrategy.REFINE and \
-                tr_step.subspace.shape[1] > 1:
+        if (
+            stepback_strategy == StepBackStrategy.REFINE
+            and tr_step.subspace.shape[1] > 1
+        ):
             ref_step = RefinedStep(
-                x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb,
-                tr_step
+                x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, tr_step
             )
             ref_step.calculate()
             steps.append(ref_step)
 
     if len(steps) > 1:
-        rcountstrs = [str(step.reflection_count)
-                      * int(step.reflection_count > 0)
-                      for step in steps]
-        logger.debug(' | '.join([
-            f'{step.type + rcountstr}: [qp:'
-            f' {step.qpval:.2E}, '
-            f'a: {step.alpha:.2E}]'
-            for rcountstr, step in zip(rcountstrs, steps)
-        ]))
+        rcountstrs = [
+            str(step.reflection_count) * int(step.reflection_count > 0)
+            for step in steps
+        ]
+        logger.debug(
+            ' | '.join(
+                [
+                    f'{step.type + rcountstr}: [qp:'
+                    f' {step.qpval:.2E}, '
+                    f'a: {step.alpha:.2E}]'
+                    for rcountstr, step in zip(rcountstrs, steps)
+                ]
+            )
+        )
 
     qpvals = [step.qpval for step in steps]
     return steps[np.argmin(qpvals)]

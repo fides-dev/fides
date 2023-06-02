@@ -6,15 +6,13 @@ trust-region subproblems.
 """
 
 import logging
+import math
+from typing import Tuple, Union
 
 import numpy as np
-import math
 from numpy.linalg import norm
-
 from scipy import linalg
-from scipy.optimize import newton, brentq
-
-from typing import Tuple, Union
+from scipy.optimize import brentq, newton
 
 
 def quadratic_form(Q: np.ndarray, p: np.ndarray, x: np.ndarray) -> float:
@@ -31,11 +29,9 @@ def quadratic_form(Q: np.ndarray, p: np.ndarray, x: np.ndarray) -> float:
     return 0.5 * x.T.dot(Q).dot(x) + p.T.dot(x)
 
 
-def solve_1d_trust_region_subproblem(B: np.ndarray,
-                                     g: np.ndarray,
-                                     s: np.ndarray,
-                                     delta: float,
-                                     s0: np.ndarray) -> np.ndarray:
+def solve_1d_trust_region_subproblem(
+    B: np.ndarray, g: np.ndarray, s: np.ndarray, delta: float, s0: np.ndarray
+) -> np.ndarray:
     """
     Solves the special case of a one-dimensional subproblem
 
@@ -65,7 +61,7 @@ def solve_1d_trust_region_subproblem(B: np.ndarray,
         a = a[0, 0]
     b = s.T.dot(B.dot(s0) + g)
 
-    minq = - b / (2 * a)
+    minq = -b / (2 * a)
     if a > 0 and norm(minq * s + s0) <= delta:
         # interior solution
         tau = minq
@@ -80,15 +76,17 @@ def get_1d_trust_region_boundary_solution(B, g, s, s0, delta):
     b = 2 * np.dot(s0, s)
     c = np.dot(s0, s0) - delta**2
 
-    aux = b + math.copysign(np.sqrt(b**2 - 4*a*c), b)
+    aux = b + math.copysign(np.sqrt(b**2 - 4 * a * c), b)
     ts = [-aux / (2 * a), -2 * c / aux]
-    qs = [quadratic_form(B, g, s0 + t*s) for t in ts]
+    qs = [quadratic_form(B, g, s0 + t * s) for t in ts]
     return ts[np.argmin(qs)]
 
 
 def solve_nd_trust_region_subproblem(
-        B: np.ndarray, g: np.ndarray, delta: float,
-        logger: Union[logging.Logger, None] = None
+    B: np.ndarray,
+    g: np.ndarray,
+    delta: float,
+    logger: Union[logging.Logger, None] = None,
 ) -> Tuple[np.ndarray, str]:
     r"""
     This function exactly solves the n-dimensional subproblem.
@@ -141,7 +139,7 @@ def solve_nd_trust_region_subproblem(
     eigvals, eigvecs = linalg.eig(B)
     eigvals = np.real(eigvals)
     eigvecs = np.real(eigvecs)
-    w = - eigvecs.T.dot(g)
+    w = -eigvecs.T.dot(g)
     jmin = eigvals.argmin()
     mineig = eigvals[jmin]
 
@@ -172,8 +170,14 @@ def solve_nd_trust_region_subproblem(
     if secular(laminit, w, eigvals, eigvecs, delta) < 0:
         maxiter = 100
         try:
-            r = newton(secular, laminit, dsecular, tol=1e-12, maxiter=maxiter,
-                       args=(w, eigvals, eigvecs, delta),)
+            r = newton(
+                secular,
+                laminit,
+                dsecular,
+                tol=1e-12,
+                maxiter=maxiter,
+                args=(w, eigvals, eigvecs, delta),
+            )
             s = slam(r, w, eigvals, eigvecs)
             if norm(s) <= delta + 1e-12:
                 logger.debug('Found boundary subproblem solution via newton')
@@ -184,14 +188,19 @@ def solve_nd_trust_region_subproblem(
             xa = laminit
             xb = (laminit + np.sqrt(np.spacing(1))) * 10
             # search to the right for a change of sign
-            while secular(xb, w, eigvals, eigvecs, delta) < 0 and \
-                    maxiter > 0:
+            while secular(xb, w, eigvals, eigvecs, delta) < 0 and maxiter > 0:
                 xa = xb
                 xb = xb * 10
                 maxiter -= 1
             if maxiter > 0:
-                r = brentq(secular, xa, xb, xtol=1e-12, maxiter=maxiter,
-                           args=(w, eigvals, eigvecs, delta))
+                r = brentq(
+                    secular,
+                    xa,
+                    xb,
+                    xtol=1e-12,
+                    maxiter=maxiter,
+                    args=(w, eigvals, eigvecs, delta),
+                )
                 s = slam(r, w, eigvals, eigvecs)
                 if norm(s) <= delta + np.sqrt(np.spacing(1)):
                     logger.debug(
@@ -202,22 +211,21 @@ def solve_nd_trust_region_subproblem(
             pass  # may end up here due to ill-conditioning, treat as hard case
 
     # HARD CASE (gradient is orthogonal to eigenvector to smallest eigenvalue)
-    w[(eigvals-mineig) == 0] = 0
+    w[(eigvals - mineig) == 0] = 0
     s = slam(-mineig, w, eigvals, eigvecs)
     # we know that ||s(lam) + sigma*v_jmin|| = delta, since v_jmin is
     # orthonormal, we can just substract the difference in norm to get
     # the right length.
 
-    sigma = np.sqrt(max(delta ** 2 - norm(s) ** 2, 0))
+    sigma = np.sqrt(max(delta**2 - norm(s) ** 2, 0))
     s = s + sigma * eigvecs[:, jmin]
     logger.debug('Found boundary 2D subproblem solution via hard case')
     return s, 'hard'
 
 
-def slam(lam: float,
-         w: np.ndarray,
-         eigvals: np.ndarray,
-         eigvecs: np.ndarray) -> np.ndarray:
+def slam(
+    lam: float, w: np.ndarray, eigvals: np.ndarray, eigvecs: np.ndarray
+) -> np.ndarray:
     r"""
     Computes the solution :math:`s(\lambda)` as subproblem solution according
     to
@@ -242,10 +250,7 @@ def slam(lam: float,
     return eigvecs.dot(c)
 
 
-def dslam(lam: float,
-          w: np.ndarray,
-          eigvals: np.ndarray,
-          eigvecs: np.ndarray):
+def dslam(lam: float, w: np.ndarray, eigvals: np.ndarray, eigvecs: np.ndarray):
     r"""
     Computes the derivative of the solution :math:`s(\lambda)` with respect to
     lambda, where :math:`s` is the subproblem solution according to
@@ -266,16 +271,18 @@ def dslam(lam: float,
     """
     c = w.copy()
     el = eigvals + lam
-    c[el != 0] /= - np.power(el[el != 0], 2)
+    c[el != 0] /= -np.power(el[el != 0], 2)
     c[(el == 0) & (c != 0)] = np.inf
     return eigvecs.dot(c)
 
 
-def secular(lam: float,
-            w: np.ndarray,
-            eigvals: np.ndarray,
-            eigvecs: np.ndarray,
-            delta: float):
+def secular(
+    lam: float,
+    w: np.ndarray,
+    eigvals: np.ndarray,
+    eigvecs: np.ndarray,
+    delta: float,
+):
     r"""
     Secular equation
 
@@ -307,8 +314,13 @@ def secular(lam: float,
         return np.inf
 
 
-def dsecular(lam: float, w: np.ndarray, eigvals: np.ndarray,
-             eigvecs: np.ndarray, delta: float):
+def dsecular(
+    lam: float,
+    w: np.ndarray,
+    eigvals: np.ndarray,
+    eigvecs: np.ndarray,
+    delta: float,
+):
     r"""
     Derivative of the secular equation
 
@@ -334,6 +346,6 @@ def dsecular(lam: float, w: np.ndarray, eigvals: np.ndarray,
     ds = dslam(lam, w, eigvals, eigvecs)
     sn = norm(s)
     if sn > 0:
-        return - s.T.dot(ds) / (norm(s) ** 3)
+        return -s.T.dot(ds) / (norm(s) ** 3)
     else:
         return np.inf
