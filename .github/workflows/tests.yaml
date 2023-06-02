@@ -24,8 +24,7 @@ jobs:
 
     - name: Python tests
       run: |
-        pip install pytest pytest-cov
-        pip install .
+        pip install '.[test]'
         python -m pytest --cov=fides --cov-report xml:coverage.xml --cov-report term ./tests
 
     - name: Codecov
