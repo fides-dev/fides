@@ -17,11 +17,10 @@ jobs:
 
     - name: sdist
       run: |
-        python3 setup.py sdist
+        python -m build --sdist .
 
     - name: Publish a Python distribution to PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
         user: __token__
         password: ${{ secrets.pypi_password }}
-
