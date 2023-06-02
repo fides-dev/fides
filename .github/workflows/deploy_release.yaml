@@ -1,8 +1,9 @@
 name: Deploy
 on:
-  release:
+  - release:
     types:
       - published
+  - workflow_dispatch:
 
 jobs:
   pypi:
