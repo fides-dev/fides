@@ -18,6 +18,7 @@ jobs:
 
     - name: sdist
       run: |
+        pip install build
         python -m build --sdist .
 
     - name: Publish a Python distribution to PyPI
