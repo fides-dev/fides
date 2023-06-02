@@ -1,7 +1,7 @@
-from fides import BFGS, Broyden
-
-import pytest
 import numpy as np
+import pytest
+
+from fides import BFGS, Broyden
 
 
 def test_wrong_dim():
