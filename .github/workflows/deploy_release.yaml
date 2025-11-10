@@ -11,18 +11,24 @@ jobs:
 
     runs-on: ubuntu-24.04
 
+    permissions:
+      id-token: write  # Required for trusted publishing
+      contents: read
+
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 20
 
-    - name: sdist
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Build distribution
       run: |
         pip install build
         python -m build --sdist .
 
-    - name: Publish a Python distribution to PyPI
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        user: __token__
-        password: ${{ secrets.pypi_password }}
+    - name: Publish distribution to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
