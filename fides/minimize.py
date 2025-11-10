@@ -349,7 +349,7 @@ class Optimizer:
 
         self.fval, self.grad = funout.fval, funout.grad
         if self.hessian_update is not None:
-            if self.hessian_update.get_mat().size == 0:
+            if self.hessian_update.get_mat().empty():
                 self.hessian_update.init_mat(len(self.x), funout.hess)
         else:
             self.hess = funout.hess.copy()
