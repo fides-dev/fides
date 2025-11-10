@@ -5,9 +5,7 @@ This module provides the machinery to calculate different trust-region(
 -reflective) step proposals
 """
 
-
 from logging import Logger
-from typing import Union
 
 import numpy as np
 import scipy.linalg as linalg
@@ -113,13 +111,13 @@ class Step:
         """
         self.x: np.ndarray = x
 
-        self.s: Union[np.ndarray, None] = None
-        self.sc: Union[np.ndarray, None] = None
-        self.ss: Union[np.ndarray, None] = None
+        self.s: np.ndarray | None = None
+        self.sc: np.ndarray | None = None
+        self.ss: np.ndarray | None = None
 
-        self.og_s: Union[np.ndarray, None] = None
-        self.og_sc: Union[np.ndarray, None] = None
-        self.og_ss: Union[np.ndarray, None] = None
+        self.og_s: np.ndarray | None = None
+        self.og_sc: np.ndarray | None = None
+        self.og_ss: np.ndarray | None = None
 
         self.sg: np.ndarray = sg.copy()
         self.scaling: csc_matrix = scaling.copy()
@@ -142,9 +140,9 @@ class Step:
             scaling * hess * scaling + g_dscaling
         )
 
-        self.cg: Union[np.ndarray, None] = None
-        self.chess: Union[np.ndarray, None] = None
-        self.subspace: Union[np.ndarray, None] = None
+        self.cg: np.ndarray | None = None
+        self.chess: np.ndarray | None = None
+        self.subspace: np.ndarray | None = None
 
         self.s0: np.ndarray = np.zeros(sg.shape)
         self.ss0: np.ndarray = np.zeros(sg.shape)

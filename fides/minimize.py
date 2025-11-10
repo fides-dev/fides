@@ -8,7 +8,7 @@ import logging
 import time
 import uuid
 from collections import defaultdict
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from collections.abc import Callable
 
 import h5py
 import numpy as np
@@ -88,9 +88,9 @@ class Funout:
         fval: float,
         grad: np.ndarray,
         x: np.ndarray,
-        hess: Optional[np.ndarray] = None,
-        res: Optional[np.ndarray] = None,
-        sres: Optional[np.ndarray] = None,
+        hess: np.ndarray | None = None,
+        res: np.ndarray | None = None,
+        sres: np.ndarray | None = None,
     ):
         self.fval = fval
         self.grad = grad
@@ -102,12 +102,12 @@ class Funout:
     def checkdims(self):
         if not np.isscalar(self.fval):
             raise ValueError(
-                'Provided objective function must return a ' 'scalar!'
+                'Provided objective function must return a scalar!'
             )
 
         if np.isscalar(self.grad):
             raise ValueError(
-                'Provided objective function gradient must ' 'return a vector!'
+                'Provided objective function gradient must return a vector!'
             )
 
         if not self.grad.ndim == 1:
@@ -129,7 +129,7 @@ class Funout:
 
         if np.isscalar(self.hess):
             raise ValueError(
-                'Provided objective function Hessian must ' 'return a matrix!'
+                'Provided objective function Hessian must return a matrix!'
             )
 
         if not self.hess.ndim == 2:
@@ -188,10 +188,10 @@ class Optimizer:
         fun: Callable,
         ub: np.ndarray,
         lb: np.ndarray,
-        verbose: Optional[int] = logging.INFO,
-        options: Optional[Dict] = None,
-        funargs: Optional[Dict] = None,
-        hessian_update: Optional[HessianApproximation] = None,
+        verbose: int | None = logging.INFO,
+        options: dict | None = None,
+        funargs: dict | None = None,
+        hessian_update: HessianApproximation | None = None,
         resfun: bool = False,
     ):
         """
@@ -258,7 +258,7 @@ class Optimizer:
 
         validate_options(options)
 
-        self.options: Dict = options
+        self.options: dict = options
 
         if (
             self.get_option(Options.SUBSPACE_DIM) == SubSpaceDim.STEIHAUG
@@ -266,7 +266,7 @@ class Optimizer:
             == StepBackStrategy.REFINE
         ):
             raise ValueError(
-                'Selected base step is not compatible with ' 'refinement.'
+                'Selected base step is not compatible with refinement.'
             )
 
         self.delta: float = self.get_option(Options.DELTA_INIT)
@@ -282,8 +282,8 @@ class Optimizer:
         self.fval_min = self.fval
         self.grad_min = self.grad
 
-        self.hessian_update: Union[HessianApproximation, None] = hessian_update
-        if self.hessian_update.get_mat().size != 0:
+        self.hessian_update: HessianApproximation | None = hessian_update
+        if if not self.hessian_update.get_mat().empty::
             self.hess = self.hessian_update.get_mat()
         self.iterations_since_tr_update: int = 0
         self.n_intermediate_tr_radius: int = 0
@@ -293,13 +293,11 @@ class Optimizer:
         self.converged: bool = False
         self.exitflag: ExitFlag = ExitFlag.DID_NOT_RUN
         self.verbose: int = verbose
-        self.logger: Union[logging.Logger, None] = None
-        self.history: Dict[str, List[Union[float, int, bool]]] = defaultdict(
-            list
-        )
+        self.logger: logging.Logger | None = None
+        self.history: dict[str, list[float | int | bool]] = defaultdict(list)
         self.start_id: str = ''
 
-    def _reset(self, start_id: Optional[str] = None):
+    def _reset(self, start_id: str | None = None):
         self.starttime = time.time()
         self.iteration = 0
         self.iterations_since_tr_update = 0
@@ -314,7 +312,7 @@ class Optimizer:
         self.start_id = start_id
         self.history = defaultdict(list)
 
-    def minimize(self, x0: np.ndarray, start_id: Optional[str] = None):
+    def minimize(self, x0: np.ndarray, start_id: str | None = None):
         """
         Minimize the objective function using the interior trust-region
         reflective algorithm described by [ColemanLi1994] and [ColemanLi1996]
@@ -681,13 +679,15 @@ class Optimizer:
 
         return True
 
-    def make_non_degenerate(self, eps=1e2 * np.spacing(1)) -> None:
+    def make_non_degenerate(self, eps=None) -> None:
         """
         Ensures that x is non-degenerate, this should only be necessary for
         initial points.
 
         :param eps: degeneracy threshold
         """
+        if eps is None:
+            eps = 1e2 * np.spacing(1)
         if (
             np.min(np.abs(self.ub - self.x)) < eps
             or np.min(np.abs(self.x - self.lb)) < eps
@@ -697,7 +697,7 @@ class Optimizer:
             self.x[upperi] = self.x[upperi] - eps
             self.x[loweri] = self.x[loweri] + eps
 
-    def get_affine_scaling(self) -> Tuple[np.ndarray, np.ndarray]:
+    def get_affine_scaling(self) -> tuple[np.ndarray, np.ndarray]:
         """
         Computes the vector v and dv, the diagonal of its Jacobian. For the
         definition of v, see Definition 2 in [Coleman-Li1994]
@@ -764,8 +764,8 @@ class Optimizer:
         normg = norm(self.grad)
 
         min_ev_hess, max_ev_hess = _min_max_evs(self.hess)
-        min_ev_hess_update, max_ev_hess_update = np.NaN, np.NaN
-        min_ev_hess_supdate, max_ev_hess_supdate = np.NaN, np.NaN
+        min_ev_hess_update, max_ev_hess_update = np.nan, np.nan
+        min_ev_hess_supdate, max_ev_hess_supdate = np.nan, np.nan
         if self.hessian_update:
             if accepted:
                 min_ev_hess_update, max_ev_hess_update = _min_max_evs(
@@ -845,7 +845,7 @@ class Optimizer:
             f'|tr radius|  ||g||  | ||step||| step|acc'
         )
 
-    def check_finite(self, funout: Optional[Funout] = None):
+    def check_finite(self, funout: Funout | None = None):
         """
         Checks whether objective function value, gradient and Hessian (
         approximation) have finite values and optimization can continue.
@@ -870,8 +870,7 @@ class Optimizer:
         if not np.isfinite(fval):
             self.exitflag = ExitFlag.NOT_FINITE
             raise RuntimeError(
-                f'Encountered non-finite function {self.fval} '
-                f'value {pointstr}'
+                f'Encountered non-finite function {self.fval} value {pointstr}'
             )
 
         if not np.isfinite(grad).all():
@@ -895,7 +894,7 @@ class Optimizer:
                 f'{pointstr}'
             )
 
-    def check_in_bounds(self, x: Optional[np.ndarray] = None):
+    def check_in_bounds(self, x: np.ndarray | None = None):
         """
         Checks whether the current optimization variables are all within the
         specified boundaries
@@ -912,7 +911,10 @@ class Optimizer:
             pointstr = f'at iteration {self.iteration}.'
 
         for ref, sign, name in zip(
-            [self.ub, self.lb], [-1.0, 1.0], ['upper bounds', 'lower bounds']
+            [self.ub, self.lb],
+            [-1.0, 1.0],
+            ['upper bounds', 'lower bounds'],
+            strict=True,
         ):
             diff = sign * (ref - x)
             if not np.all(diff <= 0):

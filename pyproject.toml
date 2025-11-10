@@ -5,12 +5,79 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
-[tool.black]
-line-length = 79
-target-version = ['py311']
-skip-string-normalization = true
+[project]
+name = "fides"
+dynamic = ["version"]
+description = "python-based Trust Region Optimization toolbox"
+readme = {file = "README.md", content-type = "text/markdown"}
+requires-python = ">=3.9"
+license = {text = "BSD-3-Clause"}
+authors = [
+    {name = "The fides developers", email = "frohlichfab@gmail.com"}
+]
+maintainers = [
+    {name = "Fabian Fröhlich", email = "frohlichfab@gmail.com"}
+]
+keywords = ["optimization", "trust-region", "systems biology"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Topic :: Software Development :: Libraries",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "numpy>=1.19.2",
+    "scipy>=1.5.2",
+    "h5py>=3.5.0",
+]
 
-[tool.isort]
-profile = "black"
-line_length = 79
-multi_line_output = 3
+[project.urls]
+Homepage = "https://github.com/fides-dev/fides"
+Download = "https://github.com/fides-dev/fides/releases"
+"Bug Tracker" = "https://github.com/fides-dev/fides/issues"
+Documentation = "https://fides-optimizer.readthedocs.io/"
+Changelog = "https://github.com/fides-dev/fides/releases"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=5.4.2",
+    "pytest-cov>=4.0.0",
+    "flake8>=3.7.2",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["fides*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "fides.version.__version__"}
+
+[tool.ruff]
+line-length = 79
+target-version = "py313"
+
+[tool.ruff.lint]
+# Enable pycodestyle (E, W), pyflakes (F), isort (I), and other useful rules
+select = ["E", "W", "F", "I", "N", "UP", "B", "A", "C4", "PT", "SIM"]
+ignore = ["PT011"]  # pytest.raises() without match parameter is acceptable
+
+[tool.ruff.lint.per-file-ignores]
+"fides/subproblem.py" = ["W605"]
+
+[tool.ruff.lint.isort]
+# Use black-compatible import sorting
+force-single-line = false
+force-wrap-aliases = false
+
+[tool.ruff.format]
+# Use single quotes to match black's skip-string-normalization
+quote-style = "single"
+indent-style = "space"
