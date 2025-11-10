@@ -7,7 +7,6 @@ trust-region subproblems.
 
 import logging
 import math
-from typing import Tuple, Union
 
 import numpy as np
 from numpy.linalg import norm
@@ -15,27 +14,27 @@ from scipy import linalg
 from scipy.optimize import brentq, newton
 
 
-def quadratic_form(Q: np.ndarray, p: np.ndarray, x: np.ndarray) -> float:
+def quadratic_form(q: np.ndarray, p: np.ndarray, x: np.ndarray) -> float:
     """
     Computes the quadratic form :math:`x^TQx + x^Tp`
 
-    :param Q: Matrix
+    :param q: Matrix
     :param p: Vector
     :param x: Input
 
     :return:
         Value of form
     """
-    return 0.5 * x.T.dot(Q).dot(x) + p.T.dot(x)
+    return 0.5 * x.T.dot(q).dot(x) + p.T.dot(x)
 
 
 def solve_1d_trust_region_subproblem(
-    B: np.ndarray, g: np.ndarray, s: np.ndarray, delta: float, s0: np.ndarray
+    b: np.ndarray, g: np.ndarray, s: np.ndarray, delta: float, s0: np.ndarray
 ) -> np.ndarray:
     """
     Solves the special case of a one-dimensional subproblem
 
-    :param B:
+    :param b:
         Hessian of the quadratic subproblem
     :param g:
         Gradient of the quadratic subproblem
@@ -56,38 +55,38 @@ def solve_1d_trust_region_subproblem(
     if np.array_equal(s, np.zeros_like(s)):
         return np.zeros((1,))
 
-    a = 0.5 * B.dot(s).dot(s)
+    a = 0.5 * b.dot(s).dot(s)
     if not isinstance(a, float):
         a = a[0, 0]
-    b = s.T.dot(B.dot(s0) + g)
+    b_coef = s.T.dot(b.dot(s0) + g)
 
-    minq = -b / (2 * a)
+    minq = -b_coef / (2 * a)
     if a > 0 and norm(minq * s + s0) <= delta:
         # interior solution
         tau = minq
     else:
-        tau = get_1d_trust_region_boundary_solution(B, g, s, s0, delta)
+        tau = get_1d_trust_region_boundary_solution(b, g, s, s0, delta)
 
     return tau * np.ones((1,))
 
 
-def get_1d_trust_region_boundary_solution(B, g, s, s0, delta):
+def get_1d_trust_region_boundary_solution(b, g, s, s0, delta):
     a = np.dot(s, s)
-    b = 2 * np.dot(s0, s)
+    b_coef = 2 * np.dot(s0, s)
     c = np.dot(s0, s0) - delta**2
 
-    aux = b + math.copysign(np.sqrt(b**2 - 4 * a * c), b)
+    aux = b_coef + math.copysign(np.sqrt(b_coef**2 - 4 * a * c), b_coef)
     ts = [-aux / (2 * a), -2 * c / aux]
-    qs = [quadratic_form(B, g, s0 + t * s) for t in ts]
+    qs = [quadratic_form(b, g, s0 + t * s) for t in ts]
     return ts[np.argmin(qs)]
 
 
 def solve_nd_trust_region_subproblem(
-    B: np.ndarray,
+    b: np.ndarray,
     g: np.ndarray,
     delta: float,
-    logger: Union[logging.Logger, None] = None,
-) -> Tuple[np.ndarray, str]:
+    logger: logging.Logger | None = None,
+) -> tuple[np.ndarray, str]:
     r"""
     This function exactly solves the n-dimensional subproblem.
 
@@ -136,7 +135,7 @@ def solve_nd_trust_region_subproblem(
 
     # instead of a cholesky factorization, we go with an eigenvalue
     # decomposition, which works pretty well for n=2
-    eigvals, eigvecs = linalg.eig(B)
+    eigvals, eigvecs = linalg.eig(b)
     eigvals = np.real(eigvals)
     eigvecs = np.real(eigvecs)
     w = -eigvecs.T.dot(g)

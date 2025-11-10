@@ -167,7 +167,7 @@ def trust_region(
                     f'{step.type + rcountstr}: [qp:'
                     f' {step.qpval:.2E}, '
                     f'a: {step.alpha:.2E}]'
-                    for rcountstr, step in zip(rcountstrs, steps)
+                    for rcountstr, step in zip(rcountstrs, steps, strict=True)
                 ]
             )
         )

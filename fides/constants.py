@@ -8,7 +8,6 @@ constants that are used in multiple other modules
 import enum
 from numbers import Integral, Real
 from pathlib import PosixPath, WindowsPath
-from typing import Dict
 
 import numpy as np
 
@@ -43,6 +42,7 @@ class SubSpaceDim(str, enum.Enum):
     Defines the possible choices of subspace dimension in which the
     subproblem will be solved.
     """
+
     TWO = '2D'  #: Two dimensional Newton/Gradient subspace
     FULL = 'full'  #: Full :math:`\mathbb{R}^n`
     STEIHAUG = 'scg'  #: CG subspace via Steihaug's method
@@ -100,7 +100,7 @@ class ExitFlag(int, enum.Enum):
     GTOL = 3  #: Converged according to gradient norm
 
 
-def validate_options(options: Dict):
+def validate_options(options: dict):
     """Check if the chosen options are valid"""
     expected_types = {
         Options.MAXITER: Integral,
@@ -124,7 +124,9 @@ def validate_options(options: Dict):
         try:
             option = Options(option_key)
         except ValueError:
-            raise ValueError(f'{option_key} is not a valid options field.')
+            raise ValueError(
+                f'{option_key} is not a valid options field.'
+            ) from None
 
         if option_key is Options.SUBSPACE_DIM:
             option_value = SubSpaceDim(option_value)

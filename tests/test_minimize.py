@@ -154,7 +154,7 @@ def unbounded_and_init():
 
 
 @pytest.mark.parametrize(
-    "stepback",
+    'stepback',
     [
         StepBackStrategy.REFLECT,
         StepBackStrategy.SINGLE_REFLECT,
@@ -164,10 +164,10 @@ def unbounded_and_init():
     ],
 )
 @pytest.mark.parametrize(
-    "subspace_dim", [SubSpaceDim.STEIHAUG, SubSpaceDim.FULL, SubSpaceDim.TWO]
+    'subspace_dim', [SubSpaceDim.STEIHAUG, SubSpaceDim.FULL, SubSpaceDim.TWO]
 )
 @pytest.mark.parametrize(
-    "bounds_and_init",
+    'bounds_and_init',
     [
         unbounded_and_init(),
         finite_bounds_include_optimum(),
@@ -175,7 +175,7 @@ def unbounded_and_init():
     ],
 )
 @pytest.mark.parametrize(
-    "fun, happ",
+    ('fun', 'happ'),
     [
         (rosenboth, None),  # 0
         (rosengrad, SR1()),  # 1
@@ -213,21 +213,21 @@ def test_minimize_hess_approx(
     if (x0 == 0).all() and fun is fletcher:
         x0 += 1
 
-    kwargs = dict(
-        fun=fun,
-        ub=ub,
-        lb=lb,
-        verbose=logging.WARNING,
-        hessian_update=happ if happ is not None else None,
-        options={
+    kwargs = {
+        'fun': fun,
+        'ub': ub,
+        'lb': lb,
+        'verbose': logging.WARNING,
+        'hessian_update': happ if happ is not None else None,
+        'options': {
             fides.Options.FATOL: 0,
             fides.Options.FRTOL: 1e-12 if fun is fletcher else 1e-8,
             fides.Options.SUBSPACE_DIM: subspace_dim,
             fides.Options.STEPBACK_STRAT: stepback,
             fides.Options.MAXITER: 2e2,
         },
-        resfun=happ.requires_resfun if happ is not None else False,
-    )
+        'resfun': happ.requires_resfun if happ is not None else False,
+    }
     if not (
         subspace_dim == fides.SubSpaceDim.STEIHAUG
         and stepback == fides.StepBackStrategy.REFINE
@@ -240,10 +240,7 @@ def test_minimize_hess_approx(
     opt.minimize(x0)
     assert opt.fval >= opt.fval_min
 
-    if fun is fletcher:
-        xsol = [0, 0]
-    else:
-        xsol = [1, 1]
+    xsol = [0, 0] if fun is fletcher else [1, 1]
 
     if opt.fval == opt.fval_min:
         assert np.isclose(opt.grad, opt.grad_min).all()
@@ -260,9 +257,9 @@ def test_minimize_hess_approx(
 
 
 @pytest.mark.parametrize(
-    "stepback", [StepBackStrategy.REFLECT, StepBackStrategy.TRUNCATE]
+    'stepback', [StepBackStrategy.REFLECT, StepBackStrategy.TRUNCATE]
 )
-@pytest.mark.parametrize("subspace_dim", [SubSpaceDim.FULL, SubSpaceDim.TWO])
+@pytest.mark.parametrize('subspace_dim', [SubSpaceDim.FULL, SubSpaceDim.TWO])
 def test_multistart(subspace_dim, stepback):
     lb, ub, x0 = finite_bounds_exlude_optimum()
     fun = rosenboth
@@ -304,13 +301,13 @@ def test_multistart_randomfail():
     )
 
     for _ in range(int(1e2)):
+        x0 = np.random.random(x0.shape) * (ub - lb) + lb
         with pytest.raises(RuntimeError):
-            x0 = np.random.random(x0.shape) * (ub - lb) + lb
             opt.minimize(x0)
 
 
 @pytest.mark.parametrize(
-    "fun",
+    'fun',
     [
         rosennonsquarh,
         rosenwrongf,
@@ -331,8 +328,8 @@ def test_wrong_dim(fun):
         options={fides.Options.FATOL: 0, fides.Options.MAXITER: 1e3},
     )
 
+    x0 = np.random.random(x0.shape) * (ub - lb) + lb
     with pytest.raises(ValueError):
-        x0 = np.random.random(x0.shape) * (ub - lb) + lb
         opt.minimize(x0)
 
 

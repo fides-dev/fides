@@ -1,6 +1,6 @@
 # Requirements just for building the docs (used by readthedocs, but also
 # helpful for building docs locally).
-sphinx>=1.4
+sphinx>=7.2.0
 numpy>=1.19.2
 scipy>=1.5.2
 h5py>=3.5.0
@@ -10,4 +10,4 @@ recommonmark>=0.6.0
 sphinx_rtd_theme>=0.4.3
 sphinx-autodoc-typehints>=1.10.3
 sphinxcontrib-napoleon
-pygments==2.4.1
+pygments>=2.4.1

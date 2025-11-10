@@ -5,13 +5,13 @@ from fides import BFGS, Broyden
 
 
 def test_wrong_dim():
+    h = BFGS(init_with_hess=True)
     with pytest.raises(ValueError):
-        h = BFGS(init_with_hess=True)
         h.init_mat(dim=3, hess=np.ones((2, 2)))
 
+    h = BFGS()
+    h.init_mat(dim=3)
     with pytest.raises(ValueError):
-        h = BFGS()
-        h.init_mat(dim=3)
         h.set_mat(np.ones((2, 2)))
 
 

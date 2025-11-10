@@ -6,8 +6,6 @@ that can be used to compute longer steps in case the initially proposed step
 had to be truncated due to non-compliance with boundary constraints.
 """
 
-from typing import List
-
 import numpy as np
 from scipy.sparse import csc_matrix
 
@@ -25,7 +23,7 @@ def stepback_reflect(
     theta: float,
     ub: np.ndarray,
     lb: np.ndarray,
-) -> List[Step]:
+) -> list[Step]:
     """
     Compute new proposal steps according to a reflection strategy.
 
@@ -60,7 +58,7 @@ def stepback_reflect(
     )
     rtr_step.calculate()
     steps = [rtr_step]
-    for ireflection in range(len(x) - 1):
+    for _ireflection in range(len(x) - 1):
         if rtr_step.alpha == 1.0:
             break
         # recursively add more reflections
@@ -85,7 +83,7 @@ def stepback_truncate(
     theta: float,
     ub: np.ndarray,
     lb: np.ndarray,
-) -> List[Step]:
+) -> list[Step]:
     """
     Compute new proposal steps according to a truncation strategy.
 

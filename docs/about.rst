@@ -19,4 +19,3 @@ Features
 * Recursive Reflective and Truncated constraint management
 * Full and 2D subproblem solution solvers
 * BFGS, DFP and SR1 Hessian Approximations
-
