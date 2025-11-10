@@ -762,8 +762,8 @@ class Optimizer:
         normg = norm(self.grad)
 
         min_ev_hess, max_ev_hess = _min_max_evs(self.hess)
-        min_ev_hess_update, max_ev_hess_update = np.NaN, np.NaN
-        min_ev_hess_supdate, max_ev_hess_supdate = np.NaN, np.NaN
+        min_ev_hess_update, max_ev_hess_update = np.nan, np.nan
+        min_ev_hess_supdate, max_ev_hess_supdate = np.nan, np.nan
         if self.hessian_update:
             if accepted:
                 min_ev_hess_update, max_ev_hess_update = _min_max_evs(
