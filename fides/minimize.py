@@ -283,7 +283,7 @@ class Optimizer:
         self.grad_min = self.grad
 
         self.hessian_update: HessianApproximation | None = hessian_update
-        if if not self.hessian_update.get_mat().empty::
+        if not self.hessian_update.get_mat().empty::
             self.hess = self.hessian_update.get_mat()
         self.iterations_since_tr_update: int = 0
         self.n_intermediate_tr_radius: int = 0
