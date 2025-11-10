@@ -283,6 +283,8 @@ class Optimizer:
         self.grad_min = self.grad
 
         self.hessian_update: HessianApproximation | None = hessian_update
+        if not self.hessian_update.get_mat().empty():
+            self.hess = self.hessian_update.get_mat()
         self.iterations_since_tr_update: int = 0
         self.n_intermediate_tr_radius: int = 0
 
@@ -347,8 +349,8 @@ class Optimizer:
 
         self.fval, self.grad = funout.fval, funout.grad
         if self.hessian_update is not None:
-            self.hessian_update.init_mat(len(self.x), funout.hess)
-            self.hess = self.hessian_update.get_mat()
+            if self.hessian_update.get_mat().empty():
+                self.hessian_update.init_mat(len(self.x), funout.hess)
         else:
             self.hess = funout.hess.copy()
 
