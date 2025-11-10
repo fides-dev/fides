@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from numpy.linalg import norm
 from scipy import linalg
-from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Rotation
 
 from fides.steps import normalize
 from fides.subproblem import (
@@ -13,7 +13,7 @@ from fides.subproblem import (
 
 @pytest.fixture
 def subproblem():
-    B = np.array(
+    b = np.array(
         [
             [1.0, 0.0, 0.0],
             [0.0, 3.0, 0.0],
@@ -22,47 +22,47 @@ def subproblem():
     )
 
     g = np.array([1.0, 1.0, 1.0])
-    return {'B': B, 'g': g}
+    return {'B': b, 'g': g}
 
 
-def quad(s, B, g):
-    return 0.5 * s.T.dot(B.dot(s)) + s.T.dot(g)
+def quad(s, b, g):
+    return 0.5 * s.T.dot(b.dot(s)) + s.T.dot(g)
 
 
-def is_local_quad_min(s, B, g):
+def is_local_quad_min(s, b, g):
     """
-    make local perturbations to verify s is a local minimum of quad(s, B, g)
+    make local perturbations to verify s is a local minimum of quad(s, b, g)
     """
-    _, ev = linalg.eig(B)
+    _, ev = linalg.eig(b)
     perturbs = np.array(
         [
-            quad(s + eps * ev[:, iv], B, g)
+            quad(s + eps * ev[:, iv], b, g)
             for iv in range(ev.shape[1])
             for eps in [1e-2, -1e-2]
         ]
     )
-    return np.all((perturbs - quad(s, B, g)) > 0)
+    return np.all((perturbs - quad(s, b, g)) > 0)
 
 
-def is_bound_quad_min(s, B, g):
+def is_bound_quad_min(s, b, g):
     """
-    make local rotations to verify that s is a local minimum of quad(s, B,
+    make local rotations to verify that s is a local minimum of quad(s, b,
     g) on the sphere of radius ||s||
     """
     perturbs = np.array(
         [
             quad(
-                R.from_rotvec(np.pi / 2 * eps * np.eye(3)[:, iv])
+                Rotation.from_rotvec(np.pi / 2 * eps * np.eye(3)[:, iv])
                 .as_matrix()
                 .dot(s),
-                B,
+                b,
                 g,
             )
-            for iv in range(B.shape[1])
+            for iv in range(b.shape[1])
             for eps in [1e-2, -1e-2]
         ]
     )
-    return np.all((perturbs - quad(s, B, g)) > 0)
+    return np.all((perturbs - quad(s, b, g)) > 0)
 
 
 def test_convex_subproblem(subproblem):
@@ -101,7 +101,7 @@ def test_nonconvex_subproblem(subproblem):
         assert np.isclose(sc + alpha, 1)
 
 
-@pytest.mark.parametrize("minev", list(np.logspace(-1, -50, 50)))
+@pytest.mark.parametrize('minev', list(np.logspace(-1, -50, 50)))
 def test_nonconvex_subproblem_eigvals(subproblem, minev):
     subproblem['B'][0, 0] = -minev
     delta = 1.0

@@ -6,9 +6,7 @@ can be employed when the calculating the exact Hessian or an approximation
 is computationally too demanding.
 """
 
-
 import warnings
-from typing import Optional
 
 import numpy as np
 from numpy.linalg import norm
@@ -19,7 +17,7 @@ class HessianApproximation:
     Abstract class from which Hessian update strategies should subclass
     """
 
-    def __init__(self, init_with_hess: Optional[bool] = False):
+    def __init__(self, init_with_hess: bool | None = False):
         """
         Create a Hessian update strategy instance
 
@@ -31,7 +29,7 @@ class HessianApproximation:
         self._diff: np.ndarray = np.empty(0)
         self.init_with_hess = init_with_hess
 
-    def init_mat(self, dim: int, hess: Optional[np.ndarray] = None) -> None:
+    def init_mat(self, dim: int, hess: np.ndarray | None = None) -> None:
         """
         Initializes this approximation instance and checks the dimensionality
 
@@ -148,8 +146,8 @@ class Broyden(IterativeHessianApproximation):
     def __init__(
         self,
         phi: float,
-        init_with_hess: Optional[bool] = False,
-        enforce_curv_cond: Optional[bool] = True,
+        init_with_hess: bool | None = False,
+        enforce_curv_cond: bool | None = True,
     ):
         self.phi = phi
         self.enforce_curv_cond = enforce_curv_cond
@@ -157,9 +155,10 @@ class Broyden(IterativeHessianApproximation):
             warnings.warn(
                 'Setting phi to values outside the interval [0, 1]'
                 'will not guarantee that positive definiteness is '
-                'preserved during updating.'
+                'preserved during updating.',
+                stacklevel=2,
             )
-        super(Broyden, self).__init__(init_with_hess)
+        super().__init__(init_with_hess)
 
     def _compute_update(self, s: np.ndarray, y: np.ndarray):
         self._diff = broyden_class_update(
@@ -177,10 +176,10 @@ class BFGS(Broyden):
 
     def __init__(
         self,
-        init_with_hess: Optional[bool] = False,
-        enforce_curv_cond: Optional[bool] = True,
+        init_with_hess: bool | None = False,
+        enforce_curv_cond: bool | None = True,
     ):
-        super(BFGS, self).__init__(
+        super().__init__(
             phi=0.0,
             init_with_hess=init_with_hess,
             enforce_curv_cond=enforce_curv_cond,
@@ -197,10 +196,10 @@ class DFP(Broyden):
 
     def __init__(
         self,
-        init_with_hess: Optional[bool] = False,
-        enforce_curv_cond: Optional[bool] = True,
+        init_with_hess: bool | None = False,
+        enforce_curv_cond: bool | None = True,
     ):
-        super(DFP, self).__init__(
+        super().__init__(
             phi=1.0,
             init_with_hess=init_with_hess,
             enforce_curv_cond=enforce_curv_cond,
@@ -263,7 +262,7 @@ class BB(IterativeHessianApproximation):
 
 
 class HybridApproximation(HessianApproximation):
-    def __init__(self, happ: IterativeHessianApproximation = BFGS()):
+    def __init__(self, happ: IterativeHessianApproximation | None = None):
         """
         Create a Hybrid Hessian update strategy that switches between an
         iterative approximation and a dynamic approximation
@@ -271,12 +270,12 @@ class HybridApproximation(HessianApproximation):
         :param happ:
             Iterative Hessian Approximation
         """
-        self.hessian_update = happ
-        super(HybridApproximation, self).__init__()
+        self.hessian_update = happ if happ is not None else BFGS()
+        super().__init__()
 
-    def init_mat(self, dim: int, hess: Optional[np.ndarray] = None):
+    def init_mat(self, dim: int, hess: np.ndarray | None = None):
         self.hessian_update.init_mat(dim, hess)
-        super(HybridApproximation, self).init_mat(dim, hess)
+        super().init_mat(dim, hess)
 
     def requires_hess(self):
         return True  # pragma: no cover
@@ -285,18 +284,15 @@ class HybridApproximation(HessianApproximation):
 class HybridSwitchApproximation(HybridApproximation):
     def _switched_update(self, s: np.ndarray, y: np.ndarray, hess: np.ndarray):
         self.hessian_update.update(s, y)
-        if self._switched:
-            new_hess = self.hessian_update.get_mat()
-        else:
-            new_hess = hess
+        new_hess = self.hessian_update.get_mat() if self._switched else hess
         self._update_hess_and_store_diff(new_hess)
 
 
 class HybridFixed(HybridSwitchApproximation):
     def __init__(
         self,
-        happ: IterativeHessianApproximation = BFGS(),
-        switch_iteration: Optional[int] = 20,
+        happ: IterativeHessianApproximation | None = None,
+        switch_iteration: int | None = 20,
     ):
         """
         Switch from a dynamic approximation to the user provided iterative
@@ -312,7 +308,7 @@ class HybridFixed(HybridSwitchApproximation):
             switch occurs.
         """
         self.switch_iteration: int = switch_iteration
-        super(HybridFixed, self).__init__(happ)
+        super().__init__(happ)
         self._switched = False
 
     def update(
@@ -330,8 +326,8 @@ class HybridFixed(HybridSwitchApproximation):
 class HybridFraction(HybridSwitchApproximation):
     def __init__(
         self,
-        happ: IterativeHessianApproximation = BFGS(),
-        switch_threshold: Optional[float] = 0.8,
+        happ: IterativeHessianApproximation | None = None,
+        switch_threshold: float | None = 0.8,
     ):
         """
         Switch from a dynamic approximation to the user provided iterative
@@ -350,7 +346,7 @@ class HybridFraction(HybridSwitchApproximation):
             of approximation.
         """
         self.switch_threshold: float = switch_threshold
-        super(HybridFraction, self).__init__(happ)
+        super().__init__(happ)
         self._switched = False
 
     def update(
@@ -369,8 +365,8 @@ class HybridFraction(HybridSwitchApproximation):
 class FX(HybridApproximation):
     def __init__(
         self,
-        happ: IterativeHessianApproximation = BFGS(),
-        hybrid_tol: Optional[float] = 0.2,
+        happ: IterativeHessianApproximation | None = None,
+        hybrid_tol: float | None = 0.2,
     ):
         r"""
         Hybrid method HY2 as introduced by
@@ -386,7 +382,7 @@ class FX(HybridApproximation):
             switch tolerance :math:`\epsilon`
         """
         self.hybrid_tol = hybrid_tol
-        super(FX, self).__init__(happ)
+        super().__init__(happ)
 
     def update(
         self,
@@ -434,8 +430,8 @@ class FX(HybridApproximation):
 class StructuredApproximation(HessianApproximation):
     def __init__(
         self,
-        phi: Optional[float] = 0.0,
-        enforce_curv_cond: Optional[bool] = True,
+        phi: float | None = 0.0,
+        enforce_curv_cond: bool | None = True,
     ):
         """
         This is the base class for structured secant methods (SSM). SSMs
@@ -461,14 +457,15 @@ class StructuredApproximation(HessianApproximation):
             warnings.warn(
                 'Setting phi to values outside the interval [0, 1]'
                 'will not guarantee that positive definiteness is '
-                'preserved during updating.'
+                'preserved during updating.',
+                stacklevel=2,
             )
-        super(StructuredApproximation, self).__init__(init_with_hess=True)
+        super().__init__(init_with_hess=True)
 
-    def init_mat(self, dim: int, hess: Optional[np.ndarray] = None):
+    def init_mat(self, dim: int, hess: np.ndarray | None = None):
         self.A = np.eye(dim) * np.spacing(1)
         self._structured_diff = np.zeros_like(self.A)
-        super(StructuredApproximation, self).init_mat(dim, hess)
+        super().init_mat(dim, hess)
 
     def update(
         self,
@@ -524,12 +521,12 @@ class SSM(StructuredApproximation):
         yb: np.ndarray,
     ) -> None:
         # B^S = A + C(x_+)
-        Bs = hess + self.A
+        bs = hess + self.A
         # y^S = y^# + C(x_+)*s
         ys = yb + hess.dot(s)
         # Equation (13)
         self._structured_diff = broyden_class_update(
-            ys, s, Bs, phi=self.phi, enforce_curv_cond=self.enforce_curv_cond
+            ys, s, bs, phi=self.phi, enforce_curv_cond=self.enforce_curv_cond
         )
         self.A += self._structured_diff
         # B_+ = C(x_+) + A + BFGS update A (=A_+)
@@ -554,12 +551,12 @@ class TSSM(StructuredApproximation):
         yb: np.ndarray,
     ) -> None:
         # Equation (2.7)
-        Bs = hess + norm(r) * self.A
+        bs = hess + norm(r) * self.A
         # Equation (2.6)
         ys = hess.dot(s) + yb
         # Equation (2.10)
         self._structured_diff = broyden_class_update(
-            ys, s, Bs, phi=self.phi, enforce_curv_cond=self.enforce_curv_cond
+            ys, s, bs, phi=self.phi, enforce_curv_cond=self.enforce_curv_cond
         ) / norm(r)
         self.A += self._structured_diff
         # Equation (2.9)
@@ -582,9 +579,7 @@ class GNSBFGS(StructuredApproximation):
             switching tolerance that controls switching between update methods
         """
         self.hybrid_tol: float = hybrid_tol
-        super(GNSBFGS, self).__init__(
-            phi=0.0, enforce_curv_cond=enforce_curv_cond
-        )
+        super().__init__(phi=0.0, enforce_curv_cond=enforce_curv_cond)
 
     def update(
         self,

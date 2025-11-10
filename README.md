@@ -20,8 +20,8 @@ reliability.
 
 Fides can be installed via `pip install fides`. Further documentation is
  available at [Read the Docs](https://fides-optimizer.readthedocs.io/).
- 
- 
+
+
 ## Features
 
 
@@ -31,4 +31,3 @@ Fides can be installed via `pip install fides`. Further documentation is
 * BFGS, DFP, SR1, Broyden (good and bad) and Broyden class iterative
  Hessian Approximation schemes
 * SSM, TSSM, FX, GNSBFGS and custom hybrid Hessian Approximations schemes
-

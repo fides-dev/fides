@@ -5,12 +5,21 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
-[tool.black]
+[tool.ruff]
 line-length = 79
-target-version = ['py311']
-skip-string-normalization = true
+target-version = "py313"
 
-[tool.isort]
-profile = "black"
-line_length = 79
-multi_line_output = 3
+[tool.ruff.lint]
+# Enable pycodestyle (E, W), pyflakes (F), isort (I), and other useful rules
+select = ["E", "W", "F", "I", "N", "UP", "B", "A", "C4", "PT", "SIM"]
+ignore = ["PT011"]  # pytest.raises() without match parameter is acceptable
+
+[tool.ruff.lint.isort]
+# Use black-compatible import sorting
+force-single-line = false
+force-wrap-aliases = false
+
+[tool.ruff.format]
+# Use single quotes to match black's skip-string-normalization
+quote-style = "single"
+indent-style = "space"
