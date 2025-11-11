@@ -283,8 +283,6 @@ class Optimizer:
         self.grad_min = self.grad
 
         self.hessian_update: HessianApproximation | None = hessian_update
-        if not self.hessian_update.get_mat().empty():
-            self.hess = self.hessian_update.get_mat()
         self.iterations_since_tr_update: int = 0
         self.n_intermediate_tr_radius: int = 0
 
@@ -312,7 +310,12 @@ class Optimizer:
         self.start_id = start_id
         self.history = defaultdict(list)
 
-    def minimize(self, x0: np.ndarray, start_id: str | None = None):
+    def minimize(
+        self,
+        x0: np.ndarray,
+        start_id: str | None = None,
+        hess0: np.ndarray | str | None = None,
+    ) -> tuple[float, np.ndarray, np.ndarray, np.ndarray]:
         """
         Minimize the objective function using the interior trust-region
         reflective algorithm described by [ColemanLi1994] and [ColemanLi1996]
@@ -329,13 +332,25 @@ class Optimizer:
         options[`maxtime`] on the next iteration.
 
         :param x0:
-            initial guess
+            initial guess for the optimization variables
+
+        :param start_id:
+            optional identifier for this optimization run, used for history
+            tracking
+
+        :param hess0:
+            optional initial Hessian approximation. If a string 'hess' is
+            provided, the initial Hessian from the objective function
+            evaluation at x0 is used. Otherwise, a numpy array of shape
+            (n,n) must be provided, where n is the number of optimization
+            variables.
 
         :returns:
             fval: final function value,
             x: final optimization variable values,
             grad: final gradient,
             hess: final Hessian (approximation)
+
         """
         self._reset(start_id)
 
@@ -349,8 +364,11 @@ class Optimizer:
 
         self.fval, self.grad = funout.fval, funout.grad
         if self.hessian_update is not None:
-            if self.hessian_update.get_mat().empty():
-                self.hessian_update.init_mat(len(self.x), funout.hess)
+            if isinstance(hess0, str) and hess0 == 'hess':
+                self.hessian_update._init_mat(len(self.x), funout.hess)
+            else:
+                self.hessian_update._init_mat(len(self.x), hess0)
+            self.hess = self.hessian_update.get_mat().copy()
         else:
             self.hess = funout.hess.copy()
 
