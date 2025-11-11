@@ -5,7 +5,7 @@ from fides import BFGS, Broyden
 
 
 def test_wrong_dim():
-    h = BFGS(init_with_hess=True)
+    h = BFGS()
     with pytest.raises(ValueError):
         h._init_mat(dim=3, hess=np.ones((2, 2)))
 
