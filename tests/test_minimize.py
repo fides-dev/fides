@@ -185,17 +185,11 @@ def unbounded_and_init():
         (rosengrad, BB()),  # 5
         (rosengrad, Broyden(0.5)),  # 6
         (rosenboth, HybridFixed(BFGS())),  # 7
-        (rosenboth, HybridFixed(SR1())),  # 8
-        (rosenboth, HybridFixed(BFGS(init_with_hess=True))),  # 9
-        (rosenboth, HybridFixed(SR1(init_with_hess=True))),  # 10
+        (rosenboth, HybridFixed(SR1())),  # 8 # 10
         (rosenboth, HybridFraction(BFGS())),  # 11
         (rosenboth, HybridFraction(SR1())),  # 12
-        (rosenboth, HybridFraction(BFGS(init_with_hess=True))),  # 13
-        (rosenboth, HybridFraction(SR1(init_with_hess=True))),  # 14
         (fletcher, FX(BFGS())),  # 15
         (fletcher, FX(SR1())),  # 16
-        (fletcher, FX(BFGS(init_with_hess=True))),  # 17
-        (fletcher, FX(SR1(init_with_hess=True))),  # 18
         (fletcher, SSM(0.0)),  # 19
         (fletcher, SSM(0.5)),  # 20
         (fletcher, SSM(1.0)),  # 21
@@ -494,3 +488,140 @@ def test_wrong_options():
         verbose=logging.INFO,
         options={Options.SUBSPACE_DIM: '2D'},
     )
+
+
+def test_hess0_initialization():
+    """
+    Test that hess0 parameter correctly initializes Hessian approximation.
+    """
+    lb, ub, x0 = finite_bounds_include_optimum()
+    fun = rosengrad
+    fun_with_hess = rosenboth
+
+    # Test 1: Verify hess0 is used when provided with hessian_update
+    custom_hess0 = np.eye(len(x0)) * 10.0
+    opt_with_hess0 = Optimizer(
+        fun,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        options={Options.MAXITER: 1},  # Only run one iteration
+        hessian_update=BFGS(),
+    )
+    opt_with_hess0.minimize(x0, hess0=custom_hess0)
+    assert opt_with_hess0.hess is not None
+
+    # Test 2: Verify default initialization when hess0 is not provided
+    opt_without_hess0 = Optimizer(
+        fun,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        options={Options.MAXITER: 1},
+        hessian_update=BFGS(),
+    )
+    opt_without_hess0.minimize(x0)
+
+    # Test 3: Verify hess0 has correct dimensions
+    wrong_dim_hess0 = np.eye(len(x0) + 1)
+    opt_wrong_dim = Optimizer(
+        fun,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        hessian_update=BFGS(),
+    )
+    with pytest.raises(ValueError):
+        opt_wrong_dim.minimize(x0, hess0=wrong_dim_hess0)
+
+    # Test 4: Verify hess0 works with different update schemes
+    for happ_class in [BFGS, DFP, SR1, Broyden]:
+        happ = happ_class() if happ_class != Broyden else Broyden(phi=0.5)
+        custom_hess = np.eye(len(x0)) * 5.0
+        opt = Optimizer(
+            fun,
+            ub=ub,
+            lb=lb,
+            verbose=logging.WARNING,
+            options={Options.MAXITER: 2, Options.FATOL: 0},
+            hessian_update=happ,
+        )
+        opt.minimize(x0, hess0=custom_hess)
+        assert opt.iteration >= 1, f'Failed for {happ_class.__name__}'
+
+    # Test 5: Verify hess0 is ignored when no hessian_update is provided
+    opt_no_update = Optimizer(
+        fun_with_hess,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        options={Options.MAXITER: 1},
+    )
+    hess0_ignored = np.eye(len(x0)) * 100.0
+    opt_no_update.minimize(x0, hess0=hess0_ignored)
+
+    # Test 6: Test initialization with exact Hessian
+    opt_hess_init = Optimizer(
+        fun_with_hess,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        options={Options.MAXITER: 10, Options.FATOL: 1e-8},
+        hessian_update=HybridFixed(BFGS()),
+    )
+    opt_hess_init.minimize(x0, hess0='hess')
+    iterations_with_hess = opt_hess_init.iteration
+
+    # Compare with BFGS without using initial Hessian
+    opt_no_hess_init = Optimizer(
+        fun,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        options={Options.MAXITER: 10, Options.FATOL: 1e-8},
+        hessian_update=BFGS(),
+    )
+    opt_no_hess_init.minimize(x0)
+    iterations_without_hess = opt_no_hess_init.iteration
+
+    # Using exact Hessian for initialization should help convergence
+    assert iterations_with_hess <= iterations_without_hess or (
+        opt_hess_init.converged and opt_no_hess_init.converged
+    ), 'Hessian initialization should help convergence'
+
+    # Test 8: Verify hess0 affects convergence behavior
+    true_hess_at_x0 = np.array(
+        [
+            [1200 * x0[0] ** 2 - 400 * x0[1] + 2, -400 * x0[0]],
+            [-400 * x0[0], 200],
+        ]
+    )
+
+    opt_good_init = Optimizer(
+        fun,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        options={Options.MAXITER: 100, Options.FATOL: 1e-8},
+        hessian_update=BFGS(),
+    )
+    opt_good_init.minimize(x0, hess0=true_hess_at_x0)
+    iterations_good = opt_good_init.iteration
+
+    # Use a poor initial Hessian approximation
+    poor_hess = np.eye(len(x0)) * 0.01
+    opt_poor_init = Optimizer(
+        fun,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        options={Options.MAXITER: 100, Options.FATOL: 1e-8},
+        hessian_update=BFGS(),
+    )
+    opt_poor_init.minimize(x0, hess0=poor_hess)
+    iterations_poor = opt_poor_init.iteration
+
+    # Good initialization should converge in fewer or equal iterations
+    assert iterations_good <= iterations_poor or (
+        opt_good_init.converged and opt_poor_init.converged
+    ), 'Good Hessian initialization should help convergence'

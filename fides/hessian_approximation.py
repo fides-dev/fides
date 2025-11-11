@@ -17,21 +17,18 @@ class HessianApproximation:
     Abstract class from which Hessian update strategies should subclass
     """
 
-    def __init__(self, init_with_hess: bool | None = False):
+    def __init__(self):
         """
         Create a Hessian update strategy instance
-
-        :param init_with_hess:
-            Whether the hybrid update strategy should be initialized
-            according to the user-provided objective function
         """
         self._hess: np.ndarray = np.empty(0)
         self._diff: np.ndarray = np.empty(0)
-        self.init_with_hess = init_with_hess
 
-    def init_mat(self, dim: int, hess: np.ndarray | None = None) -> None:
+    def _init_mat(self, dim: int, hess: np.ndarray | None = None) -> None:
         """
-        Initializes this approximation instance and checks the dimensionality
+        Initializes this approximation instance and checks the dimensionality.
+        Note that this method is not intended to be called directly by the
+        user.
 
         :param dim:
             dimension of optimization variables
@@ -39,7 +36,7 @@ class HessianApproximation:
         :param hess:
             user provided initialization
         """
-        if hess is None or not self.init_with_hess:
+        if hess is None:
             self._hess = np.eye(dim)
         else:
             if hess.shape[0] != dim:
@@ -146,7 +143,6 @@ class Broyden(IterativeHessianApproximation):
     def __init__(
         self,
         phi: float,
-        init_with_hess: bool | None = False,
         enforce_curv_cond: bool | None = True,
     ):
         self.phi = phi
@@ -158,7 +154,7 @@ class Broyden(IterativeHessianApproximation):
                 'preserved during updating.',
                 stacklevel=2,
             )
-        super().__init__(init_with_hess)
+        super().__init__()
 
     def _compute_update(self, s: np.ndarray, y: np.ndarray):
         self._diff = broyden_class_update(
@@ -176,12 +172,10 @@ class BFGS(Broyden):
 
     def __init__(
         self,
-        init_with_hess: bool | None = False,
         enforce_curv_cond: bool | None = True,
     ):
         super().__init__(
             phi=0.0,
-            init_with_hess=init_with_hess,
             enforce_curv_cond=enforce_curv_cond,
         )
 
@@ -196,12 +190,10 @@ class DFP(Broyden):
 
     def __init__(
         self,
-        init_with_hess: bool | None = False,
         enforce_curv_cond: bool | None = True,
     ):
         super().__init__(
             phi=1.0,
-            init_with_hess=init_with_hess,
             enforce_curv_cond=enforce_curv_cond,
         )
 
@@ -273,9 +265,9 @@ class HybridApproximation(HessianApproximation):
         self.hessian_update = happ if happ is not None else BFGS()
         super().__init__()
 
-    def init_mat(self, dim: int, hess: np.ndarray | None = None):
-        self.hessian_update.init_mat(dim, hess)
-        super().init_mat(dim, hess)
+    def _init_mat(self, dim: int, hess: np.ndarray | None = None):
+        self.hessian_update._init_mat(dim, hess)
+        super()._init_mat(dim, hess)
 
     def requires_hess(self):
         return True  # pragma: no cover
@@ -460,12 +452,12 @@ class StructuredApproximation(HessianApproximation):
                 'preserved during updating.',
                 stacklevel=2,
             )
-        super().__init__(init_with_hess=True)
+        super().__init__()
 
-    def init_mat(self, dim: int, hess: np.ndarray | None = None):
+    def _init_mat(self, dim: int, hess: np.ndarray | None = None):
         self.A = np.eye(dim) * np.spacing(1)
         self._structured_diff = np.zeros_like(self.A)
-        super().init_mat(dim, hess)
+        super()._init_mat(dim, hess)
 
     def update(
         self,
