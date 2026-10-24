@@ -33,6 +33,38 @@ def normalize(v: np.ndarray) -> None:
         v[:] = v / nv  # change inplace
 
 
+def solve_newton(
+    shess: np.ndarray, sg: np.ndarray, logger: Logger
+) -> np.ndarray:
+    """
+    Computes the (minimum-norm) Newton step `-pinv(shess) * sg` via least
+    squares. The default SVD-based LAPACK driver (gelsd) can, in rare cases,
+    fail to converge. In this case, the QR-based driver (gelsy) is used,
+    which does not rely on an iterative algorithm. If that fails too, the
+    scaled gradient direction is returned instead.
+
+    :param shess:
+        Hessian in rescaled coordinates
+    :param sg:
+        Gradient in rescaled coordinates
+    :param logger:
+        logging.Logger instance to be used for logging
+
+    :return:
+        Newton step in rescaled coordinates
+    """
+    for driver in ('gelsd', 'gelsy'):
+        try:
+            return -linalg.lstsq(shess, sg, lapack_driver=driver)[0]
+        except linalg.LinAlgError as err:
+            logger.warning(
+                f'Least squares solve with LAPACK driver {driver} failed: '
+                f'{err}'
+            )
+    logger.warning('Falling back to scaled gradient as newton step.')
+    return -sg.copy()
+
+
 class Step:
     """
     Base class for the computation of a proposal step
@@ -139,6 +171,13 @@ class Step:
         self.shess: np.ndarray = np.asarray(
             scaling * hess * scaling + g_dscaling
         )
+        if not np.isfinite(self.shess).all() or not np.isfinite(sg).all():
+            raise RuntimeError(
+                'Encountered non-finite entries in the scaled hessian or '
+                'scaled gradient. This usually indicates overflow in the '
+                'affine scaling transformation, e.g., due to very large but '
+                'finite bounds or very large hessian entries.'
+            )
 
         self.cg: np.ndarray | None = None
         self.chess: np.ndarray | None = None
@@ -282,8 +321,6 @@ class TRStep2D(Step):
         super().__init__(
             x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
         )
-        s_newt = -linalg.lstsq(self.shess, sg)[0]
-        # lstsq only returns absolute ev values
         e, v = np.linalg.eig(self.shess)
         self.posdef = np.min(np.real(e)) > -np.spacing(1) * np.max(np.abs(e))
 
@@ -297,7 +334,7 @@ class TRStep2D(Step):
         self.newton = False
 
         if self.posdef:
-            s_newt = -linalg.lstsq(self.shess, sg)[0]
+            s_newt = solve_newton(self.shess, sg, logger)
 
             if norm(s_newt) < delta:
                 # Case 0 of Fig 12 in [ColemanLi1994]
@@ -560,12 +597,15 @@ class RefinedStep(Step):
         ssub[movable] = self.theta * (ub - x)[movable] / dscaling[movable]
         self.constraints = [
             NonlinearConstraint(
-                fun=lambda xc: (norm(self.subspace.dot(xc)) - delta)
-                * np.ones((1,)),
-                jac=lambda xc: np.expand_dims(self.subspace.dot(xc), 1).T.dot(
-                    self.subspace
-                )
-                / norm(self.subspace.dot(xc)),
+                fun=lambda xc: (
+                    (norm(self.subspace.dot(xc)) - delta) * np.ones((1,))
+                ),
+                jac=lambda xc: (
+                    np.expand_dims(self.subspace.dot(xc), 1).T.dot(
+                        self.subspace
+                    )
+                    / norm(self.subspace.dot(xc))
+                ),
                 lb=-np.ones((1,)) * np.inf,
                 ub=np.zeros((1,)),
             ),

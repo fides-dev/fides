@@ -8,7 +8,7 @@ import logging
 import time
 import uuid
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 import h5py
 import numpy as np
@@ -164,6 +164,7 @@ class Optimizer:
     :ivar fevaler: FunctionEvaluator instance
     :ivar lb: Lower optimization boundaries
     :ivar ub: Upper optimization boundaries
+    :ivar x_names: Names of optimization variables used in error messages
     :ivar options: Options that configure convergence checks
     :ivar delta_iter: Trust region radius that was used for the current step
     :ivar delta: Updated trust region radius
@@ -193,6 +194,7 @@ class Optimizer:
         funargs: dict | None = None,
         hessian_update: HessianApproximation | None = None,
         resfun: bool = False,
+        x_names: Sequence[str] | None = None,
     ):
         """
         Create an optimizer object
@@ -223,6 +225,10 @@ class Optimizer:
         :param resfun:
             Boolean flag indicating whether fun returns function values
             (False, default) or residuals (True).
+        :param x_names:
+            Optional names of the optimization variables, used to produce
+            more informative error messages. Must have the same length as
+            `ub` and `lb`.
         """
         nargout = (
             3
@@ -252,6 +258,15 @@ class Optimizer:
 
         self.lb: np.ndarray = np.array(lb)
         self.ub: np.ndarray = np.array(ub)
+
+        self.x_names: list[str] | None = None
+        if x_names is not None:
+            if len(x_names) != len(self.ub):
+                raise ValueError(
+                    f'x_names has {len(x_names)} entries, but there are '
+                    f'{len(self.ub)} optimization variables.'
+                )
+            self.x_names = [str(name) for name in x_names]
 
         if options is None:
             options = {}
@@ -321,12 +336,15 @@ class Optimizer:
         reflective algorithm described by [ColemanLi1994] and [ColemanLi1996]
         Convergence with respect to function value is achieved when
         math:`|f_{k+1} - f_k|` < options[`fatol`] - :math:`f_k` options[
-        `frtol`]. Similarly, convergence with respect to optimization
-        variables is achieved when :math:`||x_{k+1} - x_k||` < options[
-        `xtol`] :math:`x_k` (note that this is checked in transformed
+        `frtol`], unless the step was limited by the trust region and the
+        radius is increased. Similarly, convergence with respect to
+        optimization variables is achieved when :math:`||x_{k+1} - x_k||` <
+        options[`xtol`] :math:`x_k` (note that this is checked in transformed
         coordinates that account for distance to boundaries).  Convergence
-        with respect to the gradient is achieved when :math:`||g_k||` <
-        options[`gatol`] or `||g_k||` < options[`grtol`] * `f_k`. Other than
+        with respect to the gradient is achieved when :math:`||g_k||` or the
+        scaled gradient norm :math:`||v_k g_k||` (see [ColemanLi1994],
+        accounts for active bounds) is smaller than options[`gatol`] or
+        options[`grtol`] * `f_k`. Other than
         that, optimization can be terminated when iterations exceed
         options[ `maxiter`] or the elapsed time is expected to exceed
         options[`maxtime`] on the next iteration.
@@ -422,7 +440,7 @@ class Optimizer:
             if self.iteration % 10 == 0:
                 self.log_header()
             self.log_step(accepted, step, funout_new)
-            self.check_convergence(step, funout_new)
+            self.check_convergence(step, funout_new, accepted)
 
             # track minimum independently of whether we accept the step or not
             self.track_minimum(funout_new)
@@ -550,7 +568,7 @@ class Optimizer:
         :return:
             flag indicating whether the proposed step should be accepted
         """
-        fval, grad = funout.fval, funout.grad
+        fval = funout.fval
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
         self.iterations_since_tr_update += 1
@@ -562,7 +580,9 @@ class Optimizer:
             self.iterations_since_tr_update = 0
             return False
         else:
-            aug = 0.5 * stepsx.dot(dv * np.abs(grad) * stepsx)
+            # C_k in [ColemanLi1994] is evaluated at the current point,
+            # consistent with the augmentation in the predicted decrease
+            aug = 0.5 * stepsx.dot(dv * np.abs(self.grad) * stepsx)
             actual_decrease = self.fval - fval - aug
             predicted_decrease = -step.qpval
             if predicted_decrease <= 0.0:
@@ -593,31 +613,59 @@ class Optimizer:
                 self.n_intermediate_tr_radius += 1
             return self.tr_ratio > 0.0
 
-    def check_convergence(self, step: Step, funout: Funout) -> None:
+    def check_convergence(
+        self, step: Step, funout: Funout, accepted: bool = True
+    ) -> None:
         """
         Check whether optimization has converged.
+
+        Function value convergence (FTOL) is only declared for steps that
+        are accepted with ``tr_ratio > mu`` and that did not trigger an
+        increase of the trust-region radius. A step that is limited by the
+        trust region and agrees well with the model (``tr_ratio >= eta``)
+        is small because the radius is small, not because the iterate is
+        stationary.
+
+        Gradient convergence (GTOL) is checked at the iterate that results
+        from this iteration (the new point if the step was accepted,
+        otherwise the current point), using both the gradient norm and the
+        norm of the scaled gradient ``v * g`` from [ColemanLi1994],
+        which vanishes at first-order optimal points with active bounds.
+        Without bounds ``|v| = 1`` and both norms coincide.
 
         :param step:
             update to optimization variables
 
         :param funout:
             Function output generated by a :py:class:`FunEvaluator`
+            evaluated at the new point
+
+        :param accepted:
+            flag indicating whether the step was accepted
         """
         converged = False
-        fval, grad = funout.fval, funout.grad
+        fval = funout.fval
+        if accepted:
+            x, grad, fval_grad = funout.x, funout.grad, funout.fval
+        else:
+            x, grad, fval_grad = self.x, self.grad, self.fval
 
         fatol = self.get_option(Options.FATOL)
         frtol = self.get_option(Options.FRTOL)
         xtol = self.get_option(Options.XTOL)
         gatol = self.get_option(Options.GATOL)
         grtol = self.get_option(Options.GRTOL)
-        gnorm = norm(grad)
+        v, _ = self.get_affine_scaling(x, grad)
+        gnorm = min(norm(grad), norm(v * grad))
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
+        radius_increased = self.delta > self.delta_iter
 
-        if self.tr_ratio > self.get_option(Options.MU) and np.abs(
-            fval - self.fval
-        ) < fatol + frtol * np.abs(self.fval):
+        if (
+            self.tr_ratio > self.get_option(Options.MU)
+            and not radius_increased
+            and np.abs(fval - self.fval) < fatol + frtol * np.abs(self.fval)
+        ):
             self.exitflag = ExitFlag.FTOL
             self.logger.info(
                 'Stopping as function difference '
@@ -638,17 +686,17 @@ class Optimizer:
         elif gnorm <= gatol:
             self.exitflag = ExitFlag.GTOL
             self.logger.info(
-                'Stopping as gradient norm satisfies absolute convergence '
-                f'criteria: {gnorm:.2E} < {gatol:.2E}'
+                'Stopping as (scaled) gradient norm satisfies absolute '
+                f'convergence criteria: {gnorm:.2E} < {gatol:.2E}'
             )
             converged = True
 
-        elif gnorm <= grtol * np.abs(self.fval):
+        elif gnorm <= grtol * np.abs(fval_grad):
             self.exitflag = ExitFlag.GTOL
             self.logger.info(
-                'Stopping as gradient norm satisfies relative convergence '
-                f'criteria: {gnorm:.2E} < {grtol:.2E} * '
-                f'{np.abs(self.fval):.2E}'
+                'Stopping as (scaled) gradient norm satisfies relative '
+                f'convergence criteria: {gnorm:.2E} < {grtol:.2E} * '
+                f'{np.abs(fval_grad):.2E}'
             )
             converged = True
 
@@ -714,27 +762,39 @@ class Optimizer:
         self.x[upperi] = self.x[upperi] - eps[upperi]
         self.x[loweri] = self.x[loweri] + eps[loweri]
 
-    def get_affine_scaling(self) -> tuple[np.ndarray, np.ndarray]:
+    def get_affine_scaling(
+        self, x: np.ndarray | None = None, grad: np.ndarray | None = None
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
         Computes the vector v and dv, the diagonal of its Jacobian. For the
         definition of v, see Definition 2 in [Coleman-Li1994]
+
+        :param x:
+            point at which the scaling is evaluated, defaults to self.x
+
+        :param grad:
+            gradient at x, defaults to self.grad
 
         :return:
             v scaling vector
             dv diagonal of the Jacobian of v wrt x
         """
+        if x is None:
+            x = self.x
+        if grad is None:
+            grad = self.grad
         # this implements no scaling for variables that are not constrained by
         # bounds ((iii) and (iv) in Definition 2)
-        v = np.sign(self.grad) + (self.grad == 0)
-        dv = np.zeros(self.x.shape)
+        v = np.sign(grad) + (grad == 0)
+        dv = np.zeros(x.shape)
 
         # this implements scaling for variables that are constrained by
         # bounds ( i and ii in Definition 2) bounds is equal to ub if grad <
         # 0 lb if grad >= 0
         bounds = self.lb.copy()
-        bounds[self.grad < 0] = self.ub[self.grad < 0]
+        bounds[grad < 0] = self.ub[grad < 0]
         bounded = np.isfinite(bounds)
-        v[bounded] = self.x[bounded] - bounds[bounded]
+        v[bounded] = x[bounded] - bounds[bounded]
         dv[bounded] = 1
         return v, dv
 
@@ -892,10 +952,10 @@ class Optimizer:
 
         if not np.isfinite(grad).all():
             self.exitflag = ExitFlag.NOT_FINITE
-            ix = np.where(np.logical_not(np.isfinite(grad)))
+            ix = np.where(np.logical_not(np.isfinite(grad)))[0]
             raise RuntimeError(
                 'Encountered non-finite gradient entries'
-                f' {grad[ix]} for indices {ix} '
+                f' {grad[ix]} for {self._format_indices(ix)} '
                 f'{pointstr}'
             )
 
@@ -907,7 +967,7 @@ class Optimizer:
             ix = np.where(np.logical_not(np.isfinite(hess)))
             raise RuntimeError(
                 'Encountered non-finite gradient hessian'
-                f' {hess[ix]} for indices {ix} '
+                f' {hess[ix]} for {self._format_indices(ix)} '
                 f'{pointstr}'
             )
 
@@ -938,9 +998,31 @@ class Optimizer:
                 ix = np.where(diff > 0)[0]
                 self.exitflag = ExitFlag.EXCEEDED_BOUNDARY
                 raise RuntimeError(
-                    f'Exceeded {name} for indices {ix} by '
+                    f'Exceeded {name} for {self._format_indices(ix)} by '
                     f'{diff[ix]} {pointstr}'
                 )
+
+    def _format_indices(
+        self, ix: np.ndarray | tuple[np.ndarray, np.ndarray]
+    ) -> str:
+        """
+        Formats indices of optimization variables for messages, including
+        variable names if `x_names` were provided.
+
+        :param ix:
+            Array of variable indices, or tuple of (row, column) index arrays
+            for Hessian entries.
+        """
+        if self.x_names is None:
+            return f'indices {ix}'
+        if isinstance(ix, tuple):
+            names = [
+                (self.x_names[i], self.x_names[j])
+                for i, j in zip(*ix, strict=True)
+            ]
+        else:
+            names = [self.x_names[i] for i in ix]
+        return f'{names} (indices {ix})'
 
     def get_option(self, option):
         return self.options.get(option, DEFAULT_OPTIONS.get(option))

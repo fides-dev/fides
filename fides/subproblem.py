@@ -81,6 +81,15 @@ def get_1d_trust_region_boundary_solution(b, g, s, s0, delta):
     return ts[np.argmin(qs)]
 
 
+#: relative tolerance on the norm of a boundary or interior step with respect
+#: to the trust region radius
+NORM_RTOL = 1e-10
+#: relative tolerance with respect to the largest absolute eigenvalue below
+#: which eigenvalues are considered equal to the smallest eigenvalue in the
+#: hard case, roughly the roundoff error of the eigenvalue decomposition
+EIG_RTOL = 10 * np.spacing(1)
+
+
 def solve_nd_trust_region_subproblem(
     b: np.ndarray,
     g: np.ndarray,
@@ -107,11 +116,13 @@ def solve_nd_trust_region_subproblem(
     cholesky decomposition, has the advantage that eigenvectors are
     invariant to changes in :math:`\lambda` and eigenvalues are linear in
     :math:`\lambda`, so factorization only has to be performed once. We perform
-    the linesearch via Newton's algorithm and Brent-Q as fallback.
+    the linesearch via Newton's algorithm and Brent-Q as fallback, both
+    restricted to an interval that is known to contain the root.
     The hard case is treated separately and serves as general fallback.
 
     :param B:
-        Hessian of the quadratic subproblem
+        Hessian of the quadratic subproblem, only the symmetric part
+        :math:`(B + B^T)/2` is used
     :param g:
         Gradient of the quadratic subproblem
     :param delta:
@@ -134,10 +145,11 @@ def solve_nd_trust_region_subproblem(
     # INITIALIZATION
 
     # instead of a cholesky factorization, we go with an eigenvalue
-    # decomposition, which works pretty well for n=2
-    eigvals, eigvecs = linalg.eig(b)
-    eigvals = np.real(eigvals)
-    eigvecs = np.real(eigvecs)
+    # decomposition, which works pretty well for n=2. Only the symmetric part
+    # of B enters the quadratic form, symmetrizing guarantees real
+    # eigenvalues and orthonormal eigenvectors also for non-symmetric
+    # hessian approximations
+    eigvals, eigvecs = linalg.eigh(0.5 * (b + b.T))
     w = -eigvecs.T.dot(g)
     jmin = eigvals.argmin()
     mineig = eigvals[jmin]
@@ -153,73 +165,130 @@ def solve_nd_trust_region_subproblem(
 
     # POSITIVE DEFINITE
     if mineig > 0:  # positive definite
-        s = np.real(slam(0, w, eigvals, eigvecs))  # s = - self.cB\self.cg_hat
-        if norm(s) <= delta + np.sqrt(np.spacing(1)):  # CASE 0
+        s = slam(0, w, eigvals, eigvecs)  # s = - self.cB\self.cg_hat
+        if norm(s) <= delta * (1 + NORM_RTOL):  # CASE 0
             logger.debug('Interior subproblem solution')
             return s, 'posdef'
         else:
-            laminit = 0
+            muinit = mineig
     else:
-        laminit = -mineig
+        muinit = 0
+
+    # The root is searched for in the shifted variable mu = lam + mineig,
+    # which, in contrast to lam, retains full relative precision close to the
+    # pole at lam = -mineig.
+    shifted = eigvals - mineig
+    args = (w, shifted, eigvecs, delta)
 
     # INDEFINITE CASE
     # note that this includes what Nocedal calls the "hard case" but with
-    # ||s|| > delta, so the provided formula is not applicable,
-    # the respective w should be close to 0 anyways
-    if secular(laminit, w, eigvals, eigvecs, delta) < 0:
-        maxiter = 100
-        try:
-            r = newton(
-                secular,
-                laminit,
-                dsecular,
-                tol=1e-12,
-                maxiter=maxiter,
-                args=(w, eigvals, eigvecs, delta),
-            )
-            s = slam(r, w, eigvals, eigvecs)
-            if norm(s) <= delta + 1e-12:
-                logger.debug('Found boundary subproblem solution via newton')
-                return s, 'indef'
-        except RuntimeError:
-            pass
-        try:
-            xa = laminit
-            xb = (laminit + np.sqrt(np.spacing(1))) * 10
-            # search to the right for a change of sign
-            while secular(xb, w, eigvals, eigvecs, delta) < 0 and maxiter > 0:
-                xa = xb
-                xb = xb * 10
-                maxiter -= 1
-            if maxiter > 0:
-                r = brentq(
+    # ||s|| > delta, so the provided formula is not applicable.
+    # ||s(mu = 0)|| is infinite if g is not orthogonal to the eigenspace of
+    # mineig, so we always end up here in that case
+    if secular(muinit, *args) < 0:
+        # the root is contained in [mu_lo, mu_hi] since
+        # |w_i|/(shifted_i + mu) <= ||s(mu)|| <= ||w||/mu
+        # [More & Sorensen 1983]
+        mu_lo = max(muinit, np.max(np.abs(w) / delta - shifted))
+        mu_hi = max(mu_lo, norm(w) / delta)
+        # relative changes in ||s(mu)|| are bounded by relative changes in mu
+        mutol = max(1e-12 * mu_lo, np.finfo(float).tiny)
+        # phi is concave and increasing, so newton iterates started at
+        # mu_lo increase monotonically towards the root, unless mu_lo
+        # is a pole
+        if np.isfinite(norm(_slam_coefs(mu_lo, w, shifted))):
+            try:
+                r = newton(
                     secular,
-                    xa,
-                    xb,
-                    xtol=1e-12,
-                    maxiter=maxiter,
-                    args=(w, eigvals, eigvecs, delta),
+                    mu_lo,
+                    dsecular,
+                    tol=mutol,
+                    rtol=1e-12,
+                    maxiter=100,
+                    args=args,
                 )
-                s = slam(r, w, eigvals, eigvecs)
-                if norm(s) <= delta + np.sqrt(np.spacing(1)):
+                s = slam(r, w, shifted, eigvecs)
+                if norm(s) <= delta * (1 + NORM_RTOL):
                     logger.debug(
-                        'Found boundary subproblem solution via brentq'
+                        'Found boundary subproblem solution via newton'
                     )
                     return s, 'indef'
-        except RuntimeError:
+            except RuntimeError:
+                pass
+        try:
+            if secular(mu_hi, *args) <= 0:
+                # mu_hi is the root up to roundoff
+                r = mu_hi
+            else:
+                r = brentq(
+                    secular,
+                    mu_lo,
+                    mu_hi,
+                    xtol=mutol,
+                    rtol=4 * np.spacing(1),
+                    maxiter=500,
+                    args=args,
+                )
+            s = slam(r, w, shifted, eigvecs)
+            if norm(s) <= delta * (1 + NORM_RTOL):
+                logger.debug('Found boundary subproblem solution via brentq')
+                return s, 'indef'
+        except (RuntimeError, ValueError):
             pass  # may end up here due to ill-conditioning, treat as hard case
 
-    # HARD CASE (gradient is orthogonal to eigenvector to smallest eigenvalue)
-    w[(eigvals - mineig) == 0] = 0
-    s = slam(-mineig, w, eigvals, eigvecs)
-    # we know that ||s(lam) + sigma*v_jmin|| = delta, since v_jmin is
-    # orthonormal, we can just substract the difference in norm to get
-    # the right length.
-
+    # HARD CASE (gradient is orthogonal to eigenspace of smallest eigenvalue)
+    # eigenvalues that only differ from mineig due to roundoff are treated as
+    # a single eigenspace
+    degenerate = shifted <= EIG_RTOL * np.max(np.abs(eigvals))
+    wmin = w[degenerate]
+    w[degenerate] = 0
+    s = slam(0, w, shifted, eigvecs)
+    if norm(s) > delta:
+        # not actually a hard case, but rootfinding failed. fall back to a
+        # step that at least satisfies the trust region constraint.
+        s *= delta / norm(s)
+    # we know that ||s + sigma*v|| = delta for any normalized v in the
+    # eigenspace of mineig, since s is orthogonal to that eigenspace, so we
+    # can just add the difference in norm. The model value changes by
+    # sigma * g.T * v, which is minimal if v is the normalized projection of
+    # -g onto the eigenspace.
     sigma = np.sqrt(max(delta**2 - norm(s) ** 2, 0))
-    s = s + sigma * eigvecs[:, jmin]
+    if norm(wmin) > 0:
+        v = eigvecs[:, degenerate].dot(wmin) / norm(wmin)
+    else:
+        v = eigvecs[:, jmin]
+    s = s + sigma * v
     logger.debug('Found boundary 2D subproblem solution via hard case')
     return s, 'hard'
+
+
+def _slam_coefs(lam: float, w: np.ndarray, eigvals: np.ndarray) -> np.ndarray:
+    r"""
+    Computes the coefficients of :math:`s(\lambda)` in the eigenbasis of B.
+    Coefficients are infinite where :math:`\lambda` is the negative of an
+    eigenvalue and the respective entry of w is non-zero.
+    """
+    el = eigvals + lam
+    c = np.zeros(w.shape)
+    nz = el != 0
+    c[nz] = w[nz] / el[nz]
+    pole = ~nz & (w != 0)
+    c[pole] = np.copysign(np.inf, w[pole])
+    return c
+
+
+def _dslam_coefs(lam: float, w: np.ndarray, eigvals: np.ndarray) -> np.ndarray:
+    r"""
+    Computes the coefficients of
+    :math:`\frac{\partial s(\lambda)}{\partial \lambda}` in the eigenbasis of
+    B.
+    """
+    el = eigvals + lam
+    dc = -_slam_coefs(lam, w, eigvals)
+    nz = el != 0
+    # avoids overflow in el**2
+    dc[nz] /= el[nz]
+    return dc
 
 
 def slam(
@@ -241,12 +310,10 @@ def slam(
         precomputed eigenvectors of B
 
     :return:
-        :math:`s(\lambda)`
+        :math:`s(\lambda)`, non-finite if :math:`B + \lambda I` is singular
+        and -g has a component in its null space
     """
-    c = w.copy()
-    el = eigvals + lam
-    c[el != 0] /= el[el != 0]
-    return eigvecs.dot(c)
+    return eigvecs.dot(_slam_coefs(lam, w, eigvals))
 
 
 def dslam(lam: float, w: np.ndarray, eigvals: np.ndarray, eigvecs: np.ndarray):
@@ -268,11 +335,7 @@ def dslam(lam: float, w: np.ndarray, eigvals: np.ndarray, eigvecs: np.ndarray):
     :return:
         :math:`\frac{\partial s(\lambda)}{\partial \lambda}`
     """
-    c = w.copy()
-    el = eigvals + lam
-    c[el != 0] /= -np.power(el[el != 0], 2)
-    c[(el == 0) & (c != 0)] = np.inf
-    return eigvecs.dot(c)
+    return eigvecs.dot(_dslam_coefs(lam, w, eigvals))
 
 
 def secular(
@@ -296,7 +359,8 @@ def secular(
     :param eigvals:
         precomputed eigenvalues of B
     :param eigvecs:
-        precomputed eigenvectors of B
+        precomputed eigenvectors of B, assumed to be orthonormal so that
+        norms can be computed in the eigenbasis
     :param delta:
         trust region radius :math:`\Delta`
 
@@ -305,8 +369,7 @@ def secular(
     """
     if lam < -np.min(eigvals):
         return np.inf  # safeguard to implement boundary
-    s = slam(lam, w, eigvals, eigvecs)
-    sn = norm(s)
+    sn = norm(_slam_coefs(lam, w, eigvals))
     if sn > 0:
         return 1 / sn - 1 / delta
     else:
@@ -334,17 +397,19 @@ def dsecular(
     :param eigvals:
         precomputed eigenvalues of B
     :param eigvecs:
-        precomputed eigenvectors of B
+        precomputed eigenvectors of B, assumed to be orthonormal so that
+        norms can be computed in the eigenbasis
     :param delta:
         trust region radius :math:`\Delta`
 
     :return:
         :math:`\frac{\partial \phi(\lambda)}{\partial \lambda}`
     """
-    s = slam(lam, w, eigvals, eigvecs)
-    ds = dslam(lam, w, eigvals, eigvecs)
-    sn = norm(s)
+    c = _slam_coefs(lam, w, eigvals)
+    dc = _dslam_coefs(lam, w, eigvals)
+    sn = norm(c)
     if sn > 0:
-        return -s.T.dot(ds) / (norm(s) ** 3)
+        # avoids under/overflow in sn**3
+        return -(c / sn).dot(dc / sn) / sn
     else:
         return np.inf
