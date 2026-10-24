@@ -310,6 +310,13 @@ class Optimizer:
         self.history: dict[str, list[float | int | bool]] = defaultdict(list)
         self.start_id: str = ''
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        # loggers are unpickled by name only, which loses the handler in a
+        # new process, so a fresh logger is created on the next run
+        state['logger'] = None
+        return state
+
     def _reset(self, start_id: str | None = None):
         self.starttime = time.time()
         self.iteration = 0
@@ -319,7 +326,12 @@ class Optimizer:
         self.delta = self.get_option(Options.DELTA_INIT)
         self.delta_iter = self.delta
         self.fval_min = np.inf
-        self.logger = create_logger(self.verbose)
+        # reuse the logger across runs, every created logger stays registered
+        # in the logging module for the lifetime of the process
+        if self.logger is None:
+            self.logger = create_logger(self.verbose)
+        else:
+            self.logger.setLevel(self.verbose)
         if not start_id:
             start_id = str(uuid.uuid1())
         self.start_id = start_id
@@ -354,7 +366,8 @@ class Optimizer:
 
         :param start_id:
             optional identifier for this optimization run, used for history
-            tracking
+            tracking. If options[`history_file`] is set, the identifier must
+            not already exist in that file.
 
         :param hess0:
             optional initial Hessian approximation. If a string 'hess' is
@@ -371,6 +384,7 @@ class Optimizer:
 
         """
         self._reset(start_id)
+        self.check_history_file()
 
         self.x = np.array(x0).copy()
         if self.x.ndim > 1:
@@ -459,6 +473,23 @@ class Optimizer:
                     g.create_dataset(key, data=vals)
 
         return self.fval, self.x, self.grad, self.hess
+
+    def check_history_file(self) -> None:
+        """
+        Check that the history of this run can be written to the history
+        file, so that the run does not fail only after the optimization has
+        finished.
+        """
+        history_file = self.get_option(Options.HISTORY_FILE)
+        if not history_file:
+            return
+        with h5py.File(history_file, 'a') as f:
+            if self.start_id in f:
+                raise ValueError(
+                    f'History file {history_file} already contains an '
+                    f'entry for start_id {self.start_id!r}. Please use a '
+                    f'different start_id or history file.'
+                )
 
     def track_minimum(self, funout: Funout) -> None:
         """
