@@ -8,7 +8,7 @@ import logging
 import time
 import uuid
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 import h5py
 import numpy as np
@@ -164,6 +164,7 @@ class Optimizer:
     :ivar fevaler: FunctionEvaluator instance
     :ivar lb: Lower optimization boundaries
     :ivar ub: Upper optimization boundaries
+    :ivar x_names: Names of optimization variables used in error messages
     :ivar options: Options that configure convergence checks
     :ivar delta_iter: Trust region radius that was used for the current step
     :ivar delta: Updated trust region radius
@@ -193,6 +194,7 @@ class Optimizer:
         funargs: dict | None = None,
         hessian_update: HessianApproximation | None = None,
         resfun: bool = False,
+        x_names: Sequence[str] | None = None,
     ):
         """
         Create an optimizer object
@@ -223,6 +225,10 @@ class Optimizer:
         :param resfun:
             Boolean flag indicating whether fun returns function values
             (False, default) or residuals (True).
+        :param x_names:
+            Optional names of the optimization variables, used to produce
+            more informative error messages. Must have the same length as
+            `ub` and `lb`.
         """
         nargout = (
             3
@@ -252,6 +258,15 @@ class Optimizer:
 
         self.lb: np.ndarray = np.array(lb)
         self.ub: np.ndarray = np.array(ub)
+
+        self.x_names: list[str] | None = None
+        if x_names is not None:
+            if len(x_names) != len(self.ub):
+                raise ValueError(
+                    f'x_names has {len(x_names)} entries, but there are '
+                    f'{len(self.ub)} optimization variables.'
+                )
+            self.x_names = [str(name) for name in x_names]
 
         if options is None:
             options = {}
@@ -910,10 +925,10 @@ class Optimizer:
 
         if not np.isfinite(grad).all():
             self.exitflag = ExitFlag.NOT_FINITE
-            ix = np.where(np.logical_not(np.isfinite(grad)))
+            ix = np.where(np.logical_not(np.isfinite(grad)))[0]
             raise RuntimeError(
                 'Encountered non-finite gradient entries'
-                f' {grad[ix]} for indices {ix} '
+                f' {grad[ix]} for {self._format_indices(ix)} '
                 f'{pointstr}'
             )
 
@@ -925,7 +940,7 @@ class Optimizer:
             ix = np.where(np.logical_not(np.isfinite(hess)))
             raise RuntimeError(
                 'Encountered non-finite gradient hessian'
-                f' {hess[ix]} for indices {ix} '
+                f' {hess[ix]} for {self._format_indices(ix)} '
                 f'{pointstr}'
             )
 
@@ -956,9 +971,31 @@ class Optimizer:
                 ix = np.where(diff > 0)[0]
                 self.exitflag = ExitFlag.EXCEEDED_BOUNDARY
                 raise RuntimeError(
-                    f'Exceeded {name} for indices {ix} by '
+                    f'Exceeded {name} for {self._format_indices(ix)} by '
                     f'{diff[ix]} {pointstr}'
                 )
+
+    def _format_indices(
+        self, ix: np.ndarray | tuple[np.ndarray, np.ndarray]
+    ) -> str:
+        """
+        Formats indices of optimization variables for messages, including
+        variable names if `x_names` were provided.
+
+        :param ix:
+            Array of variable indices, or tuple of (row, column) index arrays
+            for Hessian entries.
+        """
+        if self.x_names is None:
+            return f'indices {ix}'
+        if isinstance(ix, tuple):
+            names = [
+                (self.x_names[i], self.x_names[j])
+                for i, j in zip(*ix, strict=True)
+            ]
+        else:
+            names = [self.x_names[i] for i in ix]
+        return f'{names} (indices {ix})'
 
     def get_option(self, option):
         return self.options.get(option, DEFAULT_OPTIONS.get(option))

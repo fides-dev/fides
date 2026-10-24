@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import time
 
 import h5py
@@ -625,6 +626,52 @@ def test_hess0_initialization():
     assert iterations_good <= iterations_poor or (
         opt_good_init.converged and opt_poor_init.converged
     ), 'Good Hessian initialization should help convergence'
+
+
+def test_x_names_wrong_length():
+    lb, ub, _ = finite_bounds_exlude_optimum()
+    with pytest.raises(ValueError, match='x_names'):
+        Optimizer(rosenboth, ub=ub, lb=lb, x_names=['x'])
+
+
+def rosennangrad(x):
+    f, g, h = rosenboth(x)
+    g[1] = np.nan
+    return f, g, h
+
+
+def rosennanhess(x):
+    f, g, h = rosenboth(x)
+    h[0, 1] = np.nan
+    return f, g, h
+
+
+@pytest.mark.parametrize(
+    ('fun', 'x0', 'x_names', 'expected'),
+    [
+        (rosenboth, [0.0, 5.0], None, 'upper bounds for indices [1] by'),
+        (
+            rosenboth,
+            [0.0, 5.0],
+            ['a', 'b'],
+            "upper bounds for ['b'] (indices [1]) by",
+        ),
+        (
+            rosenboth,
+            [-5.0, 0.0],
+            np.array(['a', 'b']),
+            "lower bounds for ['a'] (indices [0]) by",
+        ),
+        (rosennangrad, [0.0, 0.0], None, 'for indices [1] at'),
+        (rosennangrad, [0.0, 0.0], ['a', 'b'], "for ['b'] (indices [1])"),
+        (rosennanhess, [0.0, 0.0], ['a', 'b'], "for [('a', 'b')] (indices"),
+    ],
+)
+def test_x_names_in_messages(fun, x0, x_names, expected):
+    lb, ub, _ = finite_bounds_exlude_optimum()
+    opt = Optimizer(fun, ub=ub, lb=lb, x_names=x_names)
+    with pytest.raises(RuntimeError, match=re.escape(expected)):
+        opt.minimize(np.array(x0))
 
 
 def test_gtol_not_triggered_by_rejected_step():
