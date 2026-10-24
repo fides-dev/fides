@@ -29,5 +29,8 @@ Fides can be installed via `pip install fides`. Further documentation is
 * Reflective, truncated and optimization based boundary heuristics
 * Exact, 2D and CG subproblem solvers
 * BFGS, DFP, SR1, Broyden (good and bad) and Broyden class iterative
- Hessian Approximation schemes
+ Hessian Approximation schemes. BFGS (or SR1 for indefinite problems) is the
+ recommended default; DFP and Broyden's bad method are included for
+ comparison and converge much more slowly or not at all on problems where
+ BFGS and SR1 succeed
 * SSM, TSSM, FX, GNSBFGS and custom hybrid Hessian Approximations schemes

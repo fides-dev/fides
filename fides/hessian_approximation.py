@@ -189,6 +189,15 @@ class DFP(Broyden):
     update strategy that preserves symmetry and positive-semidefiniteness.
 
     This scheme only works with a function that returns (fval, grad)
+
+    .. warning::
+
+        This scheme is included for completeness and comparison. It
+        typically converges much more slowly than :class:`BFGS` and
+        :class:`SR1` and may fail to converge within the iteration limit
+        on problems where these succeed (e.g., higher-dimensional
+        Rosenbrock functions). Use :class:`BFGS` as the default, or
+        :class:`SR1` for problems with indefinite Hessians.
     """
 
     def __init__(
@@ -271,6 +280,16 @@ class BB(_NonSymmetricIterativeApproximation):
     equation :math:`B_+ s = y`.
 
     This scheme only works with a function that returns (fval, grad)
+
+    .. warning::
+
+        This scheme is included for completeness and comparison. It is
+        not reliable as a Hessian approximation for minimization and
+        often fails to converge within the iteration limit, even on
+        simple problems such as the 2D Rosenbrock function, where
+        :class:`BFGS` and :class:`SR1` converge quickly. Use
+        :class:`BFGS` as the default, or :class:`SR1` for problems with
+        indefinite Hessians.
     """
 
     def _compute_update(self, s: np.ndarray, y: np.ndarray):
