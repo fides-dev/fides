@@ -775,8 +775,10 @@ def test_concave_box_zero_gradient_start_accepts_first_step():
     assert opt.fval < 0
 
 
-@pytest.mark.parametrize('delta_init', [1e-6, 1.0])
+@pytest.mark.parametrize('delta_init', [1e-6, 1.0, 1e6])
 def test_concave_box_zero_gradient_start(delta_init):
+    # every vertex of the box is a strict local minimum, any point with a
+    # free variable is a saddle (zero scaled gradient, negative curvature)
     n = 10
     opt = Optimizer(
         lambda x: (-np.sum(x**2), -2 * x, -2 * np.eye(n)),
@@ -787,4 +789,4 @@ def test_concave_box_zero_gradient_start(delta_init):
     )
     opt.minimize(np.zeros(n))
     assert opt.exitflag > 0
-    assert opt.fval <= -16
+    assert np.all(np.isclose(opt.x, -1) | np.isclose(opt.x, 2))

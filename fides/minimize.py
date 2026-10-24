@@ -631,7 +631,10 @@ class Optimizer:
         otherwise the current point), using both the gradient norm and the
         norm of the scaled gradient ``v * g`` from [ColemanLi1994],
         which vanishes at first-order optimal points with active bounds.
-        Without bounds ``|v| = 1`` and both norms coincide.
+        Without bounds ``|v| = 1`` and both norms coincide. The scaled
+        gradient only counts if the scaled Hessian has no negative
+        curvature, so that a saddle on a face of the box, where the
+        gradient vanishes in the free variables, is not declared optimal.
 
         :param step:
             update to optimization variables
@@ -647,16 +650,27 @@ class Optimizer:
         fval = funout.fval
         if accepted:
             x, grad, fval_grad = funout.x, funout.grad, funout.fval
+            hess = funout.hess
+            if self.hessian_update is not None or hess is None:
+                hess = self.hess
         else:
             x, grad, fval_grad = self.x, self.grad, self.fval
+            hess = self.hess
 
         fatol = self.get_option(Options.FATOL)
         frtol = self.get_option(Options.FRTOL)
         xtol = self.get_option(Options.XTOL)
         gatol = self.get_option(Options.GATOL)
         grtol = self.get_option(Options.GRTOL)
-        v, _ = self.get_affine_scaling(x, grad)
-        gnorm = min(norm(grad), norm(v * grad))
+        v, dv = self.get_affine_scaling(x, grad)
+        gnorm = norm(grad)
+        sgnorm = norm(v * grad)
+        if (
+            sgnorm < gnorm
+            and (sgnorm <= gatol or sgnorm <= grtol * np.abs(fval_grad))
+            and not self.has_negative_scaled_curvature(v, dv, grad, hess)
+        ):
+            gnorm = sgnorm
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
         radius_increased = self.delta > self.delta_iter
@@ -797,6 +811,36 @@ class Optimizer:
         v[bounded] = x[bounded] - bounds[bounded]
         dv[bounded] = 1
         return v, dv
+
+    @staticmethod
+    def has_negative_scaled_curvature(
+        v: np.ndarray, dv: np.ndarray, grad: np.ndarray, hess: np.ndarray
+    ) -> bool:
+        """
+        Checks whether the scaled Hessian
+        ``diag(sqrt(|v|)) hess diag(sqrt(|v|)) + diag(|g| * dv)``
+        from [ColemanLi1994] has a negative eigenvalue
+
+        :param v:
+            scaling vector
+        :param dv:
+            diagonal of the Jacobian of v wrt x
+        :param grad:
+            gradient
+        :param hess:
+            (approximate) Hessian
+
+        :return:
+            flag indicating negative curvature
+        """
+        d = np.sqrt(np.abs(v))
+        shess = d[:, None] * np.asarray(hess) * d[None, :]
+        shess = (shess + shess.T) / 2 + np.diag(np.abs(grad) * dv)
+        if not np.all(np.isfinite(shess)):
+            return False
+        eigvals = np.linalg.eigvalsh(shess)
+        scale = max(1.0, np.max(np.abs(eigvals)))
+        return eigvals[0] < -np.sqrt(np.spacing(1.0)) * scale
 
     def log_step(self, accepted: bool, step: Step, funout: Funout):
         """
