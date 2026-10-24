@@ -491,6 +491,36 @@ def test_wrong_options():
     )
 
 
+@pytest.mark.parametrize(
+    'happ',
+    [
+        HybridFixed(BFGS(), switch_iteration=2),
+        HybridFraction(BFGS(), switch_threshold=-1.0),
+    ],
+)
+def test_hybrid_reuse_across_runs(happ):
+    """
+    Reusing a hybrid approximation instance (e.g., in a multistart) must
+    give the same result as a fresh instance, i.e., the switch from the
+    dynamic to the iterative approximation must not carry over.
+    """
+    lb, ub, x0 = unbounded_and_init()
+    x0 = np.array([-1.2, 1.0])
+    opt = Optimizer(
+        rosenboth,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        hessian_update=happ,
+        options={Options.FATOL: 0},
+    )
+    opt.minimize(x0)
+    iterations = opt.iteration
+    assert happ._switched
+    opt.minimize(x0)
+    assert opt.iteration == iterations
+
+
 def test_hess0_initialization():
     """
     Test that hess0 parameter correctly initializes Hessian approximation.
