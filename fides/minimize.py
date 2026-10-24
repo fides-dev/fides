@@ -669,6 +669,10 @@ class Optimizer:
         which the next trust-region step can still make progress along
         negative curvature.
 
+        Step size convergence (XTOL) is only declared for accepted steps.
+        After a rejected step the optimizer stays at the current point, and
+        a short trial step only reflects a shrunken trust-region radius.
+
         :param step:
             update to optimization variables
 
@@ -725,7 +729,7 @@ class Optimizer:
             )
             converged = True
 
-        elif self.iteration > 1 and nsx < xtol:
+        elif accepted and self.iteration > 1 and nsx < xtol:
             self.exitflag = ExitFlag.XTOL
             self.logger.info(
                 'Stopping as norm of step '

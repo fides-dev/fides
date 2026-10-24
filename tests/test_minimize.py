@@ -949,3 +949,80 @@ def test_huge_gradient_and_hessian(subspace_dim):
     assert opt.exitflag in (fides.ExitFlag.GTOL, fides.ExitFlag.FTOL)
     assert opt.fval < 1e-12
     assert np.allclose(opt.x, -50)
+
+
+def test_gtol_not_triggered_by_rejected_step():
+    """
+    A rejected step must not trigger gradient based convergence: the
+    gradient criterion has to be evaluated at the point the optimizer
+    actually stays at, not at the rejected trial point.
+    """
+
+    def plateau(x):
+        # f = 1 - exp(-x^2): the gradient vanishes on the plateau far from
+        # the minimum at 0, where f is larger than anywhere near 0
+        e = np.exp(-(x[0] ** 2))
+        return float(1 - e), 2 * x * e
+
+    opt = Optimizer(
+        plateau,
+        ub=np.array([np.inf]),
+        lb=np.array([-np.inf]),
+        verbose=logging.INFO,
+        hessian_update=BFGS(),
+        options={Options.DELTA_INIT: 10.0},
+    )
+    # tiny initial Hessian => first step is radius limited and lands on
+    # the plateau at x = 9.5, where f is larger and the step is rejected
+    fval, x, grad, _ = opt.minimize(np.array([-0.5]), hess0=np.array([[1e-3]]))
+
+    assert opt.exitflag == fides.ExitFlag.GTOL
+    assert np.linalg.norm(grad) <= opt.get_option(Options.GATOL)
+    assert np.abs(x[0]) < 1e-3
+    assert opt.iteration > 1
+
+
+def test_xtol_not_triggered_by_rejected_step():
+    """
+    A cascade of rejected steps shrinks the trust region and thereby the
+    proposed step, this must not be mistaken for convergence in x.
+    """
+
+    def wrong_gradient(x):
+        # gradient with the wrong sign: every proposed step increases f
+        return float(np.sum(x**2)), -2 * x, 2 * np.eye(len(x))
+
+    opt = Optimizer(
+        wrong_gradient,
+        ub=np.full(2, np.inf),
+        lb=np.full(2, -np.inf),
+        verbose=logging.INFO,
+        options={Options.XTOL: 1e-6},
+    )
+    fval, x, grad, _ = opt.minimize(np.array([1.0, 1.0]))
+
+    assert opt.exitflag != fides.ExitFlag.XTOL
+    assert opt.exitflag < 0
+    assert not opt.converged
+
+
+def test_gtol_at_initial_point():
+    """
+    Starting at a stationary point, the (zero) step is rejected but
+    gradient based convergence must still be detected at the current point.
+    """
+
+    def quadratic(x):
+        return float(np.sum(x**2)), 2 * x, 2 * np.eye(len(x))
+
+    opt = Optimizer(
+        quadratic,
+        ub=np.full(2, np.inf),
+        lb=np.full(2, -np.inf),
+        verbose=logging.INFO,
+    )
+    fval, x, grad, _ = opt.minimize(np.zeros(2))
+
+    assert opt.exitflag == fides.ExitFlag.GTOL
+    assert opt.iteration == 1
+    assert np.all(x == 0)
