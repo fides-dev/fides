@@ -702,3 +702,89 @@ def test_x_names_in_messages(fun, x0, x_names, expected):
     opt = Optimizer(fun, ub=ub, lb=lb, x_names=x_names)
     with pytest.raises(RuntimeError, match=re.escape(expected)):
         opt.minimize(np.array(x0))
+
+
+def saddle_quartic(n=10, seed=0):
+    rng = np.random.default_rng(seed)
+    q, _ = np.linalg.qr(rng.standard_normal((n, n)))
+    ev = np.linspace(-1, 1, n)
+    ev[ev == 0] = 0.1
+    a = q @ np.diag(ev) @ q.T
+
+    def fun(x):
+        f = 0.5 * x @ a @ x + 0.01 * np.sum(x**4)
+        g = a @ x + 0.04 * x**3
+        h = a + np.diag(0.12 * x**2)
+        return f, g, h
+
+    return fun
+
+
+def test_no_ftol_on_tr_limited_step():
+    # tiny steps that are limited by a tiny trust region radius must not
+    # trigger function value convergence at a saddle point
+    n = 10
+    opt = Optimizer(
+        saddle_quartic(n),
+        ub=np.full(n, np.inf),
+        lb=np.full(n, -np.inf),
+        verbose=logging.WARNING,
+        options={Options.DELTA_INIT: 1e-6, Options.MAXITER: 1000},
+    )
+    opt.minimize(1e-3 * np.ones(n))
+    assert opt.iteration > 1
+    assert opt.fval < -30
+    assert np.linalg.norm(opt.grad) < 1e-6
+
+
+@pytest.mark.parametrize('delta_init', [1e-6, 1.0, 1e6])
+@pytest.mark.parametrize('stepback', list(StepBackStrategy))
+def test_gtol_all_bounds_active(stepback, delta_init):
+    # optimum at the upper bound with large gradient, scaled gradient
+    # v * g vanishes there and should trigger GTOL
+    n = 5
+    opt = Optimizer(
+        lambda x: (np.sum((x - 3) ** 2), 2 * (x - 3), 2 * np.eye(n)),
+        ub=np.ones(n),
+        lb=-np.ones(n),
+        verbose=logging.WARNING,
+        options={
+            Options.DELTA_INIT: delta_init,
+            Options.STEPBACK_STRAT: stepback,
+            Options.MAXITER: 1000,
+        },
+    )
+    opt.minimize(np.zeros(n))
+    assert opt.exitflag > 0
+    assert np.isclose(opt.fval, 4 * n, rtol=1e-6)
+
+
+def test_concave_box_zero_gradient_start_accepts_first_step():
+    # the ratio augmentation must use the gradient at the current point
+    # (zero here), otherwise the exact first step is rejected
+    n = 10
+    opt = Optimizer(
+        lambda x: (-np.sum(x**2), -2 * x, -2 * np.eye(n)),
+        ub=2 * np.ones(n),
+        lb=-np.ones(n),
+        verbose=logging.WARNING,
+        options={Options.MAXITER: 1},
+    )
+    opt.minimize(np.zeros(n))
+    assert opt.tr_ratio > opt.get_option(Options.ETA)
+    assert opt.fval < 0
+
+
+@pytest.mark.parametrize('delta_init', [1e-6, 1.0])
+def test_concave_box_zero_gradient_start(delta_init):
+    n = 10
+    opt = Optimizer(
+        lambda x: (-np.sum(x**2), -2 * x, -2 * np.eye(n)),
+        ub=2 * np.ones(n),
+        lb=-np.ones(n),
+        verbose=logging.WARNING,
+        options={Options.DELTA_INIT: delta_init, Options.MAXITER: 1000},
+    )
+    opt.minimize(np.zeros(n))
+    assert opt.exitflag > 0
+    assert opt.fval <= -16
