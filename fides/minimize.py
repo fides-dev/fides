@@ -379,10 +379,10 @@ class Optimizer:
         self.delta = self.get_option(Options.DELTA_INIT)
         self.delta_iter = self.delta
         self.fval_min = np.inf
-        # reuse the logger across runs, every created logger stays registered
-        # in the logging module for the lifetime of the process
+        # reuse the logger across runs, it is handed to another optimizer
+        # once this one is garbage collected
         if self.logger is None:
-            self.logger = create_logger(self.verbose)
+            self.logger = create_logger(self.verbose, self)
         else:
             self.logger.setLevel(self.verbose)
         if not start_id:
