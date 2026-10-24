@@ -1,3 +1,4 @@
+# flake8: noqa -- exploratory benchmark script, see README.md
 """Check that step.qpval equals the quadratic model evaluated at the step actually taken."""
 
 from harness import *

@@ -1,3 +1,4 @@
+# flake8: noqa -- exploratory benchmark script, see README.md
 """Adversarial test problems for fides. Each returns (fun, x0, lb, ub, fopt, name)
 fun returns (f, g, h)."""
 

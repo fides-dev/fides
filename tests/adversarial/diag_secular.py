@@ -1,3 +1,4 @@
+# flake8: noqa -- exploratory benchmark script, see README.md
 """Instrument the secular-equation solve: how often does Newton fail over to brentq / hard case?"""
 
 import scipy.optimize as so

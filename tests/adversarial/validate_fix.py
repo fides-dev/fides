@@ -1,3 +1,4 @@
+# flake8: noqa -- exploratory benchmark script, see README.md
 """Validate root-cause diagnosis: monkeypatch candidate fixes into fides.subproblem and rerun failing cases.
 Fixes: (1) slam treats el==0 with w!=0 as infinite norm (so secular(laminit)<0 and the root is searched);
        (2) hard case picks the sign of the eigenvector that minimizes the model and uses a relative tolerance

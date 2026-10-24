@@ -1,3 +1,4 @@
+# flake8: noqa -- exploratory benchmark script, see README.md
 """Fuzz solve_nd_trust_region_subproblem against an eigendecomposition brute-force reference."""
 
 import logging

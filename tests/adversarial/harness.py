@@ -1,3 +1,4 @@
+# flake8: noqa -- exploratory benchmark script, see README.md
 import logging
 import sys
 import time
