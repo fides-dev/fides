@@ -128,11 +128,22 @@ def validate_options(options: dict):
                 f'{option_key} is not a valid options field.'
             ) from None
 
-        if option_key is Options.SUBSPACE_DIM:
-            option_value = SubSpaceDim(option_value)
-
-        if option_key is Options.STEPBACK_STRAT:
-            option_value = StepBackStrategy(option_value)
+        # compare the converted key, plain string keys would otherwise skip
+        # the value checks
+        enum_types = {
+            Options.SUBSPACE_DIM: SubSpaceDim,
+            Options.STEPBACK_STRAT: StepBackStrategy,
+        }
+        if option in enum_types:
+            enum_type = enum_types[option]
+            try:
+                option_value = enum_type(option_value)
+            except ValueError:
+                raise ValueError(
+                    f'{option_value!r} is not a valid value for option '
+                    f'{option.value}. Valid values are '
+                    f'{[e.value for e in enum_type]}.'
+                ) from None
 
         expected_type = expected_types[option]
         if not isinstance(option_value, expected_type):
