@@ -671,16 +671,16 @@ class Optimizer:
         elif gnorm <= gatol:
             self.exitflag = ExitFlag.GTOL
             self.logger.info(
-                'Stopping as gradient norm satisfies absolute convergence '
-                f'criteria: {gnorm:.2E} < {gatol:.2E}'
+                'Stopping as (scaled) gradient norm satisfies absolute '
+                f'convergence criteria: {gnorm:.2E} < {gatol:.2E}'
             )
             converged = True
 
         elif gnorm <= grtol * np.abs(fval_grad):
             self.exitflag = ExitFlag.GTOL
             self.logger.info(
-                'Stopping as gradient norm satisfies relative convergence '
-                f'criteria: {gnorm:.2E} < {grtol:.2E} * '
+                'Stopping as (scaled) gradient norm satisfies relative '
+                f'convergence criteria: {gnorm:.2E} < {grtol:.2E} * '
                 f'{np.abs(fval_grad):.2E}'
             )
             converged = True

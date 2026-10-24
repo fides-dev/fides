@@ -682,6 +682,22 @@ def test_gtol_all_bounds_active(stepback, delta_init):
     assert np.isclose(opt.fval, 4 * n, rtol=1e-6)
 
 
+def test_concave_box_zero_gradient_start_accepts_first_step():
+    # the ratio augmentation must use the gradient at the current point
+    # (zero here), otherwise the exact first step is rejected
+    n = 10
+    opt = Optimizer(
+        lambda x: (-np.sum(x**2), -2 * x, -2 * np.eye(n)),
+        ub=2 * np.ones(n),
+        lb=-np.ones(n),
+        verbose=logging.WARNING,
+        options={Options.MAXITER: 1},
+    )
+    opt.minimize(np.zeros(n))
+    assert opt.tr_ratio > opt.get_option(Options.ETA)
+    assert opt.fval < 0
+
+
 @pytest.mark.parametrize('delta_init', [1e-6, 1.0])
 def test_concave_box_zero_gradient_start(delta_init):
     n = 10
