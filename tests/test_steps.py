@@ -522,3 +522,43 @@ def test_non_finite_scaled_hessian_raises():
         pytest.raises(RuntimeError, match='scaled hessian'),
     ):
         opt.minimize(np.array([-1.5, 2.0]))
+
+
+def test_steihaug_iteration_cap():
+    """
+    on ill-conditioned problems with interior solution, floating point CG
+    may stagnate above the residual tolerance. The iteration must be capped
+    and the current iterate returned as step.
+    """
+    n = 100
+    rng = np.random.default_rng(0)
+    q, _ = np.linalg.qr(rng.standard_normal((n, n)))
+    hess = q @ np.diag(np.logspace(0, -16, n)) @ q.T
+    hess = 0.5 * (hess + hess.T)
+    g = rng.standard_normal(n)
+    g *= 1e-20 / norm(g)
+    x = np.zeros(n)
+    lb, ub = np.full(n, -np.inf), np.full(n, np.inf)
+    step = TRStepSteihaug(*step_args(x, g, hess, lb, ub, delta=1.0))
+    step.calculate()
+    assert np.all(np.isfinite(step.ss))
+    assert norm(step.ss) <= 1.0 + 1e-10
+    assert step.qpval < 0
+
+
+@pytest.mark.parametrize(
+    'g', [np.array([1e-200, 1e-200]), np.array([1e-200, 0.0])]
+)
+def test_steihaug_non_finite_curvature(g):
+    """
+    overflow in the CG recursion must not hang the loop or raise
+    """
+    n = 2
+    x = np.zeros(n)
+    hess = np.diag([1e120, 1e120])
+    lb, ub = np.full(n, -np.inf), np.full(n, np.inf)
+    step = TRStepSteihaug(*step_args(x, g, hess, lb, ub, delta=1.0))
+    with np.errstate(all='ignore'):
+        step.calculate()
+    assert np.all(np.isfinite(step.ss))
+    assert norm(step.ss) <= 1.0

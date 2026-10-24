@@ -428,3 +428,29 @@ def test_subproblem_fuzz(kind):
                 # ill-conditioned B
                 atol = n * np.spacing(1) * norm(b, 2) * delta**2
                 assert q - q_ref <= 1e-6 * scale + atol
+
+
+def test_1d_boundary_solution_degenerate_start():
+    """
+    a start point on the trust region boundary with orthogonal search
+    direction leaves s0 as the only feasible point (tau = 0), previously
+    0/0 produced nan
+    """
+    from fides.subproblem import get_1d_trust_region_boundary_solution
+
+    b = np.eye(2)
+    g = np.ones(2)
+    s = np.array([1.0, 0.0])
+    for s0 in [np.array([0.0, 1.0]), np.array([0.0, 1.0 + 1e-16])]:
+        tau = get_1d_trust_region_boundary_solution(b, g, s, s0, 1.0)
+        assert tau == 0.0
+        tau = solve_1d_trust_region_subproblem(b, g, s, 1.0, s0)
+        assert np.all(tau == 0.0)
+    # s0 marginally outside the trust region due to roundoff
+    tau = get_1d_trust_region_boundary_solution(
+        b, g, s, np.array([0.0, 1.0 + 1e-8]), 1.0
+    )
+    assert np.isfinite(tau)
+    # huge radii must not raise OverflowError
+    with np.errstate(all='ignore'):
+        get_1d_trust_region_boundary_solution(b, g, s, np.zeros(2), 1e155)

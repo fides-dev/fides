@@ -1026,3 +1026,375 @@ def test_gtol_at_initial_point():
     assert opt.exitflag == fides.ExitFlag.GTOL
     assert opt.iteration == 1
     assert np.all(x == 0)
+
+
+def _quadratic(x):
+    return float(np.sum(x**2)), 2 * x, 2 * np.eye(len(x))
+
+
+def test_bounds_and_x0_as_lists():
+    """lists and integer arrays for bounds and x0 must work like arrays"""
+    opt = Optimizer(_quadratic, ub=[2, 2], lb=[-2, -2], verbose=logging.ERROR)
+    fval, x, _, _ = opt.minimize([1, 1])
+    assert opt.lb.dtype == float
+    assert x.dtype == float
+    assert np.allclose(x, 0, atol=1e-6)
+
+
+def test_integer_x0_on_bound_is_shifted():
+    """
+    the non-degeneracy shift must not be truncated away for integer x0
+    """
+    opt = Optimizer(_quadratic, ub=[2, 2], lb=[0, 0], verbose=logging.ERROR)
+    opt.minimize(np.array([0, 0]), hess0=None)
+    assert opt.x.dtype == float
+
+
+@pytest.mark.parametrize(
+    ('lb', 'ub', 'x0', 'match'),
+    [
+        (np.zeros(2), np.ones(3), np.ones(2), 'lb has 2 entries'),
+        (np.zeros(2), np.array([1, np.nan]), np.ones(2), 'NaN'),
+        (np.ones(2), np.zeros(2), np.ones(2), 'lb exceeds ub'),
+        (np.zeros((2, 1)), np.ones((2, 1)), np.ones(2), 'ndim == 1'),
+        (np.zeros(2), np.ones(2), np.full(3, 0.5), 'x0 has 3 entries'),
+    ],
+)
+def test_invalid_bounds_and_x0(lb, ub, x0, match):
+    with pytest.raises(ValueError, match=match):
+        Optimizer(_quadratic, ub=ub, lb=lb, verbose=logging.ERROR).minimize(x0)
+
+
+def test_resfun_without_hessian_update():
+    """
+    resfun=True without a Hessian update scheme performs a Gauss-Newton
+    optimization with the Hessian approximation computed from sres
+    """
+    lb, ub, x0 = finite_bounds_include_optimum()
+    opt = Optimizer(
+        fletcher,
+        ub=ub,
+        lb=lb,
+        verbose=logging.ERROR,
+        resfun=True,
+        # Gauss-Newton converges linearly on this large-residual problem
+        options={Options.FATOL: 0, Options.FRTOL: 1e-12},
+    )
+    fval, x, grad, hess = opt.minimize(x0 + 0.5)
+    assert opt.exitflag > 0
+    assert np.allclose(x, [0, 0], atol=1e-4)
+    assert hess.shape == (2, 2)
+
+
+def test_resfun_with_incompatible_hessian_update():
+    lb, ub, _ = finite_bounds_include_optimum()
+    with pytest.raises(ValueError, match='does not support'):
+        Optimizer(
+            fletcher,
+            ub=ub,
+            lb=lb,
+            verbose=logging.ERROR,
+            resfun=True,
+            hessian_update=BFGS(),
+        )
+
+
+def test_hess0_validation():
+    lb, ub, x0 = finite_bounds_include_optimum()
+    # 'hess' with a function that does not return a hessian
+    opt = Optimizer(
+        rosengrad, ub=ub, lb=lb, verbose=logging.ERROR, hessian_update=BFGS()
+    )
+    with pytest.raises(ValueError, match="hess0='hess' requires"):
+        opt.minimize(x0, hess0='hess')
+    with pytest.raises(ValueError, match="string 'hess'"):
+        opt.minimize(x0, hess0='identity')
+    with pytest.raises(ValueError, match='inconsistent shape'):
+        opt.minimize(x0, hess0=np.ones((2, 3)))
+
+
+def test_missing_hessian_without_update_scheme():
+    lb, ub, x0 = finite_bounds_include_optimum()
+    opt = Optimizer(
+        lambda x: (*rosengrad(x), None), ub=ub, lb=lb, verbose=logging.ERROR
+    )
+    with pytest.raises(ValueError, match='must return a Hessian'):
+        opt.minimize(x0)
+
+
+def test_array_like_function_outputs():
+    """
+    zero-dimensional arrays (as returned by autodiff frameworks) and lists
+    must be accepted as function outputs
+    """
+    lb, ub, x0 = finite_bounds_include_optimum()
+
+    def fun(x):
+        f, g, h = rosenboth(x)
+        return np.array(f), list(g), h.tolist()
+
+    opt = Optimizer(fun, ub=ub, lb=lb, verbose=logging.ERROR)
+    fval, x, grad, hess = opt.minimize(x0)
+    assert isinstance(fval, float)
+    assert grad.dtype == float
+    assert hess.dtype == float
+    assert np.allclose(x, [1, 1], atol=1e-6)
+
+    def fun_vector_fval(x):
+        f, g, h = rosenboth(x)
+        return np.array([f]), g, h
+
+    with pytest.raises(ValueError, match='scalar'):
+        Optimizer(fun_vector_fval, ub=ub, lb=lb).minimize(x0)
+
+
+def test_verbose_none():
+    lb, ub, x0 = finite_bounds_include_optimum()
+    opt = Optimizer(rosenboth, ub=ub, lb=lb, verbose=None)
+    opt.minimize(x0)
+    assert opt.logger.level == logging.INFO
+
+
+@pytest.mark.parametrize(
+    ('option', 'value'),
+    [
+        (Options.GAMMA1, 1.0),
+        (Options.GAMMA1, 0.0),
+        (Options.GAMMA2, 1.0),
+        (Options.THETA_MAX, 1.5),
+        (Options.THETA_MAX, 0.0),
+        (Options.DELTA_INIT, 0.0),
+        (Options.DELTA_INIT, -1.0),
+        (Options.MU, 0.9),  # exceeds default eta
+        (Options.ETA, 0.1),  # below default mu
+        (Options.FATOL, -1e-8),
+        (Options.MAXITER, -1),
+        (Options.MAXTIME, np.nan),
+    ],
+)
+def test_option_out_of_range(option, value):
+    lb, ub, _ = finite_bounds_include_optimum()
+    with pytest.raises(ValueError, match=option.value):
+        Optimizer(rosenboth, ub=ub, lb=lb, options={option: value})
+
+
+def test_option_boundary_values_accepted():
+    lb, ub, _ = finite_bounds_include_optimum()
+    Optimizer(
+        rosenboth,
+        ub=ub,
+        lb=lb,
+        options={
+            Options.THETA_MAX: 1.0,
+            Options.MU: 0.0,
+            Options.ETA: 0.0,
+            Options.XTOL: 0,
+            Options.MAXITER: 0,
+            Options.MAXTIME: np.inf,
+        },
+    )
+    with pytest.raises(TypeError):
+        Optimizer(rosenboth, ub=ub, lb=lb, options={Options.MAXITER: np.inf})
+
+
+def test_project_into_bounds():
+    opt = Optimizer(
+        _quadratic,
+        ub=np.array([1.0, 1e6, np.inf, 2.0, 1.0]),
+        lb=np.array([-1.0, -1e6, -np.inf, 2.0, 1.0 - 1e-15]),
+        verbose=logging.ERROR,
+    )
+    mlb, mub = opt.degeneracy_margins()
+    assert mub[0] == 1e2 * np.spacing(1.0)
+    assert mub[1] == 1e2 * np.spacing(1e6)
+    assert mlb[2] == mub[2] == 0
+    # fixed variable and narrow box: margins shrink to half the width
+    assert mlb[3] == mub[3] == 0
+    assert np.isclose(mlb[4], 0.5e-15)
+    assert mlb[4] == mub[4]
+
+    x = np.array([1.0, -1e6 + 1e-11, 1e300, 2.0, 1.0])
+    xp = opt.project_into_bounds(x)
+    assert xp[0] == 1.0 - mub[0]
+    assert xp[1] == -1e6 + mlb[1]
+    assert xp[2] == 1e300
+    assert xp[3] == 2.0
+    assert opt.lb[4] <= xp[4] <= opt.ub[4]
+    # interior points (and projected points) are not changed
+    xi = np.array([0.5, 0.0, 0.0, 2.0, xp[4]])
+    np.testing.assert_array_equal(opt.project_into_bounds(xi), xi)
+    # roundoff-level violations are projected, larger ones are errors
+    xr = np.array([1.0 + np.spacing(1.0), 0.0, 0.0, 2.0, 1.0])
+    assert opt.project_into_bounds(xr)[0] == 1.0 - mub[0]
+    with pytest.raises(RuntimeError, match='Exceeded upper bounds'):
+        opt.project_into_bounds(np.array([1.0 + 1e-10, 0.0, 0.0, 2.0, 1.0]))
+
+
+def test_returned_fval_matches_returned_x():
+    """
+    the non-degeneracy shift must be applied before the function is
+    evaluated, otherwise the returned function value and gradient belong to
+    a different point than the returned x
+    """
+
+    def fun(x):
+        d = x - 2.0
+        return float(0.5e8 * d.dot(d)), 1e8 * d, 1e8 * np.eye(len(x))
+
+    opt = Optimizer(
+        fun,
+        ub=np.array([1.0]),
+        lb=np.array([-1.0]),
+        verbose=logging.ERROR,
+        options={Options.FATOL: 0, Options.FRTOL: 0},
+    )
+    fval, x, grad, _ = opt.minimize(np.zeros(1))
+    assert opt.exitflag == fides.ExitFlag.GTOL
+    assert fval == fun(x)[0]
+    np.testing.assert_array_equal(grad, fun(x)[1])
+    assert x[0] < 1.0
+    assert 1.0 - x[0] <= 2 * opt.degeneracy_margins()[1][0]
+
+
+def test_gtol_at_margin_with_large_active_gradient():
+    """
+    a variable that sits on the degeneracy margin of the bound its gradient
+    points towards is first-order optimal. The scaled gradient
+    ``v * g = margin * g`` can exceed gatol for large gradients, which
+    previously ended in DELTA_TOO_SMALL instead of GTOL
+    """
+
+    def fun(x):
+        d = x - np.array([2.0, 0.5])
+        scale = np.array([1e8, 1.0])
+        return (
+            float(0.5 * (scale * d).dot(d)),
+            scale * d,
+            np.diag(scale),
+        )
+
+    opt = Optimizer(
+        fun,
+        ub=np.ones(2),
+        lb=-np.ones(2),
+        verbose=logging.ERROR,
+        options={Options.FATOL: 0, Options.FRTOL: 0},
+    )
+    fval, x, grad, _ = opt.minimize(np.zeros(2))
+    assert opt.exitflag == fides.ExitFlag.GTOL
+    assert x[0] < 1.0
+    assert np.isclose(x[1], 0.5, atol=1e-6)
+
+    # fuzz seed 417: bounded 3D quadratic with optimum at the boundary,
+    # exact hessian, 2D/truncate ended in DELTA_TOO_SMALL at the optimum
+    a_mat = np.array(
+        [
+            [254.47025190187892, -957.7507076730951, -89.35613001751094],
+            [-957.7507076730951, 5567.74575936696, 610.7217365155356],
+            [-89.35613001751095, 610.7217365155357, 94.36382195105466],
+        ]
+    )
+    c = np.array([95295.05872705032, -788707.4313011734, 363651.61546168785])
+
+    def quad(x):
+        d = x - c
+        g = a_mat @ d
+        return 0.5 * d @ g, g, a_mat.copy()
+
+    opt = Optimizer(
+        quad,
+        ub=np.array([np.inf, 2.129356493655654, -1.6491456920060925]),
+        lb=np.array(
+            [-1.8124686425827827, -1.1467974443098234, -2.72748591691]
+        ),
+        verbose=logging.ERROR,
+        options={
+            Options.SUBSPACE_DIM: SubSpaceDim.TWO,
+            Options.STEPBACK_STRAT: StepBackStrategy.TRUNCATE,
+        },
+    )
+    fval, x, grad, _ = opt.minimize(
+        np.array(
+            [0.1685990186836514, -1.1467974443065474, -1.9781779767178744]
+        )
+    )
+    assert opt.exitflag == fides.ExitFlag.GTOL
+    assert np.isclose(x[0], 2936056.4128618506, rtol=1e-6)
+    assert np.all(x >= opt.lb)
+    assert np.all(x <= opt.ub)
+
+
+@pytest.mark.parametrize('subspace_dim', [SubSpaceDim.TWO, SubSpaceDim.FULL])
+def test_reflected_step_roundoff_stays_in_bounds(subspace_dim):
+    """
+    fuzz seed 194: multiply reflected steps with a base point one ulp from
+    the bound left the box by roundoff and aborted the run with
+    EXCEEDED_BOUNDARY
+    """
+    from scipy.optimize import rosen, rosen_der
+
+    lb = np.array(
+        [
+            -0.10513910090839354,
+            -3.8847815401692245e-06,
+            -1.0890332360853343e-06,
+            -38.43034911505484,
+            -777.5199314672093,
+            -693.936612481771,
+            -0.004468839218146271,
+            -2654.231323851368,
+            -3.3397342719787193e-06,
+            -0.005747499251648356,
+            -4.340574279133467e-05,
+            -0.09619101501202056,
+        ]
+    )
+    ub = np.array(
+        [
+            0.0003678849437744267,
+            0.0031272252641871374,
+            0.02583814866058093,
+            69974.720994837,
+            13302.0595926898,
+            246641.273308562,
+            33.50444796803692,
+            4578.3918179615075,
+            13911.60376445779,
+            1.7827454502346366e-06,
+            20419.003332247426,
+            0.1965329469257042,
+        ]
+    )
+    x0 = np.array(
+        [
+            -0.06134901875737717,
+            0.00019035859215926556,
+            0.009247738171127349,
+            67678.10966826047,
+            1135.3459417074257,
+            16857.81267011807,
+            13.997348539895688,
+            884.4014586935302,
+            6762.988218659159,
+            -0.0046606882604397675,
+            10996.565258243538,
+            -0.09619101501202056,
+        ]
+    )
+    opt = Optimizer(
+        lambda x: (rosen(x), rosen_der(x)),
+        ub=ub,
+        lb=lb,
+        verbose=logging.ERROR,
+        hessian_update=SR1(),
+        options={
+            Options.MAXITER: 500,
+            Options.SUBSPACE_DIM: subspace_dim,
+            Options.STEPBACK_STRAT: StepBackStrategy.REFLECT,
+        },
+    )
+    fval, x, grad, _ = opt.minimize(x0)
+    assert np.all(x >= lb)
+    assert np.all(x <= ub)
+    assert opt.exitflag > 0
+    assert np.isclose(fval, 10.913558700882975, rtol=1e-6)

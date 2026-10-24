@@ -112,3 +112,51 @@ def test_bb_degenerate_update_is_skipped():
     h.update(np.array([1.0, 0.0]), np.array([0.0, 1.0]))
     np.testing.assert_array_equal(h.get_diff(), np.zeros((2, 2)))
     np.testing.assert_array_equal(h.get_mat(), np.eye(2))
+
+
+@pytest.mark.parametrize('happ', [BFGS, DFP, lambda: Broyden(phi=0.5)])
+def test_broyden_zero_initialization(happ):
+    """
+    a zero initial approximation must not produce nan (0/0) updates, the
+    update reduces to the rank-1 term y y^T / (y^T s)
+    """
+    h = happ()
+    h._init_mat(dim=2, hess=np.zeros((2, 2)))
+    s = np.array([1.0, 0.5])
+    y = np.array([2.0, 0.3])
+    h.update(s, y)
+    assert np.isfinite(h.get_mat()).all()
+    np.testing.assert_allclose(h.get_mat(), np.outer(y, y) / y.dot(s))
+    np.testing.assert_allclose(h.get_mat().dot(s), y)
+
+
+def test_broyden_zero_curvature_update_is_skipped():
+    h = BFGS(enforce_curv_cond=False)
+    h._init_mat(dim=2)
+    # y orthogonal to s, division by y^T s is undefined
+    h.update(np.array([1.0, 0.0]), np.array([0.0, 1.0]))
+    assert np.isfinite(h.get_mat()).all()
+    np.testing.assert_array_equal(h.get_diff(), np.zeros((2, 2)))
+
+    # s^T B s == 0 but B s != 0, division by s^T B s is undefined
+    h = BFGS()
+    h._init_mat(dim=2, hess=np.array([[0.0, 1.0], [1.0, 0.0]]))
+    h.update(np.array([1.0, 0.0]), np.array([1.0, 1.0]))
+    assert np.isfinite(h.get_mat()).all()
+    np.testing.assert_array_equal(h.get_diff(), np.zeros((2, 2)))
+
+
+def test_init_mat_rejects_non_square():
+    h = BFGS()
+    with pytest.raises(ValueError, match='inconsistent shape'):
+        h._init_mat(dim=2, hess=np.ones((2, 3)))
+
+
+def test_sr1_skips_update_if_secant_equation_holds():
+    h = SR1()
+    h._init_mat(dim=2)
+    s = np.array([1.0, 0.5])
+    # y == B s, the update would be 0/0
+    h.update(s, h.get_mat().dot(s))
+    assert np.isfinite(h.get_mat()).all()
+    np.testing.assert_array_equal(h.get_diff(), np.zeros((2, 2)))
