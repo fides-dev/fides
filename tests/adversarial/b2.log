@@ -1,0 +1,312 @@
+
+=== boxquad10_c1e2  (n=10, fopt=-1.182e+02)
+  scipy trust-constr           f=-1.182e+02 it=   16 nfev=   12      28ms
+  scipy L-BFGS-B               f=-1.182e+02 it=   20 nfev=   22       1ms
+  exact:default(2D,reflect)    f=-1.182e+02 it=   11            FTOL      12ms gap=+3.7e-12
+  exact:full,reflect           f=-1.182e+02 it=   11            FTOL       8ms gap=+2.5e-12
+  exact:scg,reflect            f=-1.182e+02 it=   28            FTOL      24ms gap=+1.8e-06
+  exact:2D,single              f=-1.182e+02 it=   11            FTOL      11ms gap=+3.7e-12
+  exact:2D,truncate            f=-1.182e+02 it=   11            FTOL       9ms gap=+3.6e-12
+  exact:2D,mixed               f=-1.182e+02 it=   11            FTOL      12ms gap=+3.7e-12
+  exact:2D,refine              f=-1.182e+02 it=   11            FTOL       7ms gap=+6.6e-12
+  exact:full,truncate          f=-1.182e+02 it=   11            FTOL      10ms gap=+3.4e-12
+  exact:scg,truncate           f=-1.182e+02 it=   85            FTOL      74ms gap=+6.8e-07
+  exact:2D,delta1e-6           f=-1.182e+02 it=   30            FTOL      43ms gap=+1.1e-12
+  exact:2D,delta1e6            f=-1.182e+02 it=   11            FTOL      12ms gap=+7.7e-13
+  exact:2D,theta0.5            f=-1.182e+02 it=   11            FTOL      13ms gap=+3.7e-12
+  exact:2D,theta0.999          f=-1.182e+02 it=   11            FTOL      13ms gap=+3.7e-12
+
+=== boxquad30_c1e4  (n=30, fopt=-5.226e+03)
+  scipy trust-constr           f=-5.226e+03 it=   44 nfev=   37     111ms
+  scipy L-BFGS-B               f=-5.226e+03 it=  186 nfev=  193       7ms
+  exact:default(2D,reflect)    f=-5.226e+03 it=   10            FTOL      17ms gap=+1.2e-09
+  exact:full,reflect           f=-5.226e+03 it=   10            FTOL      14ms gap=+1.3e-09
+  exact:scg,reflect            f=-5.226e+03 it=   55            FTOL      60ms gap=+4.4e-04
+  exact:2D,single              f=-5.226e+03 it=   10            FTOL      17ms gap=+1.2e-09
+  exact:2D,truncate            f=-5.226e+03 it=   11            FTOL      26ms gap=+2.0e-09
+  exact:2D,mixed               f=-5.226e+03 it=   10            FTOL      24ms gap=+1.2e-09
+  exact:2D,refine              f=-5.226e+03 it=   11            FTOL      21ms gap=-1.9e-10
+  exact:full,truncate          f=-5.226e+03 it=   12            FTOL      60ms gap=+7.3e-10
+  exact:scg,truncate           f=-5.226e+03 it=  142            FTOL      90ms gap=+3.8e-03
+  exact:2D,delta1e-6           f=-5.226e+03 it=   30            FTOL      86ms gap=-1.9e-10
+  exact:2D,delta1e6            f=-5.226e+03 it=   10            FTOL      28ms gap=-1.9e-10
+  exact:2D,theta0.5            f=-5.226e+03 it=   10            FTOL      22ms gap=+1.2e-09
+  exact:2D,theta0.999          f=-5.226e+03 it=   10            FTOL      19ms gap=+1.2e-09
+
+=== boxquad30_c1e8  (n=30, fopt=-1.617e+07)
+  scipy trust-constr           f=-1.617e+07 it= 1399 nfev= 1546    4382ms
+  scipy L-BFGS-B               f=-1.617e+07 it= 1452 nfev= 1565      71ms
+  exact:default(2D,reflect)    f=-1.617e+07 it=   12            FTOL      26ms gap=+2.1e+01
+  exact:full,reflect           f=-1.617e+07 it=   25            FTOL      62ms gap=+2.7e-03
+  exact:scg,reflect            f=-1.617e+07 it=   21            FTOL      15ms gap=+1.5e+02
+  exact:2D,single              f=-1.617e+07 it=   12            FTOL      31ms gap=+2.1e+01
+  exact:2D,truncate            f=-1.617e+07 it=   12            FTOL      38ms gap=+1.0e+02
+  exact:2D,mixed               f=-1.617e+07 it=   12            FTOL      33ms gap=+2.1e+01
+  exact:2D,refine              f=-1.617e+07 it=   19            FTOL     160ms gap=+3.4e-04
+  exact:full,truncate          f=-1.617e+07 it=   23            FTOL     137ms gap=+4.6e-03
+  exact:scg,truncate           f=-1.617e+07 it=   16            FTOL      15ms gap=+3.1e+02
+  exact:2D,delta1e-6           f=-1.617e+07 it=   30            FTOL     106ms gap=+1.9e+02
+  exact:2D,delta1e6            f=-1.617e+07 it=   22            FTOL      71ms gap=+1.8e-03
+  exact:2D,theta0.5            f=-1.617e+07 it=   12            FTOL      34ms gap=+2.1e+01
+  exact:2D,theta0.999          f=-1.617e+07 it=   12            FTOL      30ms gap=+2.1e+01
+
+=== allactive5  (n=5, fopt=2.000e+01)
+  scipy trust-constr           f=+2.002e+01 it=    6 nfev=    4       9ms
+  scipy L-BFGS-B               f=+2.000e+01 it=    1 nfev=    2       0ms
+  exact:default(2D,reflect)    f=+2.000e+01 it=    6            FTOL      13ms gap=+0.0e+00
+  exact:full,reflect           f=+2.000e+01 it=    6            FTOL      13ms gap=+0.0e+00
+  exact:scg,reflect            f=+2.000e+01 it=    6            FTOL       8ms gap=+0.0e+00
+  exact:2D,single              f=+2.000e+01 it=    6            FTOL       8ms gap=+0.0e+00
+  exact:2D,truncate            f=+2.000e+01 it=   22 DELTA_TOO_SMALL      19ms gap=+0.0e+00
+  exact:2D,mixed               f=+2.000e+01 it=    6            FTOL       8ms gap=+0.0e+00
+  exact:2D,refine              f=+2.000e+01 it=   22 DELTA_TOO_SMALL      20ms gap=+0.0e+00
+  exact:full,truncate          f=+2.000e+01 it=   22 DELTA_TOO_SMALL      16ms gap=+0.0e+00
+  exact:scg,truncate           f=+2.000e+01 it=   22 DELTA_TOO_SMALL      12ms gap=+0.0e+00
+  exact:2D,delta1e-6           f=+2.000e+01 it=   25            FTOL      37ms gap=+0.0e+00
+  exact:2D,delta1e6            f=+2.000e+01 it=   21 DELTA_TOO_SMALL      19ms gap=+0.0e+00
+  exact:2D,theta0.5            f=+2.000e+01 it=    6            FTOL       9ms gap=+0.0e+00
+  exact:2D,theta0.999          f=+2.000e+01 it=    6            FTOL       5ms gap=+0.0e+00
+
+=== allactive50  (n=50, fopt=2.000e+02)
+  scipy trust-constr           f=+2.002e+02 it=    8 nfev=    6      21ms
+  scipy L-BFGS-B               f=+2.000e+02 it=    1 nfev=    2       1ms
+  exact:default(2D,reflect)    f=+2.000e+02 it=    7            FTOL      28ms gap=+0.0e+00
+  exact:full,reflect           f=+2.000e+02 it=    7            FTOL      37ms gap=+0.0e+00
+  exact:scg,reflect            f=+2.000e+02 it=    7            FTOL      64ms gap=+0.0e+00
+  exact:2D,single              f=+2.000e+02 it=    7            FTOL      23ms gap=+0.0e+00
+  exact:2D,truncate            f=+2.000e+02 it=   24 DELTA_TOO_SMALL      72ms gap=+0.0e+00
+  exact:2D,mixed               f=+2.000e+02 it=    7            FTOL      20ms gap=+0.0e+00
+  exact:2D,refine              f=+2.000e+02 it=   24 DELTA_TOO_SMALL      68ms gap=+0.0e+00
+  exact:full,truncate          f=+2.000e+02 it=    8            FTOL      29ms gap=+0.0e+00
+  exact:scg,truncate           f=+2.000e+02 it=    8            FTOL       7ms gap=+0.0e+00
+  exact:2D,delta1e-6           f=+2.000e+02 it=   27            FTOL     101ms gap=+0.0e+00
+  exact:2D,delta1e6            f=+2.000e+02 it=   22 DELTA_TOO_SMALL      62ms gap=+0.0e+00
+  exact:2D,theta0.5            f=+2.000e+02 it=    7            FTOL      24ms gap=+0.0e+00
+  exact:2D,theta0.999          f=+2.000e+02 it=    7            FTOL      25ms gap=+0.0e+00
+
+=== start_at_lb5  (n=5, fopt=2.000e+01)
+  scipy trust-constr           f=+2.010e+01 it=    5 nfev=    4      11ms
+  scipy L-BFGS-B               f=+2.000e+01 it=    1 nfev=    2       0ms
+  exact:default(2D,reflect)    f=+2.000e+01 it=   22 DELTA_TOO_SMALL      24ms gap=+0.0e+00
+  exact:full,reflect           f=+2.000e+01 it=    7            FTOL       9ms gap=+0.0e+00
+  exact:scg,reflect            f=+2.000e+01 it=    7            FTOL      10ms gap=+0.0e+00
+  exact:2D,single              f=+2.000e+01 it=   22 DELTA_TOO_SMALL      17ms gap=+0.0e+00
+  exact:2D,truncate            f=+2.000e+01 it=    7            FTOL       8ms gap=+0.0e+00
+  exact:2D,mixed               f=+2.000e+01 it=   22 DELTA_TOO_SMALL      23ms gap=+0.0e+00
+  exact:2D,refine              f=+2.000e+01 it=    7            FTOL       5ms gap=+0.0e+00
+  exact:full,truncate          f=+2.000e+01 it=    7            FTOL       4ms gap=+0.0e+00
+  exact:scg,truncate           f=+2.000e+01 it=    7            FTOL       4ms gap=+0.0e+00
+  exact:2D,delta1e-6           f=+2.000e+01 it=   26            FTOL      56ms gap=+0.0e+00
+  exact:2D,delta1e6            f=+2.000e+01 it=    6            FTOL       9ms gap=+0.0e+00
+  exact:2D,theta0.5            f=+2.000e+01 it=   22 DELTA_TOO_SMALL      24ms gap=+0.0e+00
+  exact:2D,theta0.999          f=+2.000e+01 it=   22 DELTA_TOO_SMALL      13ms gap=+0.0e+00
+
+=== rosen2_box_cut  (n=2, fopt=2.500e-01)
+  scipy trust-constr           f=+2.508e-01 it=   23 nfev=   20      47ms
+  scipy L-BFGS-B               f=+2.500e-01 it=   22 nfev=   32       3ms
+  exact:default(2D,reflect)    f=+2.500e-01 it=   20            FTOL      30ms gap=+0.0e+00
+  exact:full,reflect           f=+2.500e-01 it=   20            FTOL      16ms gap=+0.0e+00
+  exact:scg,reflect            f=+2.500e-01 it=   48 DELTA_TOO_SMALL      31ms gap=+0.0e+00
+  exact:2D,single              f=+2.500e-01 it=   20            FTOL      16ms gap=+0.0e+00
+  exact:2D,truncate            f=+2.500e-01 it=   19            FTOL      15ms gap=+0.0e+00
+  exact:2D,mixed               f=+2.500e-01 it=   18            FTOL      13ms gap=+0.0e+00
+  exact:2D,refine              f=+2.500e-01 it=   21            FTOL      45ms gap=+1.1e-12
+  exact:full,truncate          f=+2.500e-01 it=   19            FTOL      16ms gap=+0.0e+00
+  exact:scg,truncate           f=+2.500e-01 it=   37            FTOL      27ms gap=+1.4e-11
+  exact:2D,delta1e-6           f=+2.500e-01 it=   34            FTOL      61ms gap=+0.0e+00
+  exact:2D,delta1e6            f=+2.500e-01 it=   20            FTOL      35ms gap=+0.0e+00
+  exact:2D,theta0.5            f=+2.500e-01 it=   20            FTOL      37ms gap=+0.0e+00
+  exact:2D,theta0.999          f=+2.500e-01 it=   20            FTOL      22ms gap=+0.0e+00
+
+=== rosen10_box_cut  (n=10, fopt=6.001e+00)
+  scipy trust-constr           f=+8.589e+00 it=   35 nfev=   36     100ms
+  scipy L-BFGS-B               f=+6.001e+00 it=   35 nfev=   40       6ms
+  exact:default(2D,reflect)    EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  exact:full,reflect           EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  exact:scg,reflect            EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  exact:2D,single              EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  exact:2D,truncate            EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  exact:2D,mixed               EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  exact:2D,refine              EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  exact:full,truncate          EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  exact:scg,truncate           EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  exact:2D,delta1e-6           EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  exact:2D,delta1e6            EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  exact:2D,theta0.5            EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  exact:2D,theta0.999          EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+
+=== rosen2_tight  (n=2, fopt=0.000e+00)
+  scipy trust-constr           f=+6.921e-05 it=   44 nfev=   47      87ms
+  scipy L-BFGS-B               f=+8.015e-23 it=    5 nfev=   11       1ms
+  exact:default(2D,reflect)    f=+3.150e-10 it=   44            FTOL      36ms gap=+3.2e-10
+  exact:full,reflect           f=+3.150e-10 it=   44            FTOL      28ms gap=+3.2e-10
+  exact:scg,reflect            f=+1.319e-05 it=   66            FTOL      32ms gap=+1.3e-05
+  exact:2D,single              f=+3.150e-10 it=   44            FTOL      30ms gap=+3.2e-10
+  exact:2D,truncate            f=+3.150e-10 it=   44            FTOL      31ms gap=+3.2e-10
+  exact:2D,mixed               f=+3.150e-10 it=   44            FTOL      35ms gap=+3.2e-10
+  exact:2D,refine              f=+3.150e-10 it=   44            FTOL      30ms gap=+3.2e-10
+  exact:full,truncate          f=+3.150e-10 it=   44            FTOL      31ms gap=+3.2e-10
+  exact:scg,truncate           f=+1.319e-05 it=   66            FTOL      37ms gap=+1.3e-05
+  exact:2D,delta1e-6           f=+9.252e-10 it=   60            FTOL      55ms gap=+9.3e-10
+  exact:2D,delta1e6            f=+3.150e-10 it=   44            FTOL      35ms gap=+3.2e-10
+  exact:2D,theta0.5            f=+3.150e-10 it=   44            FTOL      38ms gap=+3.2e-10
+  exact:2D,theta0.999          f=+3.150e-10 it=   44            FTOL      27ms gap=+3.2e-10
+
+=== linear_box5  (n=5, fopt=-3.500e+00)
+  scipy trust-constr           f=-3.497e+00 it=   10 nfev=    7      16ms
+  scipy L-BFGS-B               f=-3.500e+00 it=    2 nfev=    3       0ms
+  exact:default(2D,reflect)    f=-3.500e+00 it=   18 DELTA_TOO_SMALL      22ms gap=+0.0e+00
+  exact:full,reflect           f=-3.500e+00 it=   18 DELTA_TOO_SMALL      27ms gap=+0.0e+00
+  exact:scg,reflect            f=-3.500e+00 it=   23 DELTA_TOO_SMALL      14ms gap=+0.0e+00
+  exact:2D,single              f=-3.500e+00 it=   18 DELTA_TOO_SMALL      22ms gap=+0.0e+00
+  exact:2D,truncate            f=-3.500e+00 it=    6            FTOL       5ms gap=+0.0e+00
+  exact:2D,mixed               f=-3.500e+00 it=   18 DELTA_TOO_SMALL      18ms gap=+0.0e+00
+  exact:2D,refine              f=-3.500e+00 it=    6            FTOL       4ms gap=+0.0e+00
+  exact:full,truncate          f=-3.500e+00 it=    6            FTOL       5ms gap=+0.0e+00
+  exact:scg,truncate           f=-3.500e+00 it=    9            FTOL       6ms gap=+0.0e+00
+  exact:2D,delta1e-6           f=-3.500e+00 it=   38 DELTA_TOO_SMALL      40ms gap=+0.0e+00
+  exact:2D,delta1e6            f=-3.500e+00 it=   17 DELTA_TOO_SMALL      23ms gap=+0.0e+00
+  exact:2D,theta0.5            f=-3.500e+00 it=   18 DELTA_TOO_SMALL      25ms gap=+0.0e+00
+  exact:2D,theta0.999          f=-3.500e+00 it=   18 DELTA_TOO_SMALL      18ms gap=+0.0e+00
+
+=== linear_box1  (n=1, fopt=-1.000e+00)
+  scipy trust-constr           f=-9.992e-01 it=    7 nfev=    4       9ms
+  scipy L-BFGS-B               f=-1.000e+00 it=    2 nfev=    3       0ms
+  exact:default(2D,reflect)    f=-1.000e+00 it=    5            FTOL       3ms gap=+0.0e+00
+  exact:full,reflect           f=-1.000e+00 it=    5            FTOL       2ms gap=+0.0e+00
+  exact:scg,reflect            f=-1.000e+00 it=    5            FTOL       2ms gap=+0.0e+00
+  exact:2D,single              f=-1.000e+00 it=    5            FTOL       2ms gap=+0.0e+00
+  exact:2D,truncate            f=-1.000e+00 it=    5            FTOL       2ms gap=+0.0e+00
+  exact:2D,mixed               f=-1.000e+00 it=    5            FTOL       2ms gap=+0.0e+00
+  exact:2D,refine              f=-1.000e+00 it=    5            FTOL       2ms gap=+0.0e+00
+  exact:full,truncate          f=-1.000e+00 it=    5            FTOL       2ms gap=+0.0e+00
+  exact:scg,truncate           f=-1.000e+00 it=    5            FTOL       5ms gap=+0.0e+00
+  exact:2D,delta1e-6           f=-1.000e+00 it=   39 DELTA_TOO_SMALL      21ms gap=+0.0e+00
+  exact:2D,delta1e6            f=-1.000e+00 it=    5            FTOL       3ms gap=+0.0e+00
+  exact:2D,theta0.5            f=-1.000e+00 it=    7            FTOL       3ms gap=+2.2e-16
+  exact:2D,theta0.999          f=-1.000e+00 it=   19 DELTA_TOO_SMALL      10ms gap=+0.0e+00
+
+=== rosen1d_like  (n=1, fopt=0.000e+00)
+  scipy trust-constr           f=+1.692e-09 it=   26 nfev=   19      41ms
+  scipy L-BFGS-B               f=+1.707e-12 it=   28 nfev=   29       2ms
+  exact:default(2D,reflect)    f=+7.878e-10 it=   18            FTOL       9ms gap=+7.9e-10
+  exact:full,reflect           f=+7.878e-10 it=   18            FTOL       8ms gap=+7.9e-10
+  exact:scg,reflect            f=+7.878e-10 it=   18            FTOL       6ms gap=+7.9e-10
+  exact:2D,single              f=+7.878e-10 it=   18            FTOL       7ms gap=+7.9e-10
+  exact:2D,truncate            f=+7.878e-10 it=   18            FTOL      10ms gap=+7.9e-10
+  exact:2D,mixed               f=+7.878e-10 it=   18            FTOL      10ms gap=+7.9e-10
+  exact:2D,refine              f=+7.878e-10 it=   18            FTOL      11ms gap=+7.9e-10
+  exact:full,truncate          f=+7.878e-10 it=   18            FTOL       8ms gap=+7.9e-10
+  exact:scg,truncate           f=+7.878e-10 it=   18            FTOL       7ms gap=+7.9e-10
+  exact:2D,delta1e-6           f=+7.277e-10 it=   36            FTOL      21ms gap=+7.3e-10
+  exact:2D,delta1e6            f=+7.878e-10 it=   18            FTOL      11ms gap=+7.9e-10
+  exact:2D,theta0.5            f=+7.878e-10 it=   18            FTOL      11ms gap=+7.9e-10
+  exact:2D,theta0.999          f=+7.878e-10 it=   18            FTOL       7ms gap=+7.9e-10
+
+=== quartic1d_bound  (n=1, fopt=1.000e+00)
+  scipy trust-constr           f=+1.004e+00 it=   12 nfev=   10      18ms
+  scipy L-BFGS-B               f=+1.000e+00 it=    1 nfev=    2       0ms
+  exact:default(2D,reflect)    f=+1.000e+00 it=   12            FTOL       7ms gap=+0.0e+00
+  exact:full,reflect           f=+1.000e+00 it=   12            FTOL       5ms gap=+0.0e+00
+  exact:scg,reflect            f=+1.000e+00 it=   12            FTOL       7ms gap=+0.0e+00
+  exact:2D,single              f=+1.000e+00 it=   12            FTOL       8ms gap=+0.0e+00
+  exact:2D,truncate            f=+1.000e+00 it=   12            FTOL       5ms gap=+0.0e+00
+  exact:2D,mixed               f=+1.000e+00 it=   12            FTOL       7ms gap=+0.0e+00
+  exact:2D,refine              f=+1.000e+00 it=   12            FTOL       7ms gap=+0.0e+00
+  exact:full,truncate          f=+1.000e+00 it=   12            FTOL       5ms gap=+0.0e+00
+  exact:scg,truncate           f=+1.000e+00 it=   12            FTOL       8ms gap=+0.0e+00
+  exact:2D,delta1e-6           f=+1.000e+00 it=   30            FTOL      20ms gap=+0.0e+00
+  exact:2D,delta1e6            f=+1.000e+00 it=   12            FTOL      12ms gap=+0.0e+00
+  exact:2D,theta0.5            f=+1.000e+00 it=   13            FTOL       8ms gap=+0.0e+00
+  exact:2D,theta0.999          f=+1.000e+00 it=   12            FTOL      12ms gap=+0.0e+00
+
+=== rosen10_lb_only  (n=10, fopt=1.456e-16)
+  scipy trust-constr           f=+7.880e-13 it=   70 nfev=   74     134ms
+  scipy L-BFGS-B               f=+1.456e-16 it=   80 nfev=   95      11ms
+  exact:default(2D,reflect)    f=+3.987e+00 it=   34            FTOL      52ms gap=+4.0e+00  <-- BAD
+  exact:full,reflect           f=+3.987e+00 it=   29            FTOL      35ms gap=+4.0e+00  <-- BAD
+  exact:scg,reflect            f=+9.743e-24 it=   93            FTOL      49ms gap=-1.5e-16
+  exact:2D,single              f=+3.987e+00 it=   34            FTOL      41ms gap=+4.0e+00  <-- BAD
+  exact:2D,truncate            f=+3.987e+00 it=   34            FTOL      45ms gap=+4.0e+00  <-- BAD
+  exact:2D,mixed               f=+3.987e+00 it=   34            FTOL      51ms gap=+4.0e+00  <-- BAD
+  exact:2D,refine              f=+3.987e+00 it=   34            FTOL     107ms gap=+4.0e+00  <-- BAD
+  exact:full,truncate          f=+3.987e+00 it=   29            FTOL      30ms gap=+4.0e+00  <-- BAD
+  exact:scg,truncate           f=+9.743e-24 it=   93            FTOL      60ms gap=-1.5e-16
+  exact:2D,delta1e-6           f=+5.762e-17 it=   58            FTOL      83ms gap=-8.8e-17
+  exact:2D,delta1e6            f=+3.987e+00 it=   29            FTOL      32ms gap=+4.0e+00  <-- BAD
+  exact:2D,theta0.5            f=+3.987e+00 it=   34            FTOL      51ms gap=+4.0e+00  <-- BAD
+  exact:2D,theta0.999          f=+3.987e+00 it=   34            FTOL      50ms gap=+4.0e+00  <-- BAD
+
+=== rosen10_hugebox  (n=10, fopt=5.436e-17)
+  scipy trust-constr           f=+1.175e-13 it=   68 nfev=   61     126ms
+  scipy L-BFGS-B               f=+5.436e-17 it=   68 nfev=   88       7ms
+  exact:default(2D,reflect)    f=+3.987e+00 it=   34            FTOL      73ms gap=+4.0e+00  <-- BAD
+  exact:full,reflect           f=+3.987e+00 it=   37            FTOL      48ms gap=+4.0e+00  <-- BAD
+  exact:scg,reflect            f=+1.378e-09 it=  101            FTOL      59ms gap=+1.4e-09
+  exact:2D,single              f=+3.987e+00 it=   34            FTOL      80ms gap=+4.0e+00  <-- BAD
+  exact:2D,truncate            f=+3.987e+00 it=   34            FTOL      77ms gap=+4.0e+00  <-- BAD
+  exact:2D,mixed               f=+3.987e+00 it=   34            FTOL     107ms gap=+4.0e+00  <-- BAD
+  exact:2D,refine              f=+3.987e+00 it=   34            FTOL      73ms gap=+4.0e+00  <-- BAD
+  exact:full,truncate          f=+3.987e+00 it=   37            FTOL      50ms gap=+4.0e+00  <-- BAD
+  exact:scg,truncate           f=+1.378e-09 it=  101            FTOL      59ms gap=+1.4e-09
+  exact:2D,delta1e-6           f=+4.017e-27 it=   49            FTOL     102ms gap=-5.4e-17
+  exact:2D,delta1e6            f=+3.987e+00 it=   40            FTOL     123ms gap=+4.0e+00  <-- BAD
+  exact:2D,theta0.5            f=+3.987e+00 it=   34            FTOL      87ms gap=+4.0e+00  <-- BAD
+  exact:2D,theta0.999          f=+3.987e+00 it=   34            FTOL      83ms gap=+4.0e+00  <-- BAD
+
+=== quad5_tinybox  (n=5, fopt=1.250e+00)
+  scipy trust-constr           f=+1.250e+00 it=   32 nfev=   25      76ms
+  scipy L-BFGS-B               f=+1.250e+00 it=    1 nfev=    2       0ms
+  exact:default(2D,reflect)    f=+1.250e+00 it=   17 DELTA_TOO_SMALL      14ms gap=+0.0e+00
+  exact:full,reflect           f=+1.250e+00 it=   17 DELTA_TOO_SMALL      12ms gap=+0.0e+00
+  exact:scg,reflect            f=+1.250e+00 it=   17 DELTA_TOO_SMALL      11ms gap=+0.0e+00
+  exact:2D,single              f=+1.250e+00 it=   17 DELTA_TOO_SMALL      16ms gap=+0.0e+00
+  exact:2D,truncate            f=+1.250e+00 it=   17 DELTA_TOO_SMALL      14ms gap=+0.0e+00
+  exact:2D,mixed               f=+1.250e+00 it=   17 DELTA_TOO_SMALL      12ms gap=+0.0e+00
+  exact:2D,refine              f=+1.250e+00 it=   17 DELTA_TOO_SMALL      13ms gap=+0.0e+00
+  exact:full,truncate          f=+1.250e+00 it=   17 DELTA_TOO_SMALL       9ms gap=+0.0e+00
+  exact:scg,truncate           f=+1.250e+00 it=   17 DELTA_TOO_SMALL      10ms gap=+0.0e+00
+  exact:2D,delta1e-6           f=+1.250e+00 it=    1            FTOL       2ms gap=+5.0e-07
+  exact:2D,delta1e6            f=+1.250e+00 it=   17 DELTA_TOO_SMALL       9ms gap=+0.0e+00
+  exact:2D,theta0.5            f=+1.250e+00 it=   17 DELTA_TOO_SMALL       9ms gap=+0.0e+00
+  exact:2D,theta0.999          f=+1.250e+00 it=   17 DELTA_TOO_SMALL      10ms gap=+0.0e+00
+
+=== concave_box10  (n=10, fopt=-4.000e+01)
+  scipy trust-constr           f=-3.699e+01 it=   15 nfev=   12      35ms
+  scipy L-BFGS-B               f=-2.500e+01 it=    5 nfev=    7       0ms
+  exact:default(2D,reflect)    f=-2.500e+01 it=    7            FTOL     212ms gap=+1.5e+01  <-- BAD
+  exact:full,reflect           f=-2.800e+01 it=    9            FTOL      65ms gap=+1.2e+01  <-- BAD
+  exact:scg,reflect            f=-2.500e+01 it=   14            FTOL      32ms gap=+1.5e+01  <-- BAD
+  exact:2D,single              f=-2.500e+01 it=    7            FTOL      26ms gap=+1.5e+01  <-- BAD
+  exact:2D,truncate            f=-2.500e+01 it=    8            FTOL      42ms gap=+1.5e+01  <-- BAD
+  exact:2D,mixed               f=-2.500e+01 it=    7            FTOL      35ms gap=+1.5e+01  <-- BAD
+  exact:2D,refine              f=-2.500e+01 it=    8            FTOL     196ms gap=+1.5e+01  <-- BAD
+  exact:full,truncate          f=-2.500e+01 it=    8            FTOL      78ms gap=+1.5e+01  <-- BAD
+  exact:scg,truncate           f=-2.500e+01 it=   16            FTOL      27ms gap=+1.5e+01  <-- BAD
+  exact:2D,delta1e-6           f=-2.500e+01 it=   42 DELTA_TOO_SMALL     208ms gap=+1.5e+01  <-- BAD
+  exact:2D,delta1e6            f=-2.500e+01 it=    9            FTOL      47ms gap=+1.5e+01  <-- BAD
+  exact:2D,theta0.5            f=-2.500e+01 it=    7            FTOL      27ms gap=+1.5e+01  <-- BAD
+  exact:2D,theta0.999          f=-2.500e+01 it=    7            FTOL      26ms gap=+1.5e+01  <-- BAD
+
+=== concave_box10_zero  (n=10, fopt=-4.000e+01)
+  scipy trust-constr           f=-9.960e+00 it=    6 nfev=    4      12ms
+  scipy L-BFGS-B               f=-0.000e+00 it=    0 nfev=    1       0ms
+  exact:default(2D,reflect)    f=-1.600e+01 it=   24 DELTA_TOO_SMALL      60ms gap=+2.4e+01  <-- BAD
+  exact:full,reflect           f=-4.000e+01 it=   46 DELTA_TOO_SMALL      57ms gap=+0.0e+00
+  exact:scg,reflect            f=-0.000e+00 it=   27 DELTA_TOO_SMALL      13ms gap=+4.0e+01  <-- BAD
+  exact:2D,single              f=-1.600e+01 it=    9            FTOL      21ms gap=+2.4e+01  <-- BAD
+  exact:2D,truncate            f=-1.600e+01 it=   10            FTOL      23ms gap=+2.4e+01  <-- BAD
+  exact:2D,mixed               f=-1.600e+01 it=    9            FTOL      31ms gap=+2.4e+01  <-- BAD
+  exact:2D,refine              f=-1.600e+01 it=   26 DELTA_TOO_SMALL     123ms gap=+2.4e+01  <-- BAD
+  exact:full,truncate          f=-4.000e+01 it=   25            FTOL      70ms gap=+0.0e+00
+  exact:scg,truncate           f=-0.000e+00 it=   27 DELTA_TOO_SMALL      12ms gap=+4.0e+01  <-- BAD
+  exact:2D,delta1e-6           f=-1.000e-12 it=    1            FTOL       2ms gap=+4.0e+01  <-- BAD
+  exact:2D,delta1e6            f=-1.600e+01 it=   24 DELTA_TOO_SMALL      52ms gap=+2.4e+01  <-- BAD
+  exact:2D,theta0.5            f=-1.600e+01 it=   24 DELTA_TOO_SMALL      57ms gap=+2.4e+01  <-- BAD
+  exact:2D,theta0.999          f=-1.600e+01 it=   24 DELTA_TOO_SMALL      88ms gap=+2.4e+01  <-- BAD
+
+=== expover3_box  (n=3, fopt=1.650e-18)
+  scipy trust-constr           f=+1.130e+261 it=  170 nfev=    3     155ms
+  scipy L-BFGS-B               f=+1.650e-18 it=    4 nfev=    9       1ms
+  exact:default(2D,reflect)    f=+5.789e-22 it=  605            FTOL     382ms gap=-1.6e-18  <-- SLOW
+  exact:full,reflect           f=+2.802e-18 it=  605            GTOL     302ms gap=+1.2e-18  <-- SLOW

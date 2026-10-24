@@ -71,6 +71,8 @@ ignore = ["PT011"]  # pytest.raises() without match parameter is acceptable
 
 [tool.ruff.lint.per-file-ignores]
 "fides/subproblem.py" = ["W605"]
+# exploratory benchmark / diagnostic scripts, not package code
+"tests/adversarial/*" = ["F403", "F405", "N803", "N806", "E501", "E402", "C408", "B007", "B905", "SIM109", "SIM115"]
 
 [tool.ruff.lint.isort]
 # Use black-compatible import sorting

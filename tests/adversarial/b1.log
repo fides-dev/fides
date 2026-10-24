@@ -1,0 +1,373 @@
+
+=== rosen2  (n=2, fopt=0.000e+00)
+  scipy trust-exact            f=+3.331e-19 it=   25 nfev=   26       7ms
+  exact:default(2D,reflect)    f=+7.706e-15 it=   25            FTOL      20ms gap=+7.7e-15
+  exact:full,reflect           f=+7.706e-15 it=   25            FTOL      19ms gap=+7.7e-15
+  exact:scg,reflect            f=+9.270e-14 it=   29            FTOL      17ms gap=+9.3e-14
+  exact:2D,single              f=+7.706e-15 it=   25            FTOL      28ms gap=+7.7e-15
+  exact:2D,truncate            f=+7.706e-15 it=   25            FTOL      29ms gap=+7.7e-15
+  exact:2D,mixed               f=+7.706e-15 it=   25            FTOL      17ms gap=+7.7e-15
+  exact:2D,refine              f=+7.706e-15 it=   25            FTOL      17ms gap=+7.7e-15
+  exact:full,truncate          f=+7.706e-15 it=   25            FTOL      16ms gap=+7.7e-15
+  exact:scg,truncate           f=+9.270e-14 it=   29            FTOL      15ms gap=+9.3e-14
+  exact:2D,delta1e-6           f=+2.613e-20 it=   41            FTOL      52ms gap=+2.6e-20
+  exact:2D,delta1e6            f=+2.068e-23 it=   28            FTOL      21ms gap=+2.1e-23
+  exact:2D,theta0.5            f=+7.706e-15 it=   25            FTOL      17ms gap=+7.7e-15
+  exact:2D,theta0.999          f=+7.706e-15 it=   25            FTOL      18ms gap=+7.7e-15
+
+=== rosen10  (n=10, fopt=0.000e+00)
+  scipy trust-exact            f=+3.987e+00 it=   29 nfev=   30       9ms
+  exact:default(2D,reflect)    f=+3.987e+00 it=   29            FTOL      30ms gap=+4.0e+00  <-- BAD
+  exact:full,reflect           f=+3.987e+00 it=   30            FTOL      37ms gap=+4.0e+00  <-- BAD
+  exact:scg,reflect            f=+1.644e-27 it=   84            FTOL      44ms gap=+1.6e-27
+  exact:2D,single              f=+3.987e+00 it=   29            FTOL      37ms gap=+4.0e+00  <-- BAD
+  exact:2D,truncate            f=+3.987e+00 it=   29            FTOL      36ms gap=+4.0e+00  <-- BAD
+  exact:2D,mixed               f=+3.987e+00 it=   29            FTOL      34ms gap=+4.0e+00  <-- BAD
+  exact:2D,refine              f=+3.987e+00 it=   29            FTOL      45ms gap=+4.0e+00  <-- BAD
+  exact:full,truncate          f=+3.987e+00 it=   30            FTOL      93ms gap=+4.0e+00  <-- BAD
+  exact:scg,truncate           f=+1.644e-27 it=   84            FTOL      53ms gap=+1.6e-27
+  exact:2D,delta1e-6           f=+3.987e+00 it=   50            FTOL      80ms gap=+4.0e+00  <-- BAD
+  exact:2D,delta1e6            f=+3.987e+00 it=   43            FTOL      46ms gap=+4.0e+00  <-- BAD
+  exact:2D,theta0.5            f=+3.987e+00 it=   29            FTOL      36ms gap=+4.0e+00  <-- BAD
+  exact:2D,theta0.999          f=+3.987e+00 it=   29            FTOL      33ms gap=+4.0e+00  <-- BAD
+
+=== rosen100  (n=100, fopt=0.000e+00)
+  scipy trust-exact            f=+6.406e-15 it=  529 nfev=  625     110ms
+  exact:default(2D,reflect)    f=+3.987e+00 it=  176            FTOL    2716ms gap=+4.0e+00  <-- BAD
+  exact:full,reflect           f=+3.987e+00 it=  360            FTOL    4304ms gap=+4.0e+00  <-- BAD
+  exact:scg,reflect            f=+2.365e-11 it=  502            FTOL     350ms gap=+2.4e-11  <-- SLOW
+  exact:2D,single              f=+3.987e+00 it=  176            FTOL    2466ms gap=+4.0e+00  <-- BAD
+  exact:2D,truncate            f=+3.987e+00 it=  176            FTOL    2404ms gap=+4.0e+00  <-- BAD
+  exact:2D,mixed               f=+3.987e+00 it=  176            FTOL    2598ms gap=+4.0e+00  <-- BAD
+  exact:2D,refine              f=+3.987e+00 it=  176            FTOL    2486ms gap=+4.0e+00  <-- BAD
+  exact:full,truncate          f=+3.987e+00 it=  360            FTOL    4105ms gap=+4.0e+00  <-- BAD
+  exact:scg,truncate           f=+2.365e-11 it=  502            FTOL     405ms gap=+2.4e-11  <-- SLOW
+  exact:2D,delta1e-6           f=+3.987e+00 it=  255            FTOL    3549ms gap=+4.0e+00  <-- BAD
+  exact:2D,delta1e6            f=+3.987e+00 it=  167            FTOL    2165ms gap=+4.0e+00  <-- BAD
+  exact:2D,theta0.5            f=+3.987e+00 it=  176            FTOL    2327ms gap=+4.0e+00  <-- BAD
+  exact:2D,theta0.999          f=+3.987e+00 it=  176            FTOL    2226ms gap=+4.0e+00  <-- BAD
+
+=== quad20_c1e6  (n=20, fopt=-1.459e+05)
+  scipy trust-exact            f=-1.459e+05 it=    3 nfev=    4       1ms
+  exact:default(2D,reflect)    f=-1.459e+05 it=    3            GTOL       7ms gap=-2.9e-11
+  exact:full,reflect           f=-1.459e+05 it=    3            GTOL       3ms gap=-5.8e-11
+  exact:scg,reflect            f=-1.459e+05 it=   11            FTOL       5ms gap=+1.0e-01
+  exact:2D,single              f=-1.459e+05 it=    3            GTOL       7ms gap=-2.9e-11
+  exact:2D,truncate            f=-1.459e+05 it=    3            GTOL       7ms gap=-2.9e-11
+  exact:2D,mixed               f=-1.459e+05 it=    3            GTOL       7ms gap=-2.9e-11
+  exact:2D,refine              f=-1.459e+05 it=    3            GTOL       7ms gap=-2.9e-11
+  exact:full,truncate          f=-1.459e+05 it=    3            GTOL       3ms gap=-5.8e-11
+  exact:scg,truncate           f=-1.459e+05 it=   11            FTOL       4ms gap=+1.0e-01
+  exact:2D,delta1e-6           f=-1.459e+05 it=   23            GTOL      32ms gap=-1.7e-10
+  exact:2D,delta1e6            f=-1.459e+05 it=    1            GTOL       1ms gap=-5.8e-11
+  exact:2D,theta0.5            f=-1.459e+05 it=    3            GTOL      10ms gap=-2.9e-11
+  exact:2D,theta0.999          f=-1.459e+05 it=    3            GTOL      13ms gap=-2.9e-11
+
+=== quad20_c1e12  (n=20, fopt=-4.971e+10)
+  scipy trust-exact            f=-4.971e+10 it=    3 nfev=    4       4ms
+  exact:default(2D,reflect)    f=-4.971e+10 it=    4            FTOL       5ms gap=+3.1e-05
+  exact:full,reflect           f=-4.971e+10 it=    4            FTOL       4ms gap=+6.1e-05
+  exact:scg,reflect            f=-4.971e+10 it=   11            FTOL       4ms gap=+1.8e+03
+  exact:2D,single              f=-4.971e+10 it=    4            FTOL       3ms gap=+3.1e-05
+  exact:2D,truncate            f=-4.971e+10 it=    4            FTOL       4ms gap=+3.1e-05
+  exact:2D,mixed               f=-4.971e+10 it=    4            FTOL       4ms gap=+3.1e-05
+  exact:2D,refine              f=-4.971e+10 it=    4            FTOL       5ms gap=+3.1e-05
+  exact:full,truncate          f=-4.971e+10 it=    4            FTOL       4ms gap=+6.1e-05
+  exact:scg,truncate           f=-4.971e+10 it=   11            FTOL       5ms gap=+1.8e+03
+  exact:2D,delta1e-6           f=-4.971e+10 it=   24            FTOL      35ms gap=+3.1e-05
+  exact:2D,delta1e6            f=-4.971e+10 it=    5            FTOL       4ms gap=+0.0e+00
+  exact:2D,theta0.5            f=-4.971e+10 it=    4            FTOL       4ms gap=+3.1e-05
+  exact:2D,theta0.999          f=-4.971e+10 it=    4            FTOL       4ms gap=+3.1e-05
+
+=== quad50_diag_c1e8  (n=50, fopt=-3.460e+08)
+  scipy trust-exact            f=-3.460e+08 it=    4 nfev=    5       2ms
+  exact:default(2D,reflect)    f=-3.460e+08 it=    4            GTOL      17ms gap=+0.0e+00
+  exact:full,reflect           f=-3.460e+08 it=    4            GTOL       9ms gap=+0.0e+00
+  exact:scg,reflect            f=-3.460e+08 it=   17            FTOL      16ms gap=+3.2e-01
+  exact:2D,single              f=-3.460e+08 it=    4            GTOL      19ms gap=+0.0e+00
+  exact:2D,truncate            f=-3.460e+08 it=    4            GTOL      17ms gap=+0.0e+00
+  exact:2D,mixed               f=-3.460e+08 it=    4            GTOL      18ms gap=+0.0e+00
+  exact:2D,refine              f=-3.460e+08 it=    4            GTOL      20ms gap=+0.0e+00
+  exact:full,truncate          f=-3.460e+08 it=    4            GTOL       8ms gap=+0.0e+00
+  exact:scg,truncate           f=-3.460e+08 it=   17            FTOL      13ms gap=+3.2e-01
+  exact:2D,delta1e-6           f=-3.460e+08 it=   23            GTOL      66ms gap=+0.0e+00
+  exact:2D,delta1e6            f=-3.460e+08 it=    1            GTOL       2ms gap=+0.0e+00
+  exact:2D,theta0.5            f=-3.460e+08 it=    4            GTOL      17ms gap=+0.0e+00
+  exact:2D,theta0.999          f=-3.460e+08 it=    4            GTOL      19ms gap=+0.0e+00
+
+=== powell_sing  (n=4, fopt=0.000e+00)
+  scipy trust-exact            f=+5.904e-08 it=   13 nfev=   14       3ms
+  exact:default(2D,reflect)    f=+2.270e-09 it=   15            FTOL       9ms gap=+2.3e-09
+  exact:full,reflect           f=+2.318e-09 it=   15            FTOL       7ms gap=+2.3e-09
+  exact:scg,reflect            f=+1.109e-09 it=   21            FTOL      10ms gap=+1.1e-09
+  exact:2D,single              f=+2.270e-09 it=   15            FTOL       7ms gap=+2.3e-09
+  exact:2D,truncate            f=+2.270e-09 it=   15            FTOL       9ms gap=+2.3e-09
+  exact:2D,mixed               f=+2.270e-09 it=   15            FTOL      10ms gap=+2.3e-09
+  exact:2D,refine              f=+2.270e-09 it=   15            FTOL       9ms gap=+2.3e-09
+  exact:full,truncate          f=+2.318e-09 it=   15            FTOL       9ms gap=+2.3e-09
+  exact:scg,truncate           f=+1.109e-09 it=   21            FTOL       9ms gap=+1.1e-09
+  exact:2D,delta1e-6           f=+5.921e-10 it=   34            FTOL      26ms gap=+5.9e-10
+  exact:2D,delta1e6            f=+2.189e-09 it=   15            FTOL       6ms gap=+2.2e-09
+  exact:2D,theta0.5            f=+2.270e-09 it=   15            FTOL       8ms gap=+2.3e-09
+  exact:2D,theta0.999          f=+2.270e-09 it=   15            FTOL       8ms gap=+2.3e-09
+
+=== quartic_flat5  (n=5, fopt=0.000e+00)
+  scipy trust-exact            f=+5.193e-07 it=   12 nfev=   13       3ms
+  exact:default(2D,reflect)    f=+7.906e-10 it=   16            FTOL       8ms gap=+7.9e-10
+  exact:full,reflect           f=+7.906e-10 it=   16            FTOL       8ms gap=+7.9e-10
+  exact:scg,reflect            f=+7.906e-10 it=   16            FTOL       4ms gap=+7.9e-10
+  exact:2D,single              f=+7.906e-10 it=   16            FTOL       9ms gap=+7.9e-10
+  exact:2D,truncate            f=+7.906e-10 it=   16            FTOL       7ms gap=+7.9e-10
+  exact:2D,mixed               f=+7.906e-10 it=   16            FTOL       9ms gap=+7.9e-10
+  exact:2D,refine              f=+7.906e-10 it=   16            FTOL      10ms gap=+7.9e-10
+  exact:full,truncate          f=+7.906e-10 it=   16            FTOL       9ms gap=+7.9e-10
+  exact:scg,truncate           f=+7.906e-10 it=   16            FTOL       7ms gap=+7.9e-10
+  exact:2D,delta1e-6           f=+6.256e-10 it=   35            FTOL      39ms gap=+6.3e-10
+  exact:2D,delta1e6            f=+2.176e-09 it=   15            FTOL       7ms gap=+2.2e-09
+  exact:2D,theta0.5            f=+7.906e-10 it=   16            FTOL       7ms gap=+7.9e-10
+  exact:2D,theta0.999          f=+7.906e-10 it=   16            FTOL       9ms gap=+7.9e-10
+
+=== abspow1.5_5  (n=5, fopt=0.000e+00)
+  scipy trust-exact            f=+7.786e-14 it=   37 nfev=   32       6ms
+  exact:default(2D,reflect)    f=+5.435e-09 it=   38            FTOL      29ms gap=+5.4e-09
+  exact:full,reflect           f=+2.488e-09 it=   42            FTOL      21ms gap=+2.5e-09
+  exact:scg,reflect            f=+2.488e-09 it=   42            FTOL      17ms gap=+2.5e-09
+  exact:2D,single              f=+5.435e-09 it=   38            FTOL      29ms gap=+5.4e-09
+  exact:2D,truncate            f=+5.435e-09 it=   38            FTOL      31ms gap=+5.4e-09
+  exact:2D,mixed               f=+5.435e-09 it=   38            FTOL      27ms gap=+5.4e-09
+  exact:2D,refine              f=+5.435e-09 it=   38            FTOL      26ms gap=+5.4e-09
+  exact:full,truncate          f=+2.488e-09 it=   42            FTOL      20ms gap=+2.5e-09
+  exact:scg,truncate           f=+2.488e-09 it=   42            FTOL      14ms gap=+2.5e-09
+  exact:2D,delta1e-6           f=+1.957e-09 it=   58            FTOL      62ms gap=+2.0e-09
+  exact:2D,delta1e6            f=+3.357e-09 it=   38            FTOL      36ms gap=+3.4e-09
+  exact:2D,theta0.5            f=+5.435e-09 it=   38            FTOL      30ms gap=+5.4e-09
+  exact:2D,theta0.999          f=+5.435e-09 it=   38            FTOL      30ms gap=+5.4e-09
+
+=== beale  (n=2, fopt=0.000e+00)
+  scipy trust-exact            f=+2.577e-13 it=    7 nfev=    8       1ms
+  exact:default(2D,reflect)    f=+3.776e-14 it=    7            GTOL       7ms gap=+3.8e-14
+  exact:full,reflect           f=+3.776e-14 it=    7            GTOL       5ms gap=+3.8e-14
+  exact:scg,reflect            f=+4.320e-16 it=   11            FTOL       4ms gap=+4.3e-16
+  exact:2D,single              f=+3.776e-14 it=    7            GTOL       8ms gap=+3.8e-14
+  exact:2D,truncate            f=+3.776e-14 it=    7            GTOL       9ms gap=+3.8e-14
+  exact:2D,mixed               f=+3.776e-14 it=    7            GTOL       8ms gap=+3.8e-14
+  exact:2D,refine              f=+3.776e-14 it=    7            GTOL      10ms gap=+3.8e-14
+  exact:full,truncate          f=+3.776e-14 it=    7            GTOL       3ms gap=+3.8e-14
+  exact:scg,truncate           f=+4.320e-16 it=   11            FTOL       4ms gap=+4.3e-16
+  exact:2D,delta1e-6           f=+4.001e-23 it=   26            FTOL      94ms gap=+4.0e-23
+  exact:2D,delta1e6            f=+3.237e-14 it=   19            GTOL      31ms gap=+3.2e-14
+  exact:2D,theta0.5            f=+3.776e-14 it=    7            GTOL       9ms gap=+3.8e-14
+  exact:2D,theta0.999          f=+3.776e-14 it=    7            GTOL      12ms gap=+3.8e-14
+
+=== beale_far  (n=2, fopt=0.000e+00)
+  scipy trust-exact            f=+2.260e-01 it= 2000 nfev= 2001     353ms
+  exact:default(2D,reflect)    f=+2.266e-01 it=  102            GTOL      90ms gap=+2.3e-01  <-- BAD
+  exact:full,reflect           f=+2.261e-01 it=  236            FTOL     118ms gap=+2.3e-01  <-- BAD
+  exact:scg,reflect            f=+2.506e-01 it=   51            FTOL      22ms gap=+2.5e-01  <-- BAD
+  exact:2D,single              f=+2.266e-01 it=  102            GTOL      81ms gap=+2.3e-01  <-- BAD
+  exact:2D,truncate            f=+2.266e-01 it=  102            GTOL      67ms gap=+2.3e-01  <-- BAD
+  exact:2D,mixed               f=+2.266e-01 it=  102            GTOL      75ms gap=+2.3e-01  <-- BAD
+  exact:2D,refine              f=+2.266e-01 it=  102            GTOL      80ms gap=+2.3e-01  <-- BAD
+  exact:full,truncate          f=+2.261e-01 it=  236            FTOL     122ms gap=+2.3e-01  <-- BAD
+  exact:scg,truncate           f=+2.506e-01 it=   51            FTOL      24ms gap=+2.5e-01  <-- BAD
+  exact:2D,delta1e-6           f=+2.266e-01 it=  133            FTOL     183ms gap=+2.3e-01  <-- BAD
+  exact:2D,delta1e6            f=+5.894e-17 it=   31            FTOL     101ms gap=+5.9e-17
+  exact:2D,theta0.5            f=+2.266e-01 it=  102            GTOL      69ms gap=+2.3e-01  <-- BAD
+  exact:2D,theta0.999          f=+2.266e-01 it=  102            GTOL      73ms gap=+2.3e-01  <-- BAD
+
+=== cosmix10  (n=10, fopt=-1.000e+00)
+  scipy trust-exact            f=+4.778e-01 it=    4 nfev=    5       1ms
+  exact:default(2D,reflect)    f=+4.778e-01 it=    6            FTOL       6ms gap=+1.5e+00  <-- BAD
+  exact:full,reflect           f=+4.778e-01 it=    5            FTOL       2ms gap=+1.5e+00  <-- BAD
+  exact:scg,reflect            f=+4.778e-01 it=    5            FTOL       2ms gap=+1.5e+00  <-- BAD
+  exact:2D,single              f=+4.778e-01 it=    6            FTOL       8ms gap=+1.5e+00  <-- BAD
+  exact:2D,truncate            f=+4.778e-01 it=    6            FTOL      10ms gap=+1.5e+00  <-- BAD
+  exact:2D,mixed               f=+4.778e-01 it=    6            FTOL       9ms gap=+1.5e+00  <-- BAD
+  exact:2D,refine              f=+4.778e-01 it=    6            FTOL       7ms gap=+1.5e+00  <-- BAD
+  exact:full,truncate          f=+4.778e-01 it=    5            FTOL       5ms gap=+1.5e+00  <-- BAD
+  exact:scg,truncate           f=+4.778e-01 it=    5            FTOL       2ms gap=+1.5e+00  <-- BAD
+  exact:2D,delta1e-6           f=+4.778e-01 it=   20            FTOL      26ms gap=+1.5e+00  <-- BAD
+  exact:2D,delta1e6            f=+4.778e-01 it=    7            FTOL       5ms gap=+1.5e+00  <-- BAD
+  exact:2D,theta0.5            f=+4.778e-01 it=    6            FTOL      10ms gap=+1.5e+00  <-- BAD
+  exact:2D,theta0.999          f=+4.778e-01 it=    6            FTOL      11ms gap=+1.5e+00  <-- BAD
+
+=== saddle10  (n=10, fopt=-3.375e+01)
+  scipy trust-exact            f=-3.375e+01 it=   10 nfev=   11       3ms
+  exact:default(2D,reflect)    f=-3.109e+01 it=   13            FTOL      24ms gap=+2.7e+00  <-- BAD
+  exact:full,reflect           f=-3.375e+01 it=   13            FTOL      20ms gap=-7.1e-15
+  exact:scg,reflect            f=-3.375e+01 it=   16            FTOL       9ms gap=+6.8e-13
+  exact:2D,single              f=-3.109e+01 it=   13            FTOL      27ms gap=+2.7e+00  <-- BAD
+  exact:2D,truncate            f=-3.109e+01 it=   13            FTOL      27ms gap=+2.7e+00  <-- BAD
+  exact:2D,mixed               f=-3.109e+01 it=   13            FTOL      22ms gap=+2.7e+00  <-- BAD
+  exact:2D,refine              f=-3.109e+01 it=   13            FTOL      17ms gap=+2.7e+00  <-- BAD
+  exact:full,truncate          f=-3.375e+01 it=   13            FTOL      16ms gap=-7.1e-15
+  exact:scg,truncate           f=-3.375e+01 it=   16            FTOL       7ms gap=+6.8e-13
+  exact:2D,delta1e-6           f=+3.781e-07 it=    1            FTOL       6ms gap=+3.4e+01  <-- BAD
+  exact:2D,delta1e6            f=-3.001e+01 it=   19            FTOL      19ms gap=+3.7e+00  <-- BAD
+  exact:2D,theta0.5            f=-3.109e+01 it=   13            FTOL      19ms gap=+2.7e+00  <-- BAD
+  exact:2D,theta0.999          f=-3.109e+01 it=   13            FTOL      22ms gap=+2.7e+00  <-- BAD
+
+=== trid50  (n=50, fopt=-2.205e+04)
+  scipy trust-exact            f=-2.205e+04 it=   13 nfev=   14       3ms
+  exact:default(2D,reflect)    f=-2.205e+04 it=   12            GTOL      46ms gap=+1.9e-09
+  exact:full,reflect           f=-2.205e+04 it=   12            GTOL      35ms gap=+0.0e+00
+  exact:scg,reflect            f=-2.205e+04 it=   23            FTOL      12ms gap=+4.7e-06
+  exact:2D,single              f=-2.205e+04 it=   12            GTOL      47ms gap=+1.9e-09
+  exact:2D,truncate            f=-2.205e+04 it=   12            GTOL      45ms gap=+1.9e-09
+  exact:2D,mixed               f=-2.205e+04 it=   12            GTOL      43ms gap=+1.9e-09
+  exact:2D,refine              f=-2.205e+04 it=   12            GTOL      41ms gap=+1.9e-09
+  exact:full,truncate          f=-2.205e+04 it=   12            GTOL      31ms gap=+0.0e+00
+  exact:scg,truncate           f=-2.205e+04 it=   23            FTOL      11ms gap=+4.7e-06
+  exact:2D,delta1e-6           f=-2.205e+04 it=   32            GTOL     107ms gap=+0.0e+00
+  exact:2D,delta1e6            f=-2.205e+04 it=    1            GTOL       4ms gap=+0.0e+00
+  exact:2D,theta0.5            f=-2.205e+04 it=   12            GTOL      45ms gap=+1.9e-09
+  exact:2D,theta0.999          f=-2.205e+04 it=   12            GTOL      39ms gap=+1.9e-09
+
+=== dixon20  (n=20, fopt=0.000e+00)
+  scipy trust-exact            f=+1.072e-11 it=    9 nfev=   10       2ms
+  exact:default(2D,reflect)    f=+4.293e-19 it=   10            FTOL      13ms gap=+4.3e-19
+  exact:full,reflect           f=+8.326e-22 it=   10            FTOL       7ms gap=+8.3e-22
+  exact:scg,reflect            f=+4.272e-13 it=   14            FTOL       5ms gap=+4.3e-13
+  exact:2D,single              f=+4.293e-19 it=   10            FTOL       9ms gap=+4.3e-19
+  exact:2D,truncate            f=+4.293e-19 it=   10            FTOL       9ms gap=+4.3e-19
+  exact:2D,mixed               f=+4.293e-19 it=   10            FTOL       8ms gap=+4.3e-19
+  exact:2D,refine              f=+4.293e-19 it=   10            FTOL       9ms gap=+4.3e-19
+  exact:full,truncate          f=+8.326e-22 it=   10            FTOL      14ms gap=+8.3e-22
+  exact:scg,truncate           f=+4.272e-13 it=   14            FTOL       7ms gap=+4.3e-13
+  exact:2D,delta1e-6           f=+2.323e-14 it=   29            GTOL      56ms gap=+2.3e-14
+  exact:2D,delta1e6            f=+1.698e-18 it=    9            FTOL      11ms gap=+1.7e-18
+  exact:2D,theta0.5            f=+4.293e-19 it=   10            FTOL      12ms gap=+4.3e-19
+  exact:2D,theta0.999          f=+4.293e-19 it=   10            FTOL      15ms gap=+4.3e-19
+
+=== rosen2_fx1e-10  (n=2, fopt=0.000e+00)
+  scipy trust-exact            f=+2.420e-09 it=    0 nfev=    1       0ms
+  exact:default(2D,reflect)    f=+4.732e-10 it=    1            FTOL       1ms gap=+4.7e-10
+  exact:full,reflect           f=+4.732e-10 it=    1            FTOL       1ms gap=+4.7e-10
+  exact:scg,reflect            f=+4.732e-10 it=    1            FTOL       1ms gap=+4.7e-10
+  exact:2D,single              f=+4.732e-10 it=    1            FTOL       1ms gap=+4.7e-10
+  exact:2D,truncate            f=+4.732e-10 it=    1            FTOL       1ms gap=+4.7e-10
+  exact:2D,mixed               f=+4.732e-10 it=    1            FTOL       1ms gap=+4.7e-10
+  exact:2D,refine              f=+4.732e-10 it=    1            FTOL       1ms gap=+4.7e-10
+  exact:full,truncate          f=+4.732e-10 it=    1            FTOL       1ms gap=+4.7e-10
+  exact:scg,truncate           f=+4.732e-10 it=    1            FTOL       0ms gap=+4.7e-10
+  exact:2D,delta1e-6           f=+2.420e-09 it=    1            FTOL       1ms gap=+2.4e-09
+  exact:2D,delta1e6            f=+4.732e-10 it=    1            FTOL       1ms gap=+4.7e-10
+  exact:2D,theta0.5            f=+4.732e-10 it=    1            FTOL       1ms gap=+4.7e-10
+  exact:2D,theta0.999          f=+4.732e-10 it=    1            FTOL       1ms gap=+4.7e-10
+
+=== rosen2_fx1e10  (n=2, fopt=0.000e+00)
+  scipy trust-exact            f=+0.000e+00 it=   26 nfev=   27       5ms
+  exact:default(2D,reflect)    f=+0.000e+00 it=   27            FTOL      24ms gap=+0.0e+00
+  exact:full,reflect           f=+0.000e+00 it=   27            FTOL      18ms gap=+0.0e+00
+  exact:scg,reflect            f=+1.229e-16 it=   31            FTOL      11ms gap=+1.2e-16
+  exact:2D,single              f=+0.000e+00 it=   27            FTOL      22ms gap=+0.0e+00
+  exact:2D,truncate            f=+0.000e+00 it=   27            FTOL      25ms gap=+0.0e+00
+  exact:2D,mixed               f=+0.000e+00 it=   27            FTOL      26ms gap=+0.0e+00
+  exact:2D,refine              f=+0.000e+00 it=   27            FTOL      23ms gap=+0.0e+00
+  exact:full,truncate          f=+0.000e+00 it=   27            FTOL      27ms gap=+0.0e+00
+  exact:scg,truncate           f=+1.229e-16 it=   31            FTOL      14ms gap=+1.2e-16
+  exact:2D,delta1e-6           f=+0.000e+00 it=   42            FTOL      61ms gap=+0.0e+00
+  exact:2D,delta1e6            f=+0.000e+00 it=   29            FTOL      23ms gap=+0.0e+00
+  exact:2D,theta0.5            f=+0.000e+00 it=   27            FTOL      20ms gap=+0.0e+00
+  exact:2D,theta0.999          f=+0.000e+00 it=   27            FTOL      22ms gap=+0.0e+00
+
+=== rosen2_x_1e-6_1e6  (n=2, fopt=0.000e+00)
+  scipy trust-exact            f=+5.523e-01 it=  973 nfev=  974     482ms
+  exact:default(2D,reflect)    f=+3.990e+00 it=    4            FTOL       2ms gap=+4.0e+00  <-- BAD
+  exact:full,reflect           f=+3.990e+00 it=    9            FTOL       5ms gap=+4.0e+00  <-- BAD
+  exact:scg,reflect            f=+3.990e+00 it=    4            FTOL       2ms gap=+4.0e+00  <-- BAD
+  exact:2D,single              f=+3.990e+00 it=    4            FTOL       2ms gap=+4.0e+00  <-- BAD
+  exact:2D,truncate            f=+3.990e+00 it=    4            FTOL       2ms gap=+4.0e+00  <-- BAD
+  exact:2D,mixed               f=+3.990e+00 it=    4            FTOL       2ms gap=+4.0e+00  <-- BAD
+  exact:2D,refine              f=+3.990e+00 it=    4            FTOL       2ms gap=+4.0e+00  <-- BAD
+  exact:full,truncate          f=+3.990e+00 it=    9            FTOL       4ms gap=+4.0e+00  <-- BAD
+  exact:scg,truncate           f=+3.990e+00 it=    4            FTOL       1ms gap=+4.0e+00  <-- BAD
+  exact:2D,delta1e-6           f=+3.990e+00 it=    4            FTOL       2ms gap=+4.0e+00  <-- BAD
+  exact:2D,delta1e6            f=+3.990e+00 it=    4            FTOL       1ms gap=+4.0e+00  <-- BAD
+  exact:2D,theta0.5            f=+3.990e+00 it=    4            FTOL       1ms gap=+4.0e+00  <-- BAD
+  exact:2D,theta0.999          f=+3.990e+00 it=    4            FTOL       2ms gap=+4.0e+00  <-- BAD
+
+=== rosen10_x_mixed  (n=10, fopt=0.000e+00)
+  scipy trust-exact            f=+3.987e+00 it=   35 nfev=   36      11ms
+  exact:default(2D,reflect)    f=+9.237e+00 it=   19            FTOL      10ms gap=+9.2e+00  <-- BAD
+  exact:full,reflect           f=+3.987e+00 it=   44            FTOL      45ms gap=+4.0e+00  <-- BAD
+  exact:scg,reflect            f=+5.344e+02 it=  509            FTOL     218ms gap=+5.3e+02  <-- BAD
+  exact:2D,single              f=+9.237e+00 it=   19            FTOL      13ms gap=+9.2e+00  <-- BAD
+  exact:2D,truncate            f=+9.237e+00 it=   19            FTOL      15ms gap=+9.2e+00  <-- BAD
+  exact:2D,mixed               f=+9.237e+00 it=   19            FTOL      13ms gap=+9.2e+00  <-- BAD
+  exact:2D,refine              f=+9.237e+00 it=   19            FTOL      15ms gap=+9.2e+00  <-- BAD
+  exact:full,truncate          f=+3.987e+00 it=   44            FTOL      47ms gap=+4.0e+00  <-- BAD
+  exact:scg,truncate           f=+5.344e+02 it=  509            FTOL     226ms gap=+5.3e+02  <-- BAD
+  exact:2D,delta1e-6           f=+9.313e+00 it=   38            FTOL      43ms gap=+9.3e+00  <-- BAD
+  exact:2D,delta1e6            f=+9.527e+00 it=    7            FTOL       5ms gap=+9.5e+00  <-- BAD
+  exact:2D,theta0.5            f=+9.237e+00 it=   19            FTOL      15ms gap=+9.2e+00  <-- BAD
+  exact:2D,theta0.999          f=+9.237e+00 it=   19            FTOL      16ms gap=+9.2e+00  <-- BAD
+
+=== rosen2_wronghess10x  (n=2, fopt=0.000e+00)
+  scipy trust-exact            f=+2.084e-10 it=  189 nfev=  190      36ms
+  exact:default(2D,reflect)    f=+4.037e-08 it=  164            FTOL      89ms gap=+4.0e-08
+  exact:full,reflect           f=+4.037e-08 it=  164            FTOL      81ms gap=+4.0e-08
+  exact:scg,reflect            f=+3.844e-08 it=  220            FTOL     100ms gap=+3.8e-08
+  exact:2D,single              f=+4.037e-08 it=  164            FTOL      77ms gap=+4.0e-08
+  exact:2D,truncate            f=+4.037e-08 it=  164            FTOL      75ms gap=+4.0e-08
+  exact:2D,mixed               f=+4.037e-08 it=  164            FTOL      80ms gap=+4.0e-08
+  exact:2D,refine              f=+4.037e-08 it=  164            FTOL      80ms gap=+4.0e-08
+  exact:full,truncate          f=+4.037e-08 it=  164            FTOL      82ms gap=+4.0e-08
+  exact:scg,truncate           f=+3.844e-08 it=  220            FTOL      88ms gap=+3.8e-08
+  exact:2D,delta1e-6           f=+3.808e-08 it=  177            FTOL     104ms gap=+3.8e-08
+  exact:2D,delta1e6            f=+4.037e-08 it=  164            FTOL      86ms gap=+4.0e-08
+  exact:2D,theta0.5            f=+4.037e-08 it=  164            FTOL      82ms gap=+4.0e-08
+  exact:2D,theta0.999          f=+4.037e-08 it=  164            FTOL      76ms gap=+4.0e-08
+
+=== rosen2_wronghess0.1x  (n=2, fopt=0.000e+00)
+  scipy trust-exact            f=+5.643e-04 it= 2000 nfev= 2001     461ms
+  exact:default(2D,reflect)    f=+5.837e-04 it= 2000         MAXITER    2011ms gap=+5.8e-04  <-- BAD
+  exact:full,reflect           f=+5.837e-04 it= 2000         MAXITER    1546ms gap=+5.8e-04  <-- BAD
+  exact:scg,reflect            f=+2.064e-03 it= 2000         MAXITER    1055ms gap=+2.1e-03  <-- BAD
+  exact:2D,single              f=+5.837e-04 it= 2000         MAXITER    2185ms gap=+5.8e-04  <-- BAD
+  exact:2D,truncate            f=+5.837e-04 it= 2000         MAXITER    1901ms gap=+5.8e-04  <-- BAD
+  exact:2D,mixed               f=+5.837e-04 it= 2000         MAXITER    2211ms gap=+5.8e-04  <-- BAD
+  exact:2D,refine              f=+5.837e-04 it= 2000         MAXITER    2047ms gap=+5.8e-04  <-- BAD
+  exact:full,truncate          f=+5.837e-04 it= 2000         MAXITER    1368ms gap=+5.8e-04  <-- BAD
+  exact:scg,truncate           f=+2.064e-03 it= 2000         MAXITER     778ms gap=+2.1e-03  <-- BAD
+  exact:2D,delta1e-6           f=+6.841e-04 it= 2000         MAXITER    1787ms gap=+6.8e-04  <-- BAD
+  exact:2D,delta1e6            f=+6.624e-04 it= 2000         MAXITER    1934ms gap=+6.6e-04  <-- BAD
+  exact:2D,theta0.5            f=+5.837e-04 it= 2000         MAXITER    1762ms gap=+5.8e-04  <-- BAD
+  exact:2D,theta0.999          f=+5.837e-04 it= 2000         MAXITER    2005ms gap=+5.8e-04  <-- BAD
+
+=== rosen2_noisy1e-6  (n=2, fopt=0.000e+00)
+  scipy trust-exact            f=+3.331e-19 it=   25 nfev=   26       4ms
+  exact:default(2D,reflect)    f=+7.706e-15 it=   25            FTOL      11ms gap=+7.7e-15
+  exact:full,reflect           f=+7.706e-15 it=   25            FTOL       9ms gap=+7.7e-15
+  exact:scg,reflect            f=+9.270e-14 it=   29            FTOL       9ms gap=+9.3e-14
+  exact:2D,single              f=+7.706e-15 it=   25            FTOL      11ms gap=+7.7e-15
+  exact:2D,truncate            f=+7.706e-15 it=   25            FTOL      11ms gap=+7.7e-15
+  exact:2D,mixed               f=+7.706e-15 it=   25            FTOL      11ms gap=+7.7e-15
+  exact:2D,refine              f=+7.706e-15 it=   25            FTOL      11ms gap=+7.7e-15
+  exact:full,truncate          f=+7.706e-15 it=   25            FTOL       9ms gap=+7.7e-15
+  exact:scg,truncate           f=+9.270e-14 it=   29            FTOL       9ms gap=+9.3e-14
+  exact:2D,delta1e-6           f=+2.613e-20 it=   41            FTOL      33ms gap=+2.6e-20
+  exact:2D,delta1e6            f=+2.068e-23 it=   28            FTOL      12ms gap=+2.1e-23
+  exact:2D,theta0.5            f=+7.706e-15 it=   25            FTOL      11ms gap=+7.7e-15
+  exact:2D,theta0.999          f=+7.706e-15 it=   25            FTOL      11ms gap=+7.7e-15
+
+=== expover3  (n=3, fopt=5.786e-22)
+  scipy trust-exact            f=+5.786e-22 it=    7 nfev=    8       1ms
+  exact:default(2D,reflect)    f=+4.412e-20 it=    6            GTOL      10ms gap=+4.4e-20
+  exact:full,reflect           f=+5.786e-22 it=    7            GTOL       3ms gap=+0.0e+00
+  exact:scg,reflect            f=+5.786e-22 it=    7            GTOL       2ms gap=+0.0e+00
+  exact:2D,single              f=+4.412e-20 it=    6            GTOL       9ms gap=+4.4e-20
+  exact:2D,truncate            f=+4.412e-20 it=    6            GTOL      10ms gap=+4.4e-20
+  exact:2D,mixed               f=+4.412e-20 it=    6            GTOL       9ms gap=+4.4e-20
+  exact:2D,refine              f=+4.412e-20 it=    6            GTOL      10ms gap=+4.4e-20
+  exact:full,truncate          f=+5.786e-22 it=    7            GTOL       3ms gap=+0.0e+00
+  exact:scg,truncate           f=+5.786e-22 it=    7            GTOL       2ms gap=+0.0e+00
+  exact:2D,delta1e-6           f=+1.178e-21 it=   26            GTOL      33ms gap=+6.0e-22
+  exact:2D,delta1e6            f=+5.786e-22 it=    2            GTOL       1ms gap=+1.4e-27
+  exact:2D,theta0.5            f=+4.412e-20 it=    6            GTOL       9ms gap=+4.4e-20
+  exact:2D,theta0.999          f=+4.412e-20 it=    6            GTOL      10ms gap=+4.4e-20
+
+=== expover3_far  (n=3, fopt=nan)
+  scipy trust-exact            f=+nan it=   -1 nfev=   -1       0ms
+  exact:default(2D,reflect)    f=+5.786e-22 it=  600            GTOL     218ms gap=+nan  <-- BAD
+  exact:full,reflect           f=+1.132e+261 it=   27 DELTA_TOO_SMALL      30ms gap=+nan  <-- BAD

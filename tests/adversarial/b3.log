@@ -1,0 +1,364 @@
+
+=== rosen2  (n=2, fopt=0.000e+00)
+  scipy L-BFGS-B               f=+3.040e-22 it=   38 nfev=   46       6ms
+  BFGS:default(2D,reflect)     f=+2.180e-13 it=   46            FTOL      54ms gap=+2.2e-13
+  BFGS:full,reflect            f=+1.086e-12 it=   42            FTOL      46ms gap=+1.1e-12
+  BFGS:scg,reflect             f=+3.618e-14 it=   42            FTOL      29ms gap=+3.6e-14
+  BFGS:2D,truncate             f=+2.180e-13 it=   46            FTOL      50ms gap=+2.2e-13
+  BFGS:2D,delta1e-6            f=+2.135e-16 it=   53            FTOL      79ms gap=+2.1e-16
+  SR1:default(2D,reflect)      f=+3.784e-12 it=  102            FTOL     287ms gap=+3.8e-12
+  SR1:full,reflect             f=+3.571e-09 it=   95            FTOL      92ms gap=+3.6e-09
+  SR1:scg,reflect              f=+4.343e-09 it=   80            FTOL      48ms gap=+4.3e-09
+  SR1:2D,truncate              f=+3.784e-12 it=  102            FTOL     359ms gap=+3.8e-12
+  SR1:2D,delta1e-6             f=+1.917e-11 it=  149            FTOL     607ms gap=+1.9e-11
+  BB:default(2D,reflect)       f=+1.814e-03 it= 2000         MAXITER    1915ms gap=+1.8e-03  <-- BAD
+  BB:full,reflect              f=+2.094e-03 it= 2000         MAXITER    3435ms gap=+2.1e-03  <-- BAD
+  BB:scg,reflect               f=+2.094e-03 it= 2000         MAXITER    2426ms gap=+2.1e-03  <-- BAD
+  BB:2D,truncate               f=+1.814e-03 it= 2000         MAXITER    3700ms gap=+1.8e-03  <-- BAD
+  BB:2D,delta1e-6              f=+1.895e-03 it= 2000         MAXITER    3386ms gap=+1.9e-03  <-- BAD
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      f=+1.929e-07 it= 1368            FTOL    2255ms gap=+1.9e-07  <-- SLOW
+  DFP:full,reflect             f=+3.063e-08 it=  181            FTOL     453ms gap=+3.1e-08
+  DFP:scg,reflect              f=+4.311e-16 it=  217            FTOL     359ms gap=+4.3e-16
+  DFP:2D,truncate              f=+1.929e-07 it= 1368            FTOL    1870ms gap=+1.9e-07  <-- SLOW
+  DFP:2D,delta1e-6             f=+7.511e-16 it=   53            FTOL     113ms gap=+7.5e-16
+
+=== rosen10  (n=10, fopt=3.987e+00)
+  scipy L-BFGS-B               f=+4.047e-17 it=   75 nfev=   93      12ms
+  BFGS:default(2D,reflect)     f=+2.674e-10 it=   89            FTOL     274ms gap=-4.0e+00
+  BFGS:full,reflect            f=+8.035e-10 it=   86            FTOL     127ms gap=-4.0e+00
+  BFGS:scg,reflect             f=+1.282e-13 it=  236            FTOL     253ms gap=-4.0e+00
+  BFGS:2D,truncate             f=+2.674e-10 it=   89            FTOL     266ms gap=-4.0e+00
+  BFGS:2D,delta1e-6            f=+1.404e-09 it=  107            FTOL     333ms gap=-4.0e+00
+  SR1:default(2D,reflect)      f=+1.635e-10 it=  180            FTOL    1293ms gap=-4.0e+00
+  SR1:full,reflect             f=+1.047e-14 it=  198            FTOL     322ms gap=-4.0e+00
+  SR1:scg,reflect              f=+2.164e-13 it=  196            FTOL     230ms gap=-4.0e+00
+  SR1:2D,truncate              f=+1.635e-10 it=  180            FTOL    1268ms gap=-4.0e+00
+  SR1:2D,delta1e-6             f=+3.987e+00 it=  216            FTOL    1611ms gap=-4.1e-05
+  BB:default(2D,reflect)       f=+3.976e-02 it= 2000         MAXITER    3656ms gap=-3.9e+00  <-- SLOW
+  BB:full,reflect              f=+5.471e-02 it= 2000         MAXITER    3504ms gap=-3.9e+00  <-- SLOW
+  BB:scg,reflect               f=+5.471e-02 it= 2000         MAXITER    3674ms gap=-3.9e+00  <-- SLOW
+  BB:2D,truncate               f=+3.976e-02 it= 2000         MAXITER    4309ms gap=-3.9e+00  <-- SLOW
+  BB:2D,delta1e-6              f=+4.025e-02 it= 2000         MAXITER    3418ms gap=-3.9e+00  <-- SLOW
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      f=+5.483e-01 it= 2000         MAXITER    2976ms gap=-3.4e+00  <-- SLOW
+  DFP:full,reflect             f=+2.001e-01 it= 2000         MAXITER    2042ms gap=-3.8e+00  <-- SLOW
+  DFP:scg,reflect              f=+3.210e-01 it= 2000         MAXITER    1342ms gap=-3.7e+00  <-- SLOW
+  DFP:2D,truncate              f=+5.483e-01 it= 2000         MAXITER    1858ms gap=-3.4e+00  <-- SLOW
+  DFP:2D,delta1e-6             f=+7.067e+00 it= 2000         MAXITER    2042ms gap=+3.1e+00  <-- BAD
+
+=== rosen30  (n=30, fopt=3.987e+00)
+  scipy L-BFGS-B               f=+1.726e-14 it=  186 nfev=  225      29ms
+  BFGS:default(2D,reflect)     f=+8.756e-11 it=  255            FTOL     769ms gap=-4.0e+00
+  BFGS:full,reflect            f=+7.963e-10 it=  250            FTOL     528ms gap=-4.0e+00
+  BFGS:scg,reflect             f=+1.216e-09 it=  804            FTOL     583ms gap=-4.0e+00  <-- SLOW
+  BFGS:2D,truncate             f=+8.756e-11 it=  255            FTOL     690ms gap=-4.0e+00
+  BFGS:2D,delta1e-6            f=+3.796e-11 it=  286            FTOL     768ms gap=-4.0e+00
+  SR1:default(2D,reflect)      f=+5.825e-14 it=  445            FTOL    2144ms gap=-4.0e+00
+  SR1:full,reflect             f=+5.803e-17 it=  382            FTOL    1140ms gap=-4.0e+00
+  SR1:scg,reflect              f=+1.100e-13 it=  510            FTOL     346ms gap=-4.0e+00  <-- SLOW
+  SR1:2D,truncate              f=+5.825e-14 it=  445            FTOL    2082ms gap=-4.0e+00
+  SR1:2D,delta1e-6             f=+3.196e-10 it=  396            FTOL    2120ms gap=-4.0e+00
+  BB:default(2D,reflect)       f=+1.046e+01 it= 2000         MAXITER    3279ms gap=+6.5e+00  <-- BAD
+  BB:full,reflect              f=+1.244e+01 it= 2000         MAXITER    2815ms gap=+8.5e+00  <-- BAD
+  BB:scg,reflect               f=+1.244e+01 it= 2000         MAXITER     910ms gap=+8.5e+00  <-- BAD
+  BB:2D,truncate               f=+1.046e+01 it= 2000         MAXITER    2733ms gap=+6.5e+00  <-- BAD
+  BB:2D,delta1e-6              f=+1.072e+01 it= 2000         MAXITER    3001ms gap=+6.7e+00  <-- BAD
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      f=+2.253e+01 it= 2000         MAXITER    3427ms gap=+1.9e+01  <-- BAD
+  DFP:full,reflect             f=+1.163e+01 it= 2000         MAXITER    2337ms gap=+7.6e+00  <-- BAD
+  DFP:scg,reflect              f=+1.874e+01 it= 2000         MAXITER     797ms gap=+1.5e+01  <-- BAD
+  DFP:2D,truncate              f=+2.253e+01 it= 2000         MAXITER    2767ms gap=+1.9e+01  <-- BAD
+  DFP:2D,delta1e-6             f=+2.725e+01 it= 2000         MAXITER    3603ms gap=+2.3e+01  <-- BAD
+
+=== quad20_c1e6  (n=20, fopt=-1.459e+05)
+  scipy L-BFGS-B               f=-1.459e+05 it= 2000 nfev= 2156      74ms
+  BFGS:default(2D,reflect)     f=-1.459e+05 it=  155            FTOL     224ms gap=+5.9e-04
+  BFGS:full,reflect            f=-1.459e+05 it=  115            FTOL     186ms gap=+1.3e-03
+  BFGS:scg,reflect             f=-1.459e+05 it=  329            FTOL     163ms gap=+7.0e-01
+  BFGS:2D,truncate             f=-1.459e+05 it=  155            FTOL     272ms gap=+5.9e-04
+  BFGS:2D,delta1e-6            f=-1.459e+05 it=  169            FTOL     295ms gap=+4.5e-04
+  SR1:default(2D,reflect)      f=-1.459e+05 it=   21            FTOL      26ms gap=+0.0e+00
+  SR1:full,reflect             f=-1.459e+05 it=   25            GTOL      31ms gap=+1.2e-10
+  SR1:scg,reflect              f=-1.459e+05 it=   25            FTOL      13ms gap=+8.9e-02
+  SR1:2D,truncate              f=-1.459e+05 it=   21            FTOL      28ms gap=+0.0e+00
+  SR1:2D,delta1e-6             f=-1.459e+05 it=   26            FTOL      76ms gap=-1.2e-10
+  BB:default(2D,reflect)       f=-1.457e+05 it= 2000         MAXITER    4254ms gap=+1.8e+02  <-- BAD
+  BB:full,reflect              f=-1.457e+05 it= 2000         MAXITER    2887ms gap=+2.0e+02  <-- BAD
+  BB:scg,reflect               f=-1.457e+05 it= 2000         MAXITER     972ms gap=+2.0e+02  <-- BAD
+  BB:2D,truncate               f=-1.457e+05 it= 2000         MAXITER    4541ms gap=+1.8e+02  <-- BAD
+  BB:2D,delta1e-6              f=-1.457e+05 it= 2000         MAXITER    4144ms gap=+1.6e+02  <-- BAD
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      f=-1.459e+05 it=   34            FTOL      45ms gap=+5.3e-06
+  DFP:full,reflect             f=-1.459e+05 it=   29            FTOL      37ms gap=+4.8e-05
+  DFP:scg,reflect              f=-1.459e+05 it=   63            FTOL      32ms gap=+2.5e+00
+  DFP:2D,truncate              f=-1.459e+05 it=   34            FTOL      48ms gap=+5.3e-06
+  DFP:2D,delta1e-6             f=-1.459e+05 it=   54            FTOL      89ms gap=+1.1e-04
+
+=== powell_sing  (n=4, fopt=0.000e+00)
+  scipy L-BFGS-B               f=+1.804e-14 it=   52 nfev=   59       4ms
+  BFGS:default(2D,reflect)     f=+4.287e-09 it=   35            FTOL      22ms gap=+4.3e-09
+  BFGS:full,reflect            f=+4.372e-09 it=   36            FTOL      21ms gap=+4.4e-09
+  BFGS:scg,reflect             f=+1.571e-07 it=   25            FTOL      12ms gap=+1.6e-07
+  BFGS:2D,truncate             f=+4.287e-09 it=   35            FTOL      26ms gap=+4.3e-09
+  BFGS:2D,delta1e-6            f=+4.835e-07 it=   41            FTOL      34ms gap=+4.8e-07
+  SR1:default(2D,reflect)      f=+3.381e-08 it=   35            FTOL      34ms gap=+3.4e-08
+  SR1:full,reflect             f=+1.899e-09 it=   26            FTOL      16ms gap=+1.9e-09
+  SR1:scg,reflect              f=+4.254e-09 it=   39            FTOL      19ms gap=+4.3e-09
+  SR1:2D,truncate              f=+3.381e-08 it=   35            FTOL      35ms gap=+3.4e-08
+  SR1:2D,delta1e-6             f=+4.542e-08 it=   42            FTOL      57ms gap=+4.5e-08
+  BB:default(2D,reflect)       f=+2.490e-05 it= 2000         MAXITER    1404ms gap=+2.5e-05  <-- SLOW
+  BB:full,reflect              f=+2.504e-05 it= 2000         MAXITER    1428ms gap=+2.5e-05  <-- SLOW
+  BB:scg,reflect               f=+2.504e-05 it= 2000         MAXITER     950ms gap=+2.5e-05  <-- SLOW
+  BB:2D,truncate               f=+2.490e-05 it= 2000         MAXITER    1170ms gap=+2.5e-05  <-- SLOW
+  BB:2D,delta1e-6              f=+2.495e-05 it= 2000         MAXITER    1207ms gap=+2.5e-05  <-- SLOW
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      f=+7.702e-08 it=   53            FTOL      31ms gap=+7.7e-08
+  DFP:full,reflect             f=+3.898e-09 it=   74            FTOL      38ms gap=+3.9e-09
+  DFP:scg,reflect              f=+2.819e-06 it=   29            FTOL      13ms gap=+2.8e-06
+  DFP:2D,truncate              f=+7.702e-08 it=   53            FTOL      31ms gap=+7.7e-08
+  DFP:2D,delta1e-6             f=+4.697e-08 it=   97            FTOL      67ms gap=+4.7e-08
+
+=== quartic_flat5  (n=5, fopt=0.000e+00)
+  scipy L-BFGS-B               f=+5.608e-12 it=   27 nfev=   28       1ms
+  BFGS:default(2D,reflect)     f=+4.783e-09 it=   21            FTOL      14ms gap=+4.8e-09
+  BFGS:full,reflect            f=+4.783e-09 it=   21            FTOL       9ms gap=+4.8e-09
+  BFGS:scg,reflect             f=+4.783e-09 it=   21            FTOL      10ms gap=+4.8e-09
+  BFGS:2D,truncate             f=+4.783e-09 it=   21            FTOL      14ms gap=+4.8e-09
+  BFGS:2D,delta1e-6            f=+3.948e-09 it=   40            FTOL      34ms gap=+3.9e-09
+  SR1:default(2D,reflect)      f=+4.783e-09 it=   21            FTOL      10ms gap=+4.8e-09
+  SR1:full,reflect             f=+4.783e-09 it=   21            FTOL      12ms gap=+4.8e-09
+  SR1:scg,reflect              f=+4.783e-09 it=   21            FTOL       8ms gap=+4.8e-09
+  SR1:2D,truncate              f=+4.783e-09 it=   21            FTOL      10ms gap=+4.8e-09
+  SR1:2D,delta1e-6             f=+3.950e-09 it=   40            FTOL      28ms gap=+3.9e-09
+  BB:default(2D,reflect)       f=+1.238e-06 it=  203            FTOL     129ms gap=+1.2e-06
+  BB:full,reflect              f=+1.237e-06 it=  249            FTOL     118ms gap=+1.2e-06
+  BB:scg,reflect               f=+1.237e-06 it=  249            FTOL      99ms gap=+1.2e-06
+  BB:2D,truncate               f=+1.238e-06 it=  203            FTOL     113ms gap=+1.2e-06
+  BB:2D,delta1e-6              f=+1.233e-06 it=  268            FTOL     188ms gap=+1.2e-06
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      f=+4.783e-09 it=   21            FTOL      12ms gap=+4.8e-09
+  DFP:full,reflect             f=+4.783e-09 it=   21            FTOL      12ms gap=+4.8e-09
+  DFP:scg,reflect              f=+4.783e-09 it=   21            FTOL      11ms gap=+4.8e-09
+  DFP:2D,truncate              f=+4.783e-09 it=   21            FTOL      13ms gap=+4.8e-09
+  DFP:2D,delta1e-6             f=+3.948e-09 it=   40            FTOL      33ms gap=+3.9e-09
+
+=== beale_far  (n=2, fopt=0.000e+00)
+  scipy L-BFGS-B               f=+2.267e-01 it=  180 nfev=  285      11ms
+  BFGS:default(2D,reflect)     f=+2.267e-01 it=  188            GTOL     144ms gap=+2.3e-01  <-- BAD
+  BFGS:full,reflect            f=+2.263e-01 it=  261            FTOL     186ms gap=+2.3e-01  <-- BAD
+  BFGS:scg,reflect             f=+2.268e-01 it=  297            GTOL     168ms gap=+2.3e-01  <-- BAD
+  BFGS:2D,truncate             f=+2.267e-01 it=  188            GTOL     156ms gap=+2.3e-01  <-- BAD
+  BFGS:2D,delta1e-6            f=+2.266e-01 it=  222            FTOL     147ms gap=+2.3e-01  <-- BAD
+  SR1:default(2D,reflect)      f=+2.416e-01 it=  257            FTOL     555ms gap=+2.4e-01  <-- BAD
+  SR1:full,reflect             f=+2.817e-01 it=   75            FTOL      53ms gap=+2.8e-01  <-- BAD
+  SR1:scg,reflect              f=+2.585e-01 it=  188            FTOL      92ms gap=+2.6e-01  <-- BAD
+  SR1:2D,truncate              f=+2.416e-01 it=  257            FTOL     549ms gap=+2.4e-01  <-- BAD
+  SR1:2D,delta1e-6             f=+3.197e-01 it=   30            FTOL     110ms gap=+3.2e-01  <-- BAD
+  BB:default(2D,reflect)       f=+3.987e-01 it= 2000         MAXITER    1139ms gap=+4.0e-01  <-- BAD
+  BB:full,reflect              f=+3.997e-01 it= 2000         MAXITER    1168ms gap=+4.0e-01  <-- BAD
+  BB:scg,reflect               f=+3.997e-01 it= 2000         MAXITER     819ms gap=+4.0e-01  <-- BAD
+  BB:2D,truncate               f=+3.987e-01 it= 2000         MAXITER    1082ms gap=+4.0e-01  <-- BAD
+  BB:2D,delta1e-6              f=+4.009e-01 it= 2000         MAXITER    1079ms gap=+4.0e-01  <-- BAD
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      f=+2.853e-01 it=  348            FTOL     189ms gap=+2.9e-01  <-- BAD
+  DFP:full,reflect             f=+2.845e-01 it= 1051            FTOL     544ms gap=+2.8e-01  <-- BAD
+  DFP:scg,reflect              f=+2.266e-01 it=  564            GTOL     319ms gap=+2.3e-01  <-- BAD
+  DFP:2D,truncate              f=+2.853e-01 it=  348            FTOL     175ms gap=+2.9e-01  <-- BAD
+  DFP:2D,delta1e-6             f=+2.837e-01 it=  439            FTOL     250ms gap=+2.8e-01  <-- BAD
+
+=== trid50  (n=50, fopt=-2.205e+04)
+  scipy L-BFGS-B               f=-2.205e+04 it=   81 nfev=   90       7ms
+  BFGS:default(2D,reflect)     f=-2.205e+04 it=   39            FTOL     117ms gap=+1.4e-05
+  BFGS:full,reflect            f=-2.205e+04 it=   37            FTOL     105ms gap=+1.6e-05
+  BFGS:scg,reflect             f=-2.205e+04 it=   55            FTOL      30ms gap=+1.0e-06
+  BFGS:2D,truncate             f=-2.205e+04 it=   39            FTOL     109ms gap=+1.4e-05
+  BFGS:2D,delta1e-6            f=-2.205e+04 it=   60            FTOL     176ms gap=+3.4e-06
+  SR1:default(2D,reflect)      f=-2.205e+04 it=   36            GTOL     108ms gap=+0.0e+00
+  SR1:full,reflect             f=-2.205e+04 it=   69            GTOL     237ms gap=-1.9e-09
+  SR1:scg,reflect              f=-2.205e+04 it=   70            FTOL      31ms gap=+1.1e-05
+  SR1:2D,truncate              f=-2.205e+04 it=   36            GTOL     103ms gap=+0.0e+00
+  SR1:2D,delta1e-6             f=-2.205e+04 it=   51            FTOL     182ms gap=+0.0e+00
+  BB:default(2D,reflect)       f=-2.204e+04 it= 2000         MAXITER    4584ms gap=+7.6e+00  <-- BAD
+  BB:full,reflect              f=-2.204e+04 it= 2000         MAXITER    5082ms gap=+7.4e+00  <-- BAD
+  BB:scg,reflect               f=-2.204e+04 it= 2000         MAXITER    1197ms gap=+7.4e+00  <-- BAD
+  BB:2D,truncate               f=-2.204e+04 it= 2000         MAXITER    5639ms gap=+7.6e+00  <-- BAD
+  BB:2D,delta1e-6              f=-2.204e+04 it= 2000         MAXITER    6129ms gap=+8.6e+00  <-- BAD
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      f=-2.205e+04 it=  261            FTOL     980ms gap=+6.0e-05
+  DFP:full,reflect             f=-2.205e+04 it=  260            FTOL     761ms gap=+4.8e-05
+  DFP:scg,reflect              f=-2.205e+04 it=  129            FTOL      73ms gap=+1.3e-04
+  DFP:2D,truncate              f=-2.205e+04 it=  261            FTOL    1017ms gap=+6.0e-05
+  DFP:2D,delta1e-6             f=-2.205e+04 it=  279            FTOL     912ms gap=+4.9e-05
+
+=== dixon20  (n=20, fopt=0.000e+00)
+  scipy L-BFGS-B               f=+2.330e-15 it=   51 nfev=   54       7ms
+  BFGS:default(2D,reflect)     f=+2.245e-09 it=   71            FTOL     104ms gap=+2.2e-09
+  BFGS:full,reflect            f=+6.667e-01 it=  118            FTOL     127ms gap=+6.7e-01  <-- BAD
+  BFGS:scg,reflect             f=+1.359e-08 it=  172            FTOL      86ms gap=+1.4e-08
+  BFGS:2D,truncate             f=+2.245e-09 it=   71            FTOL      98ms gap=+2.2e-09
+  BFGS:2D,delta1e-6            f=+6.667e-01 it=   95            FTOL     126ms gap=+6.7e-01  <-- BAD
+  SR1:default(2D,reflect)      f=+7.886e-10 it=   75            FTOL     295ms gap=+7.9e-10
+  SR1:full,reflect             f=+1.770e-10 it=   58            FTOL     122ms gap=+1.8e-10
+  SR1:scg,reflect              f=+8.682e-11 it=   69            FTOL      33ms gap=+8.7e-11
+  SR1:2D,truncate              f=+7.886e-10 it=   75            FTOL     303ms gap=+7.9e-10
+  SR1:2D,delta1e-6             f=+9.088e-11 it=   81            FTOL     314ms gap=+9.1e-11
+  BB:default(2D,reflect)       f=+4.470e-07 it=  630            FTOL     635ms gap=+4.5e-07  <-- SLOW
+  BB:full,reflect              f=+4.502e-07 it=  661            FTOL     576ms gap=+4.5e-07  <-- SLOW
+  BB:scg,reflect               f=+4.502e-07 it=  661            FTOL     346ms gap=+4.5e-07  <-- SLOW
+  BB:2D,truncate               f=+4.470e-07 it=  630            FTOL     750ms gap=+4.5e-07  <-- SLOW
+  BB:2D,delta1e-6              f=+4.531e-07 it=  664            FTOL     805ms gap=+4.5e-07  <-- SLOW
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      f=+6.667e-01 it=   68            FTOL      92ms gap=+6.7e-01  <-- BAD
+  DFP:full,reflect             f=+6.667e-01 it=  236            FTOL     272ms gap=+6.7e-01  <-- BAD
+  DFP:scg,reflect              f=+3.246e-10 it=   83            FTOL      67ms gap=+3.2e-10
+  DFP:2D,truncate              f=+6.667e-01 it=   68            FTOL      98ms gap=+6.7e-01  <-- BAD
+  DFP:2D,delta1e-6             f=+3.771e-01 it= 2000         MAXITER    2508ms gap=+3.8e-01  <-- BAD
+
+=== rosen2_x_1e-6_1e6  (n=2, fopt=0.000e+00)
+  scipy L-BFGS-B               f=+3.990e+00 it=    7 nfev=   17       2ms
+  BFGS:default(2D,reflect)     f=+3.990e+00 it=   16            FTOL      13ms gap=+4.0e+00  <-- BAD
+  BFGS:full,reflect            f=+3.990e+00 it=   16            FTOL      60ms gap=+4.0e+00  <-- BAD
+  BFGS:scg,reflect             f=+3.990e+00 it=   16            FTOL       8ms gap=+4.0e+00  <-- BAD
+  BFGS:2D,truncate             f=+3.990e+00 it=   16            FTOL      11ms gap=+4.0e+00  <-- BAD
+  BFGS:2D,delta1e-6            f=+3.990e+00 it=    7            FTOL       5ms gap=+4.0e+00  <-- BAD
+  SR1:default(2D,reflect)      f=+3.990e+00 it=   16            FTOL      12ms gap=+4.0e+00  <-- BAD
+  SR1:full,reflect             f=+3.990e+00 it=   16            FTOL      51ms gap=+4.0e+00  <-- BAD
+  SR1:scg,reflect              f=+3.990e+00 it=   16            FTOL       8ms gap=+4.0e+00  <-- BAD
+  SR1:2D,truncate              f=+3.990e+00 it=   16            FTOL      12ms gap=+4.0e+00  <-- BAD
+  SR1:2D,delta1e-6             f=+3.990e+00 it=    7            FTOL       6ms gap=+4.0e+00  <-- BAD
+  BB:default(2D,reflect)       f=+3.990e+00 it=   27            FTOL      22ms gap=+4.0e+00  <-- BAD
+  BB:full,reflect              f=+3.990e+00 it=   27            FTOL      57ms gap=+4.0e+00  <-- BAD
+  BB:scg,reflect               f=+3.990e+00 it=   27            FTOL      19ms gap=+4.0e+00  <-- BAD
+  BB:2D,truncate               f=+3.990e+00 it=   27            FTOL      17ms gap=+4.0e+00  <-- BAD
+  BB:2D,delta1e-6              f=+3.990e+00 it=   16            FTOL      10ms gap=+4.0e+00  <-- BAD
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      f=+3.990e+00 it=   16            FTOL      10ms gap=+4.0e+00  <-- BAD
+  DFP:full,reflect             f=+3.990e+00 it=   16            FTOL      40ms gap=+4.0e+00  <-- BAD
+  DFP:scg,reflect              f=+3.990e+00 it=   16            FTOL       6ms gap=+4.0e+00  <-- BAD
+  DFP:2D,truncate              f=+3.990e+00 it=   16            FTOL      10ms gap=+4.0e+00  <-- BAD
+  DFP:2D,delta1e-6             f=+3.990e+00 it=    7            FTOL       6ms gap=+4.0e+00  <-- BAD
+
+=== rosen10_box_cut  (n=10, fopt=6.001e+00)
+  scipy L-BFGS-B               f=+6.001e+00 it=   35 nfev=   40       4ms
+  BFGS:default(2D,reflect)     EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  BFGS:full,reflect            EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  BFGS:scg,reflect             EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  BFGS:2D,truncate             EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  BFGS:2D,delta1e-6            EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  SR1:default(2D,reflect)      EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  SR1:full,reflect             EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  SR1:scg,reflect              EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  SR1:2D,truncate              EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  SR1:2D,delta1e-6             EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  BB:default(2D,reflect)       EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  BB:full,reflect              EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  BB:scg,reflect               EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  BB:2D,truncate               EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  BB:2D,delta1e-6              EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  DFP:full,reflect             EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  DFP:scg,reflect              EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  DFP:2D,truncate              EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+  DFP:2D,delta1e-6             EXC RuntimeError: Exceeded upper bounds for indices [1 3 5 7 9] by [0.2 0.2 0.2 0.2  gap=+nan  <-- BAD
+
+=== cosmix10  (n=10, fopt=-1.000e+00)
+  scipy L-BFGS-B               f=+4.778e-01 it=    6 nfev=    9       1ms
+  BFGS:default(2D,reflect)     f=+4.778e-01 it=    6            FTOL       5ms gap=+1.5e+00  <-- BAD
+  BFGS:full,reflect            f=+4.778e-01 it=    6            FTOL       8ms gap=+1.5e+00  <-- BAD
+  BFGS:scg,reflect             f=+4.778e-01 it=    6            FTOL       3ms gap=+1.5e+00  <-- BAD
+  BFGS:2D,truncate             f=+4.778e-01 it=    6            FTOL       3ms gap=+1.5e+00  <-- BAD
+  BFGS:2D,delta1e-6            f=+4.778e-01 it=   27            FTOL      40ms gap=+1.5e+00  <-- BAD
+  SR1:default(2D,reflect)      f=+4.778e-01 it=    6            FTOL       4ms gap=+1.5e+00  <-- BAD
+  SR1:full,reflect             f=+4.778e-01 it=    6            FTOL       4ms gap=+1.5e+00  <-- BAD
+  SR1:scg,reflect              f=+4.778e-01 it=    6            FTOL       4ms gap=+1.5e+00  <-- BAD
+  SR1:2D,truncate              f=+4.778e-01 it=    6            FTOL       5ms gap=+1.5e+00  <-- BAD
+  SR1:2D,delta1e-6             f=+4.778e-01 it=   25            FTOL      24ms gap=+1.5e+00  <-- BAD
+  BB:default(2D,reflect)       f=+4.778e-01 it=   15            FTOL      15ms gap=+1.5e+00  <-- BAD
+  BB:full,reflect              f=+4.778e-01 it=   17            FTOL      15ms gap=+1.5e+00  <-- BAD
+  BB:scg,reflect               f=+4.778e-01 it=   17            FTOL       8ms gap=+1.5e+00  <-- BAD
+  BB:2D,truncate               f=+4.778e-01 it=   15            FTOL      13ms gap=+1.5e+00  <-- BAD
+  BB:2D,delta1e-6              f=+4.778e-01 it=   31            FTOL      44ms gap=+1.5e+00  <-- BAD
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      f=+4.778e-01 it=    6            FTOL       4ms gap=+1.5e+00  <-- BAD
+  DFP:full,reflect             f=+4.778e-01 it=    6            FTOL       6ms gap=+1.5e+00  <-- BAD
+  DFP:scg,reflect              f=+4.778e-01 it=    6            FTOL       3ms gap=+1.5e+00  <-- BAD
+  DFP:2D,truncate              f=+4.778e-01 it=    6            FTOL       4ms gap=+1.5e+00  <-- BAD
+  DFP:2D,delta1e-6             f=+4.778e-01 it=   27            FTOL      25ms gap=+1.5e+00  <-- BAD
+
+=== allactive20  (n=20, fopt=8.000e+01)
+  scipy L-BFGS-B               f=+8.000e+01 it=    1 nfev=    2       0ms
+  BFGS:default(2D,reflect)     f=+8.000e+01 it=    7            FTOL      12ms gap=+0.0e+00
+  BFGS:full,reflect            f=+8.000e+01 it=    7            FTOL      10ms gap=+0.0e+00
+  BFGS:scg,reflect             f=+8.000e+01 it=    7            FTOL       5ms gap=+0.0e+00
+  BFGS:2D,truncate             f=+8.000e+01 it=    7            FTOL      19ms gap=+0.0e+00
+  BFGS:2D,delta1e-6            f=+8.000e+01 it=   42 DELTA_TOO_SMALL      58ms gap=+0.0e+00
+  SR1:default(2D,reflect)      f=+8.000e+01 it=    7            FTOL      11ms gap=+0.0e+00
+  SR1:full,reflect             f=+8.000e+01 it=    7            FTOL       9ms gap=+0.0e+00
+  SR1:scg,reflect              f=+8.000e+01 it=    7            FTOL       6ms gap=+0.0e+00
+  SR1:2D,truncate              f=+8.000e+01 it=    7            FTOL      18ms gap=+2.8e-14
+  SR1:2D,delta1e-6             f=+8.000e+01 it=   42 DELTA_TOO_SMALL      56ms gap=+0.0e+00
+  BB:default(2D,reflect)       f=+8.000e+01 it=    6            FTOL      12ms gap=+0.0e+00
+  BB:full,reflect              f=+8.000e+01 it=    6            FTOL       7ms gap=+0.0e+00
+  BB:scg,reflect               f=+8.000e+01 it=    6            FTOL      12ms gap=+0.0e+00
+  BB:2D,truncate               f=+8.000e+01 it=    7            FTOL       7ms gap=+0.0e+00
+  BB:2D,delta1e-6              f=+8.000e+01 it=   26            FTOL      66ms gap=+0.0e+00
+  Broyden:default(2D,reflect)  EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:full,reflect         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:scg,reflect          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,truncate          EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  Broyden:2D,delta1e-6         EXC TypeError: Broyden.__init__() missing 1 required positional argument: 'phi' gap=+nan  <-- BAD
+  DFP:default(2D,reflect)      f=+8.000e+01 it=    7            FTOL      13ms gap=+0.0e+00
+  DFP:full,reflect             f=+8.000e+01 it=    7            FTOL      10ms gap=+0.0e+00
+  DFP:scg,reflect              f=+8.000e+01 it=    7            FTOL       5ms gap=+0.0e+00
+  DFP:2D,truncate              f=+8.000e+01 it=    7            FTOL      14ms gap=+0.0e+00
+  DFP:2D,delta1e-6             f=+8.000e+01 it=   42 DELTA_TOO_SMALL      49ms gap=+0.0e+00
