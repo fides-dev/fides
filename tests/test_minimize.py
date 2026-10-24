@@ -775,18 +775,46 @@ def test_concave_box_zero_gradient_start_accepts_first_step():
     assert opt.fval < 0
 
 
+@pytest.mark.parametrize('bounds', [(-1, 2), (-2, 1)])
+@pytest.mark.parametrize('subspace_dim', [SubSpaceDim.TWO, SubSpaceDim.FULL])
 @pytest.mark.parametrize('delta_init', [1e-6, 1.0, 1e6])
-def test_concave_box_zero_gradient_start(delta_init):
-    # every vertex of the box is a strict local minimum, any point with a
-    # free variable is a saddle (zero scaled gradient, negative curvature)
+def test_concave_box_zero_gradient_start(delta_init, subspace_dim, bounds):
+    # x0 = 0 is a saddle point with zero gradient, so the first step goes
+    # along an eigenvector of -2 * I with arbitrary sign. If that step ends on
+    # a bound, the other variables still have zero gradient, i.e., the scaled
+    # gradient vanishes at a saddle point and GTOL must not fire. Every vertex
+    # of the box is a strict local minimizer and no other point is, which
+    # vertex is reached depends on the eigenvector sign.
     n = 10
+    lb, ub = bounds[0] * np.ones(n), bounds[1] * np.ones(n)
     opt = Optimizer(
         lambda x: (-np.sum(x**2), -2 * x, -2 * np.eye(n)),
-        ub=2 * np.ones(n),
-        lb=-np.ones(n),
+        ub=ub,
+        lb=lb,
         verbose=logging.WARNING,
-        options={Options.DELTA_INIT: delta_init, Options.MAXITER: 1000},
+        options={
+            Options.DELTA_INIT: delta_init,
+            Options.SUBSPACE_DIM: subspace_dim,
+            Options.MAXITER: 1000,
+        },
     )
     opt.minimize(np.zeros(n))
     assert opt.exitflag > 0
-    assert np.all(np.isclose(opt.x, -1) | np.isclose(opt.x, 2))
+    assert np.all(np.isclose(opt.x, lb) | np.isclose(opt.x, ub))
+
+
+def test_gtol_ignores_curvature_of_hessian_approximation():
+    # a hessian approximation may have negative curvature that the function
+    # does not have, only exact hessians block GTOL at stationary points
+    n = 2
+    opt = Optimizer(
+        lambda x: (np.sum(x**2), 2 * x),
+        ub=np.ones(n),
+        lb=-np.ones(n),
+        verbose=logging.WARNING,
+        hessian_update=SR1(),
+        options={Options.MAXITER: 1000},
+    )
+    opt.minimize(np.zeros(n), hess0=-np.eye(n))
+    assert opt.exitflag == fides.ExitFlag.GTOL
+    assert opt.iteration == 1

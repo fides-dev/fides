@@ -631,10 +631,12 @@ class Optimizer:
         otherwise the current point), using both the gradient norm and the
         norm of the scaled gradient ``v * g`` from [ColemanLi1994],
         which vanishes at first-order optimal points with active bounds.
-        Without bounds ``|v| = 1`` and both norms coincide. The scaled
-        gradient only counts if the scaled Hessian has no negative
-        curvature, so that a saddle on a face of the box, where the
-        gradient vanishes in the free variables, is not declared optimal.
+        Without bounds ``|v| = 1`` and both norms coincide. If the exact
+        hessian is used, GTOL is additionally only declared if the scaled
+        hessian is positive semidefinite (second-order necessary condition
+        in [ColemanLi1994]). Otherwise, the iterate is a saddle point from
+        which the next trust-region step can still make progress along
+        negative curvature.
 
         :param step:
             update to optimization variables
@@ -651,8 +653,6 @@ class Optimizer:
         if accepted:
             x, grad, fval_grad = funout.x, funout.grad, funout.fval
             hess = funout.hess
-            if self.hessian_update is not None or hess is None:
-                hess = self.hess
         else:
             x, grad, fval_grad = self.x, self.grad, self.fval
             hess = self.hess
@@ -663,17 +663,23 @@ class Optimizer:
         gatol = self.get_option(Options.GATOL)
         grtol = self.get_option(Options.GRTOL)
         v, dv = self.get_affine_scaling(x, grad)
-        gnorm = norm(grad)
-        sgnorm = norm(v * grad)
-        if (
-            sgnorm < gnorm
-            and (sgnorm <= gatol or sgnorm <= grtol * np.abs(fval_grad))
-            and not self.has_negative_scaled_curvature(v, dv, grad, hess)
-        ):
-            gnorm = sgnorm
+        gnorm = min(norm(grad), norm(v * grad))
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
         radius_increased = self.delta > self.delta_iter
+        # hessian approximations may lack (BFGS) or invent (SR1) negative
+        # curvature, so the second-order check is restricted to exact
+        # hessians. It is only evaluated if the gradient criteria are met.
+        saddle = (
+            self.hessian_update is None
+            and gnorm <= max(gatol, grtol * np.abs(fval_grad))
+            and self.has_negative_curvature(hess, grad, v, dv)
+        )
+        if saddle:
+            self.logger.info(
+                'Not stopping at first-order stationary point, as the '
+                'scaled hessian has negative curvature'
+            )
 
         if (
             self.tr_ratio > self.get_option(Options.MU)
@@ -697,7 +703,7 @@ class Optimizer:
             )
             converged = True
 
-        elif gnorm <= gatol:
+        elif gnorm <= gatol and not saddle:
             self.exitflag = ExitFlag.GTOL
             self.logger.info(
                 'Stopping as (scaled) gradient norm satisfies absolute '
@@ -705,7 +711,7 @@ class Optimizer:
             )
             converged = True
 
-        elif gnorm <= grtol * np.abs(fval_grad):
+        elif gnorm <= grtol * np.abs(fval_grad) and not saddle:
             self.exitflag = ExitFlag.GTOL
             self.logger.info(
                 'Stopping as (scaled) gradient norm satisfies relative '
@@ -715,6 +721,37 @@ class Optimizer:
             converged = True
 
         self.converged = converged
+
+    @staticmethod
+    def has_negative_curvature(
+        hess: np.ndarray, grad: np.ndarray, v: np.ndarray, dv: np.ndarray
+    ) -> bool:
+        """
+        Checks whether the scaled hessian ``D * hess * D + diag(|g| * dv)``
+        with ``D = diag(sqrt(|v|))`` (Eq 2.5 in [ColemanLi1996]) has
+        negative eigenvalues beyond roundoff. If it does, the point is not a
+        local minimizer, even if the scaled gradient vanishes.
+
+        :param hess:
+            hessian
+        :param grad:
+            gradient
+        :param v:
+            scaling vector
+        :param dv:
+            diagonal of the Jacobian of v wrt x
+
+        :return:
+            flag indicating negative curvature
+        """
+        d = np.sqrt(np.abs(v))
+        shess = d[:, None] * hess * d[None, :] + np.diag(np.abs(grad) * dv)
+        eigvals = np.linalg.eigvalsh(0.5 * (shess + shess.T))
+        if not np.isfinite(eigvals).all():
+            return False
+        return eigvals.min() < -np.sqrt(np.spacing(1)) * np.max(
+            np.abs(eigvals)
+        )
 
     def check_continue(self) -> bool:
         """
@@ -811,36 +848,6 @@ class Optimizer:
         v[bounded] = x[bounded] - bounds[bounded]
         dv[bounded] = 1
         return v, dv
-
-    @staticmethod
-    def has_negative_scaled_curvature(
-        v: np.ndarray, dv: np.ndarray, grad: np.ndarray, hess: np.ndarray
-    ) -> bool:
-        """
-        Checks whether the scaled Hessian
-        ``diag(sqrt(|v|)) hess diag(sqrt(|v|)) + diag(|g| * dv)``
-        from [ColemanLi1994] has a negative eigenvalue
-
-        :param v:
-            scaling vector
-        :param dv:
-            diagonal of the Jacobian of v wrt x
-        :param grad:
-            gradient
-        :param hess:
-            (approximate) Hessian
-
-        :return:
-            flag indicating negative curvature
-        """
-        d = np.sqrt(np.abs(v))
-        shess = d[:, None] * np.asarray(hess) * d[None, :]
-        shess = (shess + shess.T) / 2 + np.diag(np.abs(grad) * dv)
-        if not np.all(np.isfinite(shess)):
-            return False
-        eigvals = np.linalg.eigvalsh(shess)
-        scale = max(1.0, np.max(np.abs(eigvals)))
-        return eigvals[0] < -np.sqrt(np.spacing(1.0)) * scale
 
     def log_step(self, accepted: bool, step: Step, funout: Funout):
         """
