@@ -703,8 +703,8 @@ class Optimizer:
         initial points.
 
         :param eps: degeneracy threshold, defaults to 100 ulp of
-            max(1, |x|) such that the shift is not lost to roundoff for
-            large |x|
+            ``max(1, abs(x))`` such that the shift is not lost to roundoff
+            for large ``abs(x)``
         """
         if eps is None:
             eps = 1e2 * np.spacing(np.maximum(1.0, np.abs(self.x)))

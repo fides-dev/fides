@@ -282,11 +282,7 @@ def test_refined_step_zero_scaling():
     assert norm(ref_step.ss) <= 1.0 * (1 + 1e-12)
 
 
-def test_refined_step_failed_refinement(monkeypatch):
-    """
-    If trust-constr returns an infeasible point, the refined step has to
-    fall back to the unrefined step.
-    """
+def refine_setup():
     hess = np.array([[1.0, -2.0, 0.0], [-2.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
     g = np.array([-1.0, -0.5, -0.5])
     # wide bounds in the remaining coordinates such that step-back does not
@@ -297,6 +293,33 @@ def test_refined_step_failed_refinement(monkeypatch):
     tr_step = TRStepFull(*args)
     tr_step.calculate()
     assert tr_step.alpha < 1
+    return args, tr_step
+
+
+def test_refined_step_marginally_infeasible(monkeypatch):
+    """
+    Refinement results marginally outside the trust region are pulled back
+    onto the trust region boundary.
+    """
+    args, tr_step = refine_setup()
+
+    def marginal_minimize(*_, **__):
+        return OptimizeResult(x=np.array([0.0, 0.0, 1.0 + 1e-8]))
+
+    monkeypatch.setattr(fides.steps, 'minimize', marginal_minimize)
+    ref_step = RefinedStep(*args[:-1], tr_step)
+    ref_step.calculate()
+    assert ref_step.alpha == 1.0
+    assert norm(ref_step.ss) <= 1.0
+    np.testing.assert_allclose(ref_step.ss, [0.0, 0.0, 1.0], rtol=1e-15)
+
+
+def test_refined_step_failed_refinement(monkeypatch):
+    """
+    If trust-constr returns an infeasible point, the refined step has to
+    fall back to the unrefined step.
+    """
+    args, tr_step = refine_setup()
 
     def failed_minimize(*_, **__):
         # far outside the trust region, but inside the bounds
