@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import signal
 import time
 
 import h5py
@@ -909,3 +910,42 @@ def test_logger_reused_across_runs(capsys):
     opt.minimize(x0)
     assert logger.level == logging.WARNING
     assert not capsys.readouterr().err
+
+
+def exp_overflow(x):
+    f = np.sum(np.exp(x)) + np.sum((x + 50) ** 2)
+    g = np.exp(x) + 2 * (x + 50)
+    h = np.diag(np.exp(x) + 2)
+    return f, g, h
+
+
+@pytest.mark.skipif(
+    not hasattr(signal, 'SIGALRM'), reason='requires signal.SIGALRM'
+)
+@pytest.mark.parametrize('subspace_dim', list(SubSpaceDim))
+def test_huge_gradient_and_hessian(subspace_dim):
+    # gradient and hessian entries ~e^600 overflow r'r and d'Bd in the
+    # Steihaug CG recursion, which then looped forever on nan. MAXTIME is only
+    # checked between iterations, so enforce a hard runtime cap via SIGALRM.
+    def timeout(signum, frame):
+        raise TimeoutError('minimize did not terminate')
+
+    n = 3
+    opt = Optimizer(
+        exp_overflow,
+        ub=np.full(n, np.inf),
+        lb=np.full(n, -np.inf),
+        verbose=logging.WARNING,
+        options={Options.SUBSPACE_DIM: subspace_dim, Options.MAXITER: 2000},
+    )
+    handler = signal.signal(signal.SIGALRM, timeout)
+    signal.alarm(60)
+    try:
+        with np.errstate(over='ignore'):
+            opt.minimize(np.full(n, 600.0))
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, handler)
+    assert opt.exitflag in (fides.ExitFlag.GTOL, fides.ExitFlag.FTOL)
+    assert opt.fval < 1e-12
+    assert np.allclose(opt.x, -50)
