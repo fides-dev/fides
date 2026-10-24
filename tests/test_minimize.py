@@ -477,6 +477,55 @@ def test_history_reused_start_id(tmp_path):
         assert set(f.keys()) == {'run', 'run2'}
 
 
+@pytest.mark.parametrize('history_file', ['str', 'path', 'pathlike', 'none'])
+def test_history_file_types(tmp_path, history_file):
+    # the default (None) must be accepted when passed explicitly, e.g. by
+    # callers that forward every option, as must any path-like
+    class PathLike:
+        def __init__(self, path):
+            self.path = path
+
+        def __fspath__(self):
+            return str(self.path)
+
+    h5file = tmp_path / 'history.h5'
+    value = {
+        'str': str(h5file),
+        'path': h5file,
+        'pathlike': PathLike(h5file),
+        'none': None,
+    }[history_file]
+
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    opt = Optimizer(
+        rosenboth,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        options={'history_file': value, Options.MAXITER: 5},
+    )
+    opt.minimize(x0)
+
+    if history_file == 'none':
+        assert not h5file.exists()
+    else:
+        with h5py.File(h5file, 'r') as f:
+            assert len(f.keys()) == 1
+
+
+def test_default_options_valid():
+    # every default must pass validation when passed explicitly
+    lb, ub, _ = finite_bounds_exlude_optimum()
+    for key, value in fides.constants.DEFAULT_OPTIONS.items():
+        Optimizer(rosenboth, ub=ub, lb=lb, options={key: value})
+    Optimizer(
+        rosenboth,
+        ub=ub,
+        lb=lb,
+        options=dict(fides.constants.DEFAULT_OPTIONS),
+    )
+
+
 def test_wrong_options():
     lb, ub, x0 = finite_bounds_exlude_optimum()
     fun = rosenboth
