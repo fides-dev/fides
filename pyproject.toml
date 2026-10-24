@@ -10,7 +10,7 @@ name = "fides"
 dynamic = ["version"]
 description = "python-based Trust Region Optimization toolbox"
 readme = {file = "README.md", content-type = "text/markdown"}
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 license = {text = "BSD-3-Clause"}
 authors = [
     {name = "The fides developers", email = "frohlichfab@gmail.com"}
@@ -27,9 +27,9 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
     "numpy>=1.19.2",
@@ -48,7 +48,6 @@ Changelog = "https://github.com/fides-dev/fides/releases"
 test = [
     "pytest>=5.4.2",
     "pytest-cov>=4.0.0",
-    "flake8>=3.7.2",
 ]
 
 [tool.setuptools]
@@ -62,12 +61,14 @@ version = {attr = "fides.version.__version__"}
 
 [tool.ruff]
 line-length = 79
-target-version = "py313"
 
 [tool.ruff.lint]
 # Enable pycodestyle (E, W), pyflakes (F), isort (I), and other useful rules
 select = ["E", "W", "F", "I", "N", "UP", "B", "A", "C4", "PT", "SIM"]
-ignore = ["PT011"]  # pytest.raises() without match parameter is acceptable
+ignore = [
+    "PT011",  # pytest.raises() without match parameter is acceptable
+    "UP042",  # StrEnum would change str()/format() of option enums
+]
 
 [tool.ruff.lint.per-file-ignores]
 "fides/subproblem.py" = ["W605"]
