@@ -702,18 +702,17 @@ class Optimizer:
         Ensures that x is non-degenerate, this should only be necessary for
         initial points.
 
-        :param eps: degeneracy threshold
+        :param eps: degeneracy threshold, defaults to 100 ulp of
+            max(1, |x|) such that the shift is not lost to roundoff for
+            large |x|
         """
         if eps is None:
-            eps = 1e2 * np.spacing(1)
-        if (
-            np.min(np.abs(self.ub - self.x)) < eps
-            or np.min(np.abs(self.x - self.lb)) < eps
-        ):
-            upperi = (self.ub - self.x) < eps
-            loweri = (self.x - self.lb) < eps
-            self.x[upperi] = self.x[upperi] - eps
-            self.x[loweri] = self.x[loweri] + eps
+            eps = 1e2 * np.spacing(np.maximum(1.0, np.abs(self.x)))
+        eps = np.broadcast_to(eps, self.x.shape)
+        upperi = (self.ub - self.x) < eps
+        loweri = (self.x - self.lb) < eps
+        self.x[upperi] = self.x[upperi] - eps[upperi]
+        self.x[loweri] = self.x[loweri] + eps[loweri]
 
     def get_affine_scaling(self) -> tuple[np.ndarray, np.ndarray]:
         """
