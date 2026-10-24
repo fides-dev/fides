@@ -1,0 +1,30 @@
+name: Lint
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+
+      - name: Run pre-commit
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files --show-diff-on-failure
+        env:
+          RUFF_OUTPUT_FORMAT: github

@@ -9,21 +9,22 @@ jobs:
   pypi:
     name: Deploy PyPI
 
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     permissions:
       id-token: write  # Required for trusted publishing
       contents: read
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         fetch-depth: 20
+        persist-credentials: false
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
-        python-version: '3.13'
+        python-version: '3.14'
 
     - name: Build distribution
       run: |
