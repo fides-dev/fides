@@ -333,17 +333,32 @@ class CGStep(Step):
 
     def calculate(self):
         nsg = norm(self.sg)
-        self.conj_grad(min(0.5, np.sqrt(nsg)) * nsg)
-        self.s = self.scaling.dot(self.ss + self.ss0)
+        ss = self.conj_grad(min(0.5, np.sqrt(nsg)) * nsg)
+        # represent the whole CG step as 1D subspace (with ss0 = 0), such
+        # that step back, reflection and truncation act on the step that is
+        # actually taken
+        nss = norm(ss)
+        if nss > 0:
+            self.subspace = np.expand_dims(ss / nss, 1)
+            self.sc = nss * np.ones((1,))
+        else:
+            self.subspace = np.zeros((len(ss), 0))
+            self.sc = np.zeros((0,))
+        self.reduce_to_subspace()
+        self.ss = ss
+        self.s = self.scaling.dot(self.ss)
         self.step_back()
         self.qpval = quadratic_form(self.shess, self.sg, self.ss + self.ss0)
 
-    def conj_grad(self, eps):
+    def conj_grad(self, eps) -> np.ndarray:
         """
         Compute step proposal using conjugate gradient method
 
         :param eps:
             tolerance for residual norm
+
+        :return:
+            Proposed step in transformed coordinates
         """
         raise NotImplementedError()
 
@@ -361,8 +376,7 @@ class TRStepSteihaug(CGStep):
         r = self.sg.copy()
         d = -self.sg.copy()
         if norm(r) < eps:
-            self.ss = z
-            return
+            return z
 
         while True:
             bd = self.shess.dot(d)
@@ -371,26 +385,18 @@ class TRStepSteihaug(CGStep):
             alpha = r2 / c
             zp = z + alpha * d
             if c <= 0 or norm(zp) >= self.delta:
-                self.subspace = np.expand_dims(d, 1)
-                self.ss0 = z
-                self.sc = get_1d_trust_region_boundary_solution(
+                tau = get_1d_trust_region_boundary_solution(
                     self.shess,
                     self.sg,
-                    self.subspace[:, 0],
-                    self.ss0,
+                    d,
+                    z,
                     self.delta,
-                ) * np.ones((1,))
-                self.ss = self.subspace.dot(self.sc)
-                return
+                )
+                return z + tau * d
             rp = r + alpha * bd
             rp2 = np.dot(rp, rp)
             if np.sqrt(rp2) < eps:
-                normalize(d)
-                self.subspace = np.expand_dims(d, 1)
-                self.sc = zp.dot(d) * np.ones((1,))
-                self.ss = self.subspace.dot(self.sc)
-                self.ss0 = zp - self.ss
-                return
+                return zp
             beta = rp2 / r2
 
             d = -rp + beta * d
@@ -530,12 +536,15 @@ class RefinedStep(Step):
         self.cg: np.ndarray = step.cg.copy()
         self.constraints = [
             NonlinearConstraint(
-                fun=lambda xc: (norm(self.subspace.dot(xc)) - delta)
-                * np.ones((1,)),
-                jac=lambda xc: np.expand_dims(self.subspace.dot(xc), 1).T.dot(
-                    self.subspace
-                )
-                / norm(self.subspace.dot(xc)),
+                fun=lambda xc: (
+                    (norm(self.subspace.dot(xc)) - delta) * np.ones((1,))
+                ),
+                jac=lambda xc: (
+                    np.expand_dims(self.subspace.dot(xc), 1).T.dot(
+                        self.subspace
+                    )
+                    / norm(self.subspace.dot(xc))
+                ),
                 lb=-np.ones((1,)) * np.inf,
                 ub=np.zeros((1,)),
             ),

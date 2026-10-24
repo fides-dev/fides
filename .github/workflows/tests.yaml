@@ -1,26 +1,36 @@
 name: Python Tests
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   build:
     name: Python Version Matrix
 
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.12', '3.13', '3.14']
 
     steps:
 
+    - uses: actions/checkout@v7
+      with:
+        persist-credentials: false
+
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
-
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 20
+        cache: pip
+        cache-dependency-path: pyproject.toml
 
     - name: Python tests
       run: |
@@ -28,8 +38,8 @@ jobs:
         python -m pytest --cov=fides --cov-report xml:coverage.xml --cov-report term ./tests
 
     - name: Codecov
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: coverage.xml
+        files: coverage.xml
         fail_ci_if_error: true
