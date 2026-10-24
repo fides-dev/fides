@@ -147,10 +147,62 @@ def validate_options(options: dict):
 
         expected_type = expected_types[option]
         if not isinstance(option_value, expected_type):
-            if expected_type == Integral and int(option_value) == option_value:
-                continue
-            raise TypeError(
-                f'Type mismatch for option {option_key}. '
-                f'Expected {expected_type} but got '
-                f'{type(option_value)}'
-            )
+            if expected_type == Integral and _is_integral(option_value):
+                pass
+            else:
+                raise TypeError(
+                    f'Type mismatch for option {option_key}. '
+                    f'Expected {expected_type} but got '
+                    f'{type(option_value)}'
+                )
+
+        if option in OPTION_RANGES:
+            lo, hi, lo_open, hi_open = OPTION_RANGES[option]
+            if (
+                np.isnan(option_value)
+                or option_value < lo
+                or option_value > hi
+                or (lo_open and option_value == lo)
+                or (hi_open and option_value == hi)
+            ):
+                raise ValueError(
+                    f'Option {option.value} must be in the interval '
+                    f'{"(" if lo_open else "["}{lo}, {hi}'
+                    f'{")" if hi_open else "]"}, but was {option_value}.'
+                )
+
+    mu = options.get(Options.MU, DEFAULT_OPTIONS[Options.MU])
+    eta = options.get(Options.ETA, DEFAULT_OPTIONS[Options.ETA])
+    if mu > eta:
+        raise ValueError(
+            f'Option {Options.MU.value} ({mu}) must not exceed option '
+            f'{Options.ETA.value} ({eta}).'
+        )
+
+
+def _is_integral(value) -> bool:
+    """Check whether a (float) value has an integral value"""
+    try:
+        return int(value) == value
+    except (TypeError, ValueError, OverflowError):
+        return False
+
+
+#: admissible ranges for numeric options as (lower, upper, lower_open,
+#: upper_open). Options outside these ranges break the trust-region
+#: iteration (e.g. a radius that never shrinks or steps onto the boundary).
+OPTION_RANGES = {
+    Options.MAXITER: (0, np.inf, False, False),
+    Options.MAXTIME: (0, np.inf, False, False),
+    Options.FATOL: (0, np.inf, False, False),
+    Options.FRTOL: (0, np.inf, False, False),
+    Options.XTOL: (0, np.inf, False, False),
+    Options.GATOL: (0, np.inf, False, False),
+    Options.GRTOL: (0, np.inf, False, False),
+    Options.THETA_MAX: (0, 1, True, False),
+    Options.DELTA_INIT: (0, np.inf, True, True),
+    Options.MU: (0, 1, False, True),
+    Options.ETA: (0, 1, False, True),
+    Options.GAMMA1: (0, 1, True, True),
+    Options.GAMMA2: (1, np.inf, True, True),
+}

@@ -60,8 +60,9 @@ def solve_1d_trust_region_subproblem(
         a = a[0, 0]
     b_coef = s.T.dot(b.dot(s0) + g)
 
-    minq = -b_coef / (2 * a)
-    if a > 0 and norm(minq * s + s0) <= delta:
+    # the minimizer of the quadratic along s only exists for positive
+    # curvature
+    if a > 0 and norm((minq := -b_coef / (2 * a)) * s + s0) <= delta:
         # interior solution
         tau = minq
     else:
@@ -73,9 +74,19 @@ def solve_1d_trust_region_subproblem(
 def get_1d_trust_region_boundary_solution(b, g, s, s0, delta):
     a = np.dot(s, s)
     b_coef = 2 * np.dot(s0, s)
-    c = np.dot(s0, s0) - delta**2
+    # delta * delta instead of delta**2, which raises OverflowError for
+    # python floats instead of returning inf
+    c = np.dot(s0, s0) - delta * delta
 
-    aux = b_coef + math.copysign(np.sqrt(b_coef**2 - 4 * a * c), b_coef)
+    # the discriminant is only negative by roundoff, if s0 marginally
+    # exceeds the trust region radius
+    aux = b_coef + math.copysign(
+        np.sqrt(max(b_coef**2 - 4 * a * c, 0.0)), b_coef
+    )
+    if aux == 0:
+        # s0 lies on the boundary and s is orthogonal to s0, s0 is the only
+        # feasible point
+        return 0.0
     ts = [-aux / (2 * a), -2 * c / aux]
     qs = [quadratic_form(b, g, s0 + t * s) for t in ts]
     return ts[np.argmin(qs)]

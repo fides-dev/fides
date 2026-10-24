@@ -269,7 +269,9 @@ class Step:
             self.sc, _ = solve_nd_trust_region_subproblem(
                 self.chess,
                 self.cg,
-                np.sqrt(max(self.delta**2 - norm(self.ss0) ** 2, 0.0)),
+                np.sqrt(
+                    max(self.delta * self.delta - norm(self.ss0) ** 2, 0.0)
+                ),
                 self.logger,
             )
         else:
@@ -439,9 +441,22 @@ class TRStepSteihaug(CGStep):
         if norm(r) <= eps:
             return z
 
-        while True:
+        # in exact arithmetic, CG terminates after at most n iterations. In
+        # floating point arithmetic, conjugacy is lost for ill-conditioned
+        # problems and the residual may stagnate above eps without ever
+        # triggering the boundary or negative curvature exits. The model
+        # value decreases monotonically along the iterates, so the current
+        # iterate is a valid (if inexact) step.
+        maxiter = 2 * len(sg) + 10
+        for _ in range(maxiter):
             bd = shess.dot(d)
             c = d.dot(bd)
+            if not np.isfinite(c):
+                self.logger.debug(
+                    'Non-finite curvature in CG iteration, using current '
+                    'iterate as step.'
+                )
+                return z
             r2 = np.dot(r, r)
             if c > 0:
                 alpha = r2 / c
@@ -457,6 +472,12 @@ class TRStepSteihaug(CGStep):
                 return z + tau * d
             rp = r + alpha * bd
             rp2 = np.dot(rp, rp)
+            if not np.isfinite(rp2):
+                self.logger.debug(
+                    'Non-finite residual in CG iteration, using current '
+                    'iterate as step.'
+                )
+                return zp
             if np.sqrt(rp2) < eps:
                 return zp
             beta = rp2 / r2
@@ -464,6 +485,12 @@ class TRStepSteihaug(CGStep):
             d = -rp + beta * d
             z = zp.copy()
             r = rp.copy()
+
+        self.logger.debug(
+            f'CG did not reach the residual tolerance within {maxiter} '
+            'iterations, using current iterate as step.'
+        )
+        return z
 
 
 class TRStepReflected(Step):

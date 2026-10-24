@@ -40,11 +40,11 @@ class HessianApproximation:
             self._hess = np.eye(dim)
         else:
             hess = np.asarray(hess)
-            if hess.shape[0] != dim:
+            if hess.shape != (dim, dim):
                 raise ValueError(
                     'Initial approximation had inconsistent '
-                    f'dimension, was {hess.shape[0]}, '
-                    f'but should be {dim}.'
+                    f'shape, was {hess.shape}, '
+                    f'but should be {(dim, dim)}.'
                 )
             # cast to float so that in-place updates do not fail for
             # integer-valued initializations
@@ -224,8 +224,10 @@ class SR1(IterativeHessianApproximation):
         z = y - self._hess.dot(s)
         d = z.T.dot(s)
 
-        # [NocedalWright2006] (6.26) reject if update degenerate
-        if np.abs(d) >= np.sqrt(np.spacing(1)) * norm(s) * norm(z):
+        # [NocedalWright2006] (6.26) reject if update degenerate. The
+        # comparison is strict such that z == 0 (secant equation already
+        # satisfied) skips the update instead of producing 0/0
+        if np.abs(d) > np.sqrt(np.spacing(1)) * norm(s) * norm(z):
             self._diff = np.outer(z, z.T) / d
         else:
             self._diff = np.zeros_like(self._hess)
@@ -688,13 +690,22 @@ def broyden_class_update(
     c = u.T.dot(s)
     b = y.T.dot(s)
 
-    if b <= 0 and enforce_curv_cond:
+    if b == 0 or (b < 0 and enforce_curv_cond):
+        # the update is undefined for b == 0 (y orthogonal to s)
         return np.zeros_like(mat)
 
-    update = np.outer(y, y.T) / b - np.outer(u, u.T) / c
+    update = np.outer(y, y.T) / b
 
-    if phi != 0.0:
-        v = y / b - u / c
-        update += phi * c * np.outer(v, v.T)
+    if c != 0:
+        update -= np.outer(u, u.T) / c
+        if phi != 0.0:
+            v = y / b - u / c
+            update += phi * c * np.outer(v, v.T)
+    elif np.any(u):
+        # s is a direction of zero curvature of mat but mat*s != 0, the
+        # update is undefined
+        return np.zeros_like(mat)
+    # otherwise mat*s == 0 (e.g. zero initialization) and the terms
+    # involving u vanish
 
     return update

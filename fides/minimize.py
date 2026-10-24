@@ -65,6 +65,8 @@ class FunEvaluator:
 
         if self.resfun:
             res, sres = ret
+            res = np.asarray(res, dtype=float)
+            sres = np.asarray(sres, dtype=float)
             return Funout(
                 fval=0.5 * res.T.dot(res),
                 grad=res.T.dot(sres),
@@ -76,10 +78,10 @@ class FunEvaluator:
         else:
             if self.nargout == 3:
                 fval, grad, hess = ret
-                return Funout(fval=fval, grad=grad, hess=hess, x=x)
             else:
                 fval, grad = ret
-                return Funout(fval=fval, grad=grad, x=x)
+                hess = None
+            return Funout(fval=fval, grad=grad, hess=hess, x=x)
 
 
 class Funout:
@@ -92,9 +94,15 @@ class Funout:
         res: np.ndarray | None = None,
         sres: np.ndarray | None = None,
     ):
+        # accept zero-dimensional arrays (e.g. from autodiff frameworks) as
+        # scalars, other shapes are rejected in checkdims
+        if not np.isscalar(fval) and np.ndim(fval) == 0:
+            fval = float(fval)
         self.fval = fval
-        self.grad = grad
-        self.hess = hess
+        # accept lists and integer arrays, the optimizer relies on float
+        # array arithmetic
+        self.grad = _as_float_array(grad)
+        self.hess = _as_float_array(hess)
         self.x = x
         self.res = res
         self.sres = sres
@@ -155,6 +163,17 @@ class Funout:
 
     def __repr__(self):
         return f'Funout(fval={self.fval}, grad={self.grad}, hess={self.hess})'
+
+
+def _as_float_array(arr) -> np.ndarray | None:
+    """
+    Converts array-like gradient/Hessian output to a float array, scalars
+    and None are passed through such that :meth:`Funout.checkdims` can
+    produce informative errors.
+    """
+    if arr is None or np.isscalar(arr):
+        return arr
+    return np.asarray(arr, dtype=float)
 
 
 class Optimizer:
@@ -230,24 +249,30 @@ class Optimizer:
             more informative error messages. Must have the same length as
             `ub` and `lb`.
         """
-        nargout = (
-            3
-            if hessian_update is None
-            or (
-                hessian_update.requires_hess
-                and not hessian_update.requires_resfun
-            )
-            else 2
-        )
+        if resfun:
+            # (res, sres), the Gauss-Newton Hessian is computed from sres
+            nargout = 2
+        elif hessian_update is None or hessian_update.requires_hess:
+            nargout = 3
+        else:
+            nargout = 2
 
         self.fevaler = FunEvaluator(
             fun=fun, nargout=nargout, resfun=resfun, funargs=funargs
         )
 
-        if (
-            hessian_update is not None
-            and resfun != hessian_update.requires_resfun
+        if hessian_update is not None and resfun != (
+            hessian_update.requires_resfun
         ):
+            if resfun:
+                raise ValueError(
+                    f'Hessian update scheme {type(hessian_update)} does '
+                    f'not support objective functions that return '
+                    f'(residual, residual derivative). Please provide an '
+                    f'objective function that returns (fval, grad[, hess]) '
+                    f'and call this function with argument resfun set to '
+                    f'`False`.'
+                )
             raise ValueError(
                 f'Hessian update scheme {type(hessian_update)} '
                 f'requires an objective function that returns '
@@ -256,8 +281,25 @@ class Optimizer:
                 f'function with argument resfun set to `True`.'
             )
 
-        self.lb: np.ndarray = np.array(lb)
-        self.ub: np.ndarray = np.array(ub)
+        self.lb: np.ndarray = np.array(lb, dtype=float)
+        self.ub: np.ndarray = np.array(ub, dtype=float)
+        if self.lb.ndim != 1 or self.ub.ndim != 1:
+            raise ValueError(
+                'lb and ub must be vectors with ndim == 1, but had '
+                f'ndim {self.lb.ndim} and {self.ub.ndim}.'
+            )
+        if self.lb.shape != self.ub.shape:
+            raise ValueError(
+                f'lb has {len(self.lb)} entries, but ub has {len(self.ub)}.'
+            )
+        if np.isnan(self.lb).any() or np.isnan(self.ub).any():
+            raise ValueError('lb and ub must not contain NaN entries.')
+        if (self.lb > self.ub).any():
+            ix = np.where(self.lb > self.ub)[0]
+            raise ValueError(
+                f'lb exceeds ub for indices {ix}: lb={self.lb[ix]}, '
+                f'ub={self.ub[ix]}.'
+            )
 
         self.x_names: list[str] | None = None
         if x_names is not None:
@@ -289,10 +331,10 @@ class Optimizer:
 
         self.tr_ratio: float = 1
 
-        self.x: np.ndarray = np.empty(ub.shape)
+        self.x: np.ndarray = np.empty(self.ub.shape)
         self.fval: float = np.inf
-        self.grad: np.ndarray = np.empty(ub.shape)
-        self.hess: np.ndarray = np.empty((ub.shape[0], ub.shape[0]))
+        self.grad: np.ndarray = np.empty(self.ub.shape)
+        self.hess: np.ndarray = np.empty((len(self.ub), len(self.ub)))
         self.x_min = self.x
         self.fval_min = self.fval
         self.grad_min = self.grad
@@ -305,7 +347,7 @@ class Optimizer:
         self.iteration: int = 0
         self.converged: bool = False
         self.exitflag: ExitFlag = ExitFlag.DID_NOT_RUN
-        self.verbose: int = verbose
+        self.verbose: int = logging.INFO if verbose is None else verbose
         self.logger: logging.Logger | None = None
         self.history: dict[str, list[float | int | bool]] = defaultdict(list)
         self.start_id: str = ''
@@ -386,25 +428,44 @@ class Optimizer:
         self._reset(start_id)
         self.check_history_file()
 
-        self.x = np.array(x0).copy()
-        if self.x.ndim > 1:
+        # integer x0 would truncate the non-degeneracy shift
+        self.x = np.array(x0, dtype=float)
+        if self.x.ndim != 1:
             raise ValueError('x0 must be a vector with x.ndim == 1!')
-        self.make_non_degenerate()
-        self.check_in_bounds()
+        if len(self.x) != len(self.ub):
+            raise ValueError(
+                f'x0 has {len(self.x)} entries, but there are '
+                f'{len(self.ub)} optimization variables.'
+            )
+        self.x = self.project_into_bounds(self.x)
 
         funout = self.fevaler(self.x)
+        funout.checkdims()
 
         self.fval, self.grad = funout.fval, funout.grad
         if self.hessian_update is not None:
-            if isinstance(hess0, str) and hess0 == 'hess':
-                self.hessian_update._init_mat(len(self.x), funout.hess)
-            else:
-                self.hessian_update._init_mat(len(self.x), hess0)
+            if isinstance(hess0, str):
+                if hess0 != 'hess':
+                    raise ValueError(
+                        f"hess0 must be an array or the string 'hess', "
+                        f'was {hess0!r}.'
+                    )
+                if funout.hess is None:
+                    raise ValueError(
+                        "hess0='hess' requires an objective function that "
+                        'returns a Hessian, but the provided function (or '
+                        'Hessian update scheme) does not.'
+                    )
+                hess0 = funout.hess
+            self.hessian_update._init_mat(len(self.x), hess0)
             self.hess = self.hessian_update.get_mat().copy()
         else:
+            if funout.hess is None:
+                raise ValueError(
+                    'Provided objective function must return a Hessian if '
+                    'no Hessian update scheme is employed.'
+                )
             self.hess = funout.hess.copy()
-
-        funout.checkdims()
 
         self.track_minimum(funout)
         self.log_header()
@@ -443,7 +504,12 @@ class Optimizer:
                 logger=self.logger,
             )
 
-            x_new = self.x + step.s + step.s0
+            # sum in the order used by the step classes to compute the
+            # distance to the boundary. The projection only acts on
+            # roundoff-level bound violations and moves points off the
+            # boundary, such that function value, gradient and hessian are
+            # evaluated at the point the optimizer actually moves to.
+            x_new = self.project_into_bounds(self.x + step.s0 + step.s)
             funout_new = self.fevaler(x_new)
 
             if np.isfinite(funout_new.fval):
@@ -522,7 +588,9 @@ class Optimizer:
             variables after step is taken
         """
         if self.hessian_update is not None:
-            s = step.s + step.s0
+            # actual displacement, which may differ from the proposed step
+            # by the projection into the bounds
+            s = funout_new.x - self.x
             y = funout_new.grad - self.grad
 
             if isinstance(self.hessian_update, IterativeHessianApproximation):
@@ -578,7 +646,6 @@ class Optimizer:
         self.fval = funout_new.fval
         self.x = funout_new.x
         self.grad = funout_new.grad
-        self.make_non_degenerate()
 
     def update_tr_radius(
         self, funout: Funout, step: Step, dv: np.ndarray
@@ -698,7 +765,12 @@ class Optimizer:
         gatol = self.get_option(Options.GATOL)
         grtol = self.get_option(Options.GRTOL)
         v, dv = self.get_affine_scaling(x, grad)
-        gnorm = min(norm(grad), norm(v * grad))
+        # variables that sit on the degeneracy margin of the bound their
+        # gradient points towards cannot move any closer to that bound and
+        # are first-order optimal, irrespective of the gradient magnitude
+        vg = v * grad
+        vg[self.active_at_margin(x, grad)] = 0.0
+        gnorm = min(norm(grad), norm(vg))
         stepsx = step.ss + step.ss0
         nsx = norm(stepsx)
         radius_increased = self.delta > self.delta_iter
@@ -831,22 +903,84 @@ class Optimizer:
 
         return True
 
-    def make_non_degenerate(self, eps=None) -> None:
+    def degeneracy_margins(self) -> tuple[np.ndarray, np.ndarray]:
         """
-        Ensures that x is non-degenerate, this should only be necessary for
-        initial points.
+        Computes the minimal distance that iterates keep to the lower and
+        upper bounds, 100 ulp of ``max(1, abs(bound))`` such that the
+        margin is not lost to roundoff for large bounds. For boxes narrower
+        than two margins, the margins are shrunk to half the box width, such
+        that fixed variables (``lb == ub``) stay on their bound.
 
-        :param eps: degeneracy threshold, defaults to 100 ulp of
-            ``max(1, abs(x))`` such that the shift is not lost to roundoff
-            for large ``abs(x)``
+        :return:
+            margins to the lower bounds, margins to the upper bounds
         """
-        if eps is None:
-            eps = 1e2 * np.spacing(np.maximum(1.0, np.abs(self.x)))
-        eps = np.broadcast_to(eps, self.x.shape)
-        upperi = (self.ub - self.x) < eps
-        loweri = (self.x - self.lb) < eps
-        self.x[upperi] = self.x[upperi] - eps[upperi]
-        self.x[loweri] = self.x[loweri] + eps[loweri]
+        margins = []
+        for bound in (self.lb, self.ub):
+            margin = np.zeros(bound.shape)
+            finite = np.isfinite(bound)
+            margin[finite] = 1e2 * np.spacing(
+                np.maximum(1.0, np.abs(bound[finite]))
+            )
+            margins.append(margin)
+        mlb, mub = margins
+        width = self.ub - self.lb
+        narrow = mlb + mub > width
+        mlb[narrow] = width[narrow] / 2
+        mub[narrow] = width[narrow] / 2
+        return mlb, mub
+
+    def project_into_bounds(self, x: np.ndarray) -> np.ndarray:
+        """
+        Moves x such that it is non-degenerate, i.e., all variables keep at
+        least the degeneracy margin (see :meth:`degeneracy_margins`) to
+        their bounds. Variables that are already further from the bounds
+        are not changed. Points that violate the bounds by more than the
+        margin are not projected.
+
+        :param x:
+            point to be projected
+
+        :return:
+            projected copy of x
+
+        :raises:
+            RuntimeError if x violates the bounds by more than the margin
+        """
+        mlb, mub = self.degeneracy_margins()
+        if np.any(x < self.lb - mlb) or np.any(x > self.ub + mub):
+            self.check_in_bounds(x)
+        return np.minimum(np.maximum(x, self.lb + mlb), self.ub - mub)
+
+    def active_at_margin(self, x: np.ndarray, grad: np.ndarray) -> np.ndarray:
+        """
+        Identifies variables that are at the degeneracy margin of the bound
+        that their gradient points towards. Such variables cannot move
+        any closer to the bound and are treated as first-order optimal.
+
+        :param x:
+            point at which the activity is evaluated
+
+        :param grad:
+            gradient at x
+
+        :return:
+            boolean mask of active variables
+        """
+        mlb, mub = self.degeneracy_margins()
+        bounds = self.lb.copy()
+        bounds[grad < 0] = self.ub[grad < 0]
+        margin = mlb.copy()
+        margin[grad < 0] = mub[grad < 0]
+        # the projection places variables at the margin up to roundoff,
+        # allow for a factor of two to be robust
+        return np.isfinite(bounds) & (np.abs(x - bounds) <= 2 * margin)
+
+    def make_non_degenerate(self) -> None:
+        """
+        Ensures that the current point x is non-degenerate,
+        see :meth:`project_into_bounds`.
+        """
+        self.x = self.project_into_bounds(self.x)
 
     def get_affine_scaling(
         self, x: np.ndarray | None = None, grad: np.ndarray | None = None
