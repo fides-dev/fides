@@ -39,13 +39,16 @@ class HessianApproximation:
         if hess is None:
             self._hess = np.eye(dim)
         else:
+            hess = np.asarray(hess)
             if hess.shape[0] != dim:
                 raise ValueError(
                     'Initial approximation had inconsistent '
                     f'dimension, was {hess.shape[0]}, '
                     f'but should be {dim}.'
                 )
-            self._hess = hess.copy()
+            # cast to float so that in-place updates do not fail for
+            # integer-valued initializations
+            self._hess = np.array(hess, dtype=float)
         self._diff = np.zeros_like(self._hess)
 
     def get_mat(self) -> np.ndarray:
@@ -79,7 +82,7 @@ class HessianApproximation:
                 f'shape, was {mat.shape}, '
                 f'but should be {self._hess.shape}.'
             )
-        self._hess = mat.copy()
+        self._hess = np.array(mat, dtype=float)
 
     @property
     def requires_resfun(self):
@@ -219,12 +222,31 @@ class SR1(IterativeHessianApproximation):
             self._diff = np.zeros_like(self._hess)
 
 
-class BG(IterativeHessianApproximation):
+class _NonSymmetricIterativeApproximation(IterativeHessianApproximation):
+    """
+    Base class for iterative update schemes that do not preserve symmetry.
+
+    The internal approximation is updated with the (non-symmetric) update
+    formula, but :meth:`get_mat` and :meth:`get_diff` return the symmetric
+    part. The trust-region subproblem solvers assume a symmetric matrix and
+    the quadratic model :math:`s^T B s` only depends on the symmetric part of
+    :math:`B` anyway.
+    """
+
+    def get_mat(self) -> np.ndarray:
+        return (self._hess + self._hess.T) / 2
+
+    def get_diff(self) -> np.ndarray:
+        return (self._diff + self._diff.T) / 2
+
+
+class BG(_NonSymmetricIterativeApproximation):
     """
     Broydens "good" method as introduced in
     [Broyden 1965](https://doi.org/10.1090%2FS0025-5718-1965-0198670-6).
     This is a rank 1 update strategy that does not preserve symmetry or
-    positive definiteness.
+    positive definiteness. The optimizer uses the symmetric part of the
+    approximation.
 
     This scheme only works with a function that returns (fval, grad)
     """
@@ -234,23 +256,32 @@ class BG(IterativeHessianApproximation):
         self._diff = np.outer(z, s.T) / s.T.dot(s)
 
 
-class BB(IterativeHessianApproximation):
+class BB(_NonSymmetricIterativeApproximation):
     """
     Broydens "bad" method as introduced in
     [Broyden 1965](https://doi.org/10.1090%2FS0025-5718-1965-0198670-6).
     This is a rank 1 update strategy that does not preserve symmetry or
-    positive definiteness.
+    positive definiteness. The optimizer uses the symmetric part of the
+    approximation.
+
+    The method applies a rank 1 update to the inverse approximation
+    :math:`H = B^{-1}`, :math:`H_+ = H + (s - H y) y^T / (y^T y)`. Here the
+    equivalent update of :math:`B` (Sherman-Morrison) is used,
+    :math:`B_+ = B + (y - B s) y^T B / (y^T B s)`, which satisfies the secant
+    equation :math:`B_+ s = y`.
 
     This scheme only works with a function that returns (fval, grad)
     """
 
-    def update(self, s: np.ndarray, y: np.ndarray) -> None:
-        b = y.T.dot(s)
+    def _compute_update(self, s: np.ndarray, y: np.ndarray):
         z = y - self._hess.dot(s)
-        if b <= 0:
-            self._diff = np.zeros_like(self._hess)
+        v = self._hess.T.dot(y)
+        d = v.T.dot(s)
+        # reject if update degenerate, analogous to [NocedalWright2006] (6.26)
+        if np.abs(d) >= np.sqrt(np.spacing(1)) * norm(s) * norm(v):
+            self._diff = np.outer(z, v.T) / d
         else:
-            self._diff = np.outer(z, s.T) / b
+            self._diff = np.zeros_like(self._hess)
 
 
 class HybridApproximation(HessianApproximation):
@@ -269,11 +300,21 @@ class HybridApproximation(HessianApproximation):
         self.hessian_update._init_mat(dim, hess)
         super()._init_mat(dim, hess)
 
+    @property
     def requires_hess(self):
         return True  # pragma: no cover
 
 
 class HybridSwitchApproximation(HybridApproximation):
+    def __init__(self, happ: IterativeHessianApproximation | None = None):
+        super().__init__(happ)
+        self._switched = False
+
+    def _init_mat(self, dim: int, hess: np.ndarray | None = None):
+        super()._init_mat(dim, hess)
+        # every optimization run starts with the dynamic approximation
+        self._switched = False
+
     def _switched_update(self, s: np.ndarray, y: np.ndarray, hess: np.ndarray):
         self.hessian_update.update(s, y)
         new_hess = self.hessian_update.get_mat() if self._switched else hess
@@ -301,7 +342,6 @@ class HybridFixed(HybridSwitchApproximation):
         """
         self.switch_iteration: int = switch_iteration
         super().__init__(happ)
-        self._switched = False
 
     def update(
         self,
@@ -339,7 +379,6 @@ class HybridFraction(HybridSwitchApproximation):
         """
         self.switch_threshold: float = switch_threshold
         super().__init__(happ)
-        self._switched = False
 
     def update(
         self,
