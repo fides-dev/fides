@@ -6,8 +6,8 @@ constants that are used in multiple other modules
 """
 
 import enum
+import os
 from numbers import Integral, Real
-from pathlib import PosixPath, WindowsPath
 
 import numpy as np
 
@@ -118,7 +118,7 @@ def validate_options(options: dict):
         Options.ETA: Real,
         Options.GAMMA1: Real,
         Options.GAMMA2: Real,
-        Options.HISTORY_FILE: (str, PosixPath, WindowsPath),
+        Options.HISTORY_FILE: (str, os.PathLike, type(None)),
     }
     for option_key, option_value in options.items():
         try:
