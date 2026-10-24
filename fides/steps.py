@@ -33,36 +33,6 @@ def normalize(v: np.ndarray) -> None:
         v[:] = v / nv  # change inplace
 
 
-def orthonormalize(subspace: np.ndarray) -> np.ndarray:
-    """
-    Orthonormalize the columns of a matrix via modified Gram-Schmidt with
-    reorthogonalization. Columns that are (numerically) linearly dependent on
-    previous columns are dropped. Rows that are zero in all columns remain
-    exactly zero.
-
-    :param subspace:
-        matrix whose columns span the subspace
-
-    :return:
-        matrix with orthonormal columns that span the same subspace
-    """
-    basis = []
-    for col in subspace.T:
-        ncol = norm(col)
-        if ncol == 0:
-            continue
-        v = col / ncol
-        for _ in range(2):
-            for b in basis:
-                v = v - b * b.dot(v)
-        nv = norm(v)
-        if nv > 1e2 * np.spacing(1):
-            basis.append(v / nv)
-    if not basis:
-        return np.zeros((subspace.shape[0], 0))
-    return np.vstack(basis).T
-
-
 class Step:
     """
     Base class for the computation of a proposal step
@@ -532,8 +502,12 @@ class TRStepTruncated(Step):
         subspace[iminbr, :] = 0
         # zeroing rows destroys orthogonality of the columns, re-orthonormalize
         # such that the trust region constraint on the coefficients is
-        # equivalent to the one on the step
-        self.subspace = orthonormalize(subspace)
+        # equivalent to the one on the step. Only orthonormalize the
+        # remaining rows, such that the zeroed rows stay exactly zero.
+        rows = (subspace != 0).any(axis=1)
+        basis = linalg.orth(subspace[rows])
+        self.subspace = np.zeros((len(rows), basis.shape[1]))
+        self.subspace[rows] = basis
 
         for iminbr in step.iminbr:
             self.truncation_indices.add(iminbr)
