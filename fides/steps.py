@@ -369,8 +369,16 @@ class CGStep(Step):
     type = 'cg'
 
     def calculate(self):
-        nsg = norm(self.sg)
-        ss = self.conj_grad(min(0.5, np.sqrt(nsg)) * nsg)
+        # the subproblem solution is invariant to a joint rescaling of shess
+        # and sg. Rescale such that the largest gradient entry is in
+        # [0.5, 1), as r'r and d'Bd in the CG recursion overflow for
+        # gradient and hessian entries beyond ~1e154. A power of two keeps
+        # the rescaling exact.
+        scale = np.ldexp(1.0, np.frexp(np.max(np.abs(self.sg)))[1])
+        nsg = norm(self.sg / scale)
+        # residual tolerance min(0.5, sqrt(|sg|)) * |sg| in rescaled units
+        eps = min(0.5, np.sqrt(scale * nsg)) * nsg
+        ss = self.conj_grad(self.shess / scale, self.sg / scale, eps)
         # represent the whole CG step as 1D subspace (with ss0 = 0), such
         # that step back, reflection and truncation act on the step that is
         # actually taken
@@ -387,9 +395,17 @@ class CGStep(Step):
         self.step_back()
         self.qpval = quadratic_form(self.shess, self.sg, self.ss + self.ss0)
 
-    def conj_grad(self, eps) -> np.ndarray:
+    def conj_grad(
+        self, shess: np.ndarray, sg: np.ndarray, eps: float
+    ) -> np.ndarray:
         """
         Compute step proposal using conjugate gradient method
+
+        :param shess:
+            (rescaled) scaled hessian
+
+        :param sg:
+            (rescaled) scaled gradient
 
         :param eps:
             tolerance for residual norm
@@ -408,23 +424,23 @@ class TRStepSteihaug(CGStep):
 
     type = 'cgs'
 
-    def conj_grad(self, eps):
-        z = np.zeros_like(self.sg)
-        r = self.sg.copy()
-        d = -self.sg.copy()
+    def conj_grad(self, shess, sg, eps):
+        z = np.zeros_like(sg)
+        r = sg.copy()
+        d = -sg.copy()
         if norm(r) < eps:
             return z
 
         while True:
-            bd = self.shess.dot(d)
+            bd = shess.dot(d)
             c = d.dot(bd)
             r2 = np.dot(r, r)
             alpha = r2 / c
             zp = z + alpha * d
             if c <= 0 or norm(zp) >= self.delta:
                 tau = get_1d_trust_region_boundary_solution(
-                    self.shess,
-                    self.sg,
+                    shess,
+                    sg,
                     d,
                     z,
                     self.delta,
