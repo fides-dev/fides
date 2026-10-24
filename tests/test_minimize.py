@@ -447,6 +447,35 @@ def test_history():
     os.remove(h5file)
 
 
+def test_history_reused_start_id(tmp_path):
+    # a reused start_id must fail before the optimization runs, not when
+    # writing the history afterwards, which would discard the result
+    h5file = tmp_path / 'history.h5'
+    calls = []
+
+    def fun(x):
+        calls.append(x)
+        return rosenboth(x)
+
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    opt = Optimizer(
+        fun,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        options={Options.HISTORY_FILE: h5file},
+    )
+    opt.minimize(x0, start_id='run')
+    calls.clear()
+    with pytest.raises(ValueError, match='start_id'):
+        opt.minimize(x0, start_id='run')
+    assert not calls
+
+    opt.minimize(x0, start_id='run2')
+    with h5py.File(h5file, 'r') as f:
+        assert set(f.keys()) == {'run', 'run2'}
+
+
 def test_wrong_options():
     lb, ub, x0 = finite_bounds_exlude_optimum()
     fun = rosenboth
@@ -489,6 +518,44 @@ def test_wrong_options():
         verbose=logging.INFO,
         options={Options.SUBSPACE_DIM: '2D'},
     )
+
+
+@pytest.mark.parametrize(
+    'options',
+    [
+        {'stepback_strategy': 'reflct'},
+        {'subspace_solver': 'foo'},
+        {Options.STEPBACK_STRAT: 'reflct'},
+        {Options.SUBSPACE_DIM: 'foo'},
+    ],
+)
+def test_invalid_enum_options(options):
+    # plain string keys used to skip the validation of the value, an invalid
+    # stepback strategy then silently disabled stepback
+    lb, ub, _ = finite_bounds_exlude_optimum()
+    with pytest.raises(ValueError, match='not a valid value'):
+        Optimizer(rosenboth, ub=ub, lb=lb, options=options)
+
+
+@pytest.mark.parametrize('stepback', [s.value for s in StepBackStrategy])
+@pytest.mark.parametrize('subspace_dim', [s.value for s in SubSpaceDim])
+def test_string_options(subspace_dim, stepback):
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    options = {
+        'subspace_solver': subspace_dim,
+        'stepback_strategy': stepback,
+        'maxiter': 5,
+    }
+    if subspace_dim == 'scg' and stepback == 'refine':
+        with pytest.raises(ValueError, match='refinement'):
+            Optimizer(rosenboth, ub=ub, lb=lb, options=options)
+        return
+    opt = Optimizer(
+        rosenboth, ub=ub, lb=lb, verbose=logging.WARNING, options=options
+    )
+    opt.minimize(x0)
+    assert opt.get_option(Options.SUBSPACE_DIM) == SubSpaceDim(subspace_dim)
+    assert opt.get_option(Options.STEPBACK_STRAT) == StepBackStrategy(stepback)
 
 
 @pytest.mark.parametrize(
@@ -818,6 +885,30 @@ def test_gtol_ignores_curvature_of_hessian_approximation():
     opt.minimize(np.zeros(n), hess0=-np.eye(n))
     assert opt.exitflag == fides.ExitFlag.GTOL
     assert opt.iteration == 1
+
+
+def test_logger_reused_across_runs(capsys):
+    # repeated runs must not register a new logger and handler each time
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    opt = Optimizer(rosenboth, ub=ub, lb=lb, verbose=logging.INFO)
+    opt.minimize(x0)
+    logger = opt.logger
+    n_loggers = len(logging.Logger.manager.loggerDict)
+    out_first = capsys.readouterr().err
+    assert out_first
+
+    for _ in range(3):
+        opt.minimize(x0)
+        assert capsys.readouterr().err.count('\n') == out_first.count('\n')
+    assert opt.logger is logger
+    assert len(logger.handlers) == 1
+    assert len(logging.Logger.manager.loggerDict) == n_loggers
+
+    # a changed verbosity applies to the next run
+    opt.verbose = logging.WARNING
+    opt.minimize(x0)
+    assert logger.level == logging.WARNING
+    assert not capsys.readouterr().err
 
 
 def test_gtol_not_triggered_by_rejected_step():
