@@ -18,4 +18,6 @@ Features
 * Boundary constrained interior trust-region optimization
 * Recursive Reflective and Truncated constraint management
 * Full and 2D subproblem solution solvers
-* BFGS, DFP and SR1 Hessian Approximations
+* BFGS, DFP and SR1 Hessian Approximations (BFGS, or SR1 for indefinite
+  problems, is the recommended default; DFP is included for comparison and
+  converges much more slowly)
