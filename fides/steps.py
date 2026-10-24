@@ -236,8 +236,10 @@ class Step:
             )
         self.minbr = np.min(self.br)
         self.iminbr = np.where(self.br == self.minbr)[0]
-        # compute the minimum of the step
-        self.alpha = np.min([1, self.theta * self.minbr])
+        # compute the minimum of the step. minbr can be negative if roundoff
+        # placed the starting point x + s0 marginally outside the bounds,
+        # never step in the opposite direction in that case
+        self.alpha = max(0.0, min(1.0, self.theta * self.minbr))
 
         self.s *= self.alpha
         self.sc *= self.alpha
@@ -245,11 +247,13 @@ class Step:
 
     def reduce_to_subspace(self) -> None:
         """
-        This function projects the matrix shess and the vector sg to the
-        subspace
+        This function projects the matrix shess and the gradient of the
+        quadratic model at ss0 to the subspace
         """
         self.chess = self.subspace.T.dot(self.shess.dot(self.subspace))
-        self.cg = self.subspace.T.dot(self.sg)
+        # the subspace search starts at ss0, where the model gradient is
+        # shess * ss0 + sg
+        self.cg = self.subspace.T.dot(self.shess.dot(self.ss0) + self.sg)
 
     def compute_step(self) -> None:
         """
@@ -321,8 +325,10 @@ class TRStep2D(Step):
         self.posdef = np.min(np.real(e)) > -np.spacing(1) * np.max(np.abs(e))
 
         if len(sg) == 1:
-            s_newt = -sg[0] / self.shess[0]
-            self.subspace = np.expand_dims(s_newt, 1)
+            # the subspace is the full space, the 1D subproblem solver
+            # determines sign and length of the step. Using the Newton
+            # direction here would yield nan if shess is zero.
+            self.subspace = np.ones((1, 1))
             return
 
         self.newton = False
@@ -428,15 +434,18 @@ class TRStepSteihaug(CGStep):
         z = np.zeros_like(sg)
         r = sg.copy()
         d = -sg.copy()
-        if norm(r) < eps:
+        # <= instead of < such that a zero gradient (eps = 0) yields a zero
+        # step instead of a 0/0 step length
+        if norm(r) <= eps:
             return z
 
         while True:
             bd = shess.dot(d)
             c = d.dot(bd)
             r2 = np.dot(r, r)
-            alpha = r2 / c
-            zp = z + alpha * d
+            if c > 0:
+                alpha = r2 / c
+                zp = z + alpha * d
             if c <= 0 or norm(zp) >= self.delta:
                 tau = get_1d_trust_region_boundary_solution(
                     shess,
@@ -486,10 +495,13 @@ class TRStepReflected(Step):
             x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, step.logger
         )
 
-        alpha = min(step.minbr, 1)
-        self.s0 = alpha * step.og_s + step.s0
-        self.ss0 = alpha * step.og_ss + step.ss0
-        # update x and at breakpoint
+        # start the reflected segment at the stepped-back point of the
+        # reflected step, not at the breakpoint itself. The breakpoint lies
+        # on the boundary, so starting there puts the iterate exactly on
+        # (or, after roundoff, beyond) the bound whenever the reflected
+        # segment is short or empty.
+        self.s0 = step.s + step.s0
+        self.ss0 = step.ss + step.ss0
         self.x = x + self.s0
 
         # reflect the transformed step at the boundary
@@ -541,12 +553,14 @@ class TRStepTruncated(Step):
 
         subspace = step.subspace.copy()
         subspace[iminbr, :] = 0
-        # reduce subspace
-        subspace = subspace[:, (subspace != 0).any(axis=0)]
-        # normalize subspace
-        for ix in range(subspace.shape[1]):
-            normalize(subspace[:, ix])
-        self.subspace = subspace
+        # zeroing rows destroys orthogonality of the columns, re-orthonormalize
+        # such that the trust region constraint on the coefficients is
+        # equivalent to the one on the step. Only orthonormalize the
+        # remaining rows, such that the zeroed rows stay exactly zero.
+        rows = (subspace != 0).any(axis=1)
+        basis = linalg.orth(subspace[rows])
+        self.subspace = np.zeros((len(rows), basis.shape[1]))
+        self.subspace[rows] = basis
 
         for iminbr in step.iminbr:
             self.truncation_indices.add(iminbr)
@@ -587,6 +601,16 @@ class RefinedStep(Step):
         self.subspace: np.ndarray = step.subspace.copy()
         self.chess: np.ndarray = step.chess.copy()
         self.cg: np.ndarray = step.cg.copy()
+        # bounds on the scaled step. Variables with zero scaling are on an
+        # active bound and cannot move (s = scaling * ss), so their bound
+        # constraint is vacuous; dividing by the zero scaling would yield
+        # nan for the active bound.
+        dscaling = scaling.diagonal()
+        movable = dscaling != 0
+        sslb = np.full(dscaling.shape, -np.inf)
+        ssub = np.full(dscaling.shape, np.inf)
+        sslb[movable] = self.theta * (lb - x)[movable] / dscaling[movable]
+        ssub[movable] = self.theta * (ub - x)[movable] / dscaling[movable]
         self.constraints = [
             NonlinearConstraint(
                 fun=lambda xc: (
@@ -603,8 +627,8 @@ class RefinedStep(Step):
             ),
             LinearConstraint(
                 A=self.subspace,
-                lb=self.theta * (lb - x) / scaling.diagonal(),
-                ub=self.theta * (ub - x) / scaling.diagonal(),
+                lb=sslb,
+                ub=ssub,
             ),
         ]
         self.guess: np.ndarray = step.sc.copy()
@@ -622,7 +646,24 @@ class RefinedStep(Step):
             constraints=self.constraints,
             options={'verbose': 0, 'maxiter': 100, 'gtol': 0, 'xtol': 0},
         )
-        self.sc = res.x
+        sc = res.x
+        nss = np.inf
+        if np.all(np.isfinite(sc)):
+            nss = norm(self.subspace.dot(sc))
+        if nss > self.delta:
+            # trust-constr stops after maxiter iterations regardless of
+            # feasibility. Pull back slightly infeasible solutions onto the
+            # trust region boundary and discard anything else in favor of the
+            # unrefined step.
+            if nss <= self.delta * (1 + 1e-6):
+                sc = sc * self.delta / nss
+            else:
+                self.logger.debug(
+                    'Refinement violated trust region constraint '
+                    f'({nss:.2E} > {self.delta:.2E}), using unrefined step.'
+                )
+                sc = self.guess
+        self.sc = sc
         self.ss = self.subspace.dot(self.sc)
         self.s = self.scaling.dot(self.ss)
         self.step_back()
