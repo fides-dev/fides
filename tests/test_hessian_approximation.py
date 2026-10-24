@@ -95,3 +95,20 @@ def test_hybrid_switch_reset(happ, update_args):
     # a new optimization run must start with the dynamic approximation
     h._init_mat(dim=2)
     assert not h._switched
+
+
+def test_set_mat_casts_to_float():
+    h = BFGS()
+    h._init_mat(dim=2)
+    h.set_mat(np.eye(2, dtype=int) * 2)
+    assert h.get_mat().dtype == float
+    h.update(np.array([1.0, 0.5]), np.array([2.0, 0.3]))
+
+
+def test_bb_degenerate_update_is_skipped():
+    h = BB()
+    h._init_mat(dim=2)
+    # y^T B s == 0, the update is undefined and must be skipped
+    h.update(np.array([1.0, 0.0]), np.array([0.0, 1.0]))
+    np.testing.assert_array_equal(h.get_diff(), np.zeros((2, 2)))
+    np.testing.assert_array_equal(h.get_mat(), np.eye(2))
