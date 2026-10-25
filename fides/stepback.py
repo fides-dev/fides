@@ -7,9 +7,44 @@ had to be truncated due to non-compliance with boundary constraints.
 """
 
 import numpy as np
+from numpy.linalg import norm
 from scipy.sparse import csc_matrix
 
 from .steps import Step, TRStepReflected, TRStepTruncated
+
+#: length of a reflected segment relative to the length of the reflected
+#: step, below which :func:`stepback_reflect` stops reflecting if the segment
+#: ran back into the boundary it was reflected at
+REFLECT_BOUNCE_RTOL = 1e-8
+
+
+def is_negligible_bounce(rtr_step: TRStepReflected) -> bool:
+    """
+    Checks whether a reflected step ran back into the boundary it was
+    reflected at, which happens if the minimizer along the reflected
+    direction lies behind the reflection point, and whether its segment is
+    negligibly short compared to the whole step.
+
+    Further reflections then typically keep bouncing at the same boundary
+    along two alternating directions. Each segment ends at a fraction theta
+    of the remaining distance to the boundary and is therefore shorter than
+    the previous one by a factor (1 - theta). Together, they extend the step
+    by less than a fraction `REFLECT_BOUNCE_RTOL * (1 - theta) / theta`,
+    but each costs a subproblem solve. A short segment that ends at a
+    different boundary turns at a corner of the feasible set, the next
+    reflection may still yield a substantially longer and better step.
+
+    :param rtr_step:
+        Reflected step, after calculation
+
+    :return:
+        True if further reflections are negligible
+    """
+    if not set(rtr_step.iminbr) <= rtr_step.reflection_indices:
+        return False
+    return norm(rtr_step.ss) <= REFLECT_BOUNCE_RTOL * norm(
+        rtr_step.ss + rtr_step.ss0
+    )
 
 
 def stepback_reflect(
@@ -26,6 +61,10 @@ def stepback_reflect(
 ) -> list[Step]:
     """
     Compute new proposal steps according to a reflection strategy.
+    Reflections are applied recursively until a reflected step no longer
+    hits the boundary, at most `len(x)` times, or until the reflected
+    steps start bouncing back and forth at the same boundary with negligible
+    segment length (see :func:`is_negligible_bounce`).
 
     :param tr_step:
         Reference trust region step that will be reflected
@@ -59,7 +98,7 @@ def stepback_reflect(
     rtr_step.calculate()
     steps = [rtr_step]
     for _ireflection in range(len(x) - 1):
-        if rtr_step.alpha == 1.0:
+        if rtr_step.alpha == 1.0 or is_negligible_bounce(rtr_step):
             break
         # recursively add more reflections
         rtr_old = rtr_step
