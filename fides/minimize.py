@@ -712,7 +712,15 @@ class Optimizer:
             else:
                 self.tr_ratio = actual_decrease / predicted_decrease
 
-            interior_solution = nsx < self.delta_iter * 0.9
+            # the radius is only increased if the trust region constraint
+            # was active. For steps that were stepped back to stay within
+            # the bounds (step.alpha < 1), this is decided based on the
+            # proposal before step back. The stepped back step is short
+            # because of the bounds, not the trust region, e.g., a single
+            # reflection that is cut short by the next bound.
+            interior_solution = (
+                norm(step.og_ss + step.ss0) < self.delta_iter * 0.9
+            )
 
             if (
                 self.tr_ratio >= self.get_option(Options.ETA)
