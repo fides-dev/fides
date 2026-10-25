@@ -9,8 +9,8 @@ import logging
 import numpy as np
 import pytest
 import scipy.linalg
+import scipy.optimize
 from numpy.linalg import norm
-from scipy.optimize import OptimizeResult
 from scipy.sparse import csc_matrix
 
 import fides
@@ -311,10 +311,12 @@ def test_refined_step_marginally_infeasible(monkeypatch):
     """
     args, tr_step = refine_setup()
 
-    def marginal_minimize(*_, **__):
-        return OptimizeResult(x=np.array([0.0, 0.0, 1.0 + 1e-8]))
+    def marginal_solve(*_, **__):
+        return np.array([0.0, 0.0, 1.0 + 1e-8]), 1
 
-    monkeypatch.setattr(fides.steps, 'minimize', marginal_minimize)
+    monkeypatch.setattr(
+        fides.steps, 'solve_bounded_trust_region_subproblem', marginal_solve
+    )
     ref_step = RefinedStep(*args[:-1], tr_step)
     ref_step.calculate()
     assert ref_step.alpha == 1.0
@@ -324,21 +326,137 @@ def test_refined_step_marginally_infeasible(monkeypatch):
 
 def test_refined_step_failed_refinement(monkeypatch):
     """
-    If trust-constr returns an infeasible point, the refined step has to
+    If the refinement returns an infeasible point, the refined step has to
     fall back to the unrefined step.
     """
     args, tr_step = refine_setup()
 
-    def failed_minimize(*_, **__):
+    def failed_solve(*_, **__):
         # far outside the trust region, but inside the bounds
-        return OptimizeResult(x=np.array([0.0, 0.0, 20.0]), success=False)
+        return np.array([0.0, 0.0, 20.0]), 1
 
-    monkeypatch.setattr(fides.steps, 'minimize', failed_minimize)
+    monkeypatch.setattr(
+        fides.steps, 'solve_bounded_trust_region_subproblem', failed_solve
+    )
     ref_step = RefinedStep(*args[:-1], tr_step)
     ref_step.calculate()
     assert norm(ref_step.ss) <= 1.0 * (1 + 1e-12)
     np.testing.assert_allclose(ref_step.ss, tr_step.ss)
     assert ref_step.qpval == pytest.approx(tr_step.qpval)
+
+
+def recording_refinement(monkeypatch):
+    # records the number of iterations of every refinement
+    niters = []
+    solve = fides.steps.solve_bounded_trust_region_subproblem
+
+    def recording_solve(*args, **kwargs):
+        sc, niter = solve(*args, **kwargs)
+        niters.append(niter)
+        return sc, niter
+
+    monkeypatch.setattr(
+        fides.steps, 'solve_bounded_trust_region_subproblem', recording_solve
+    )
+    return niters
+
+
+def convex_refine_setup(scale):
+    # convex quadratic where the trust-region step is cut short by the bounds
+    rng = np.random.default_rng(2)
+    n = 5
+    q, _ = np.linalg.qr(rng.normal(size=(n, n)))
+    hess = scale * q @ np.diag(np.logspace(0, 2, n)) @ q.T
+    g = scale * rng.normal(size=n) * 100
+    lb, ub = -np.ones(n), np.ones(n)
+    x = rng.uniform(-0.9, 0.9, size=n)
+    args = step_args(x, g, hess, lb, ub, delta=5.0)
+    tr_step = TRStepFull(*args)
+    tr_step.calculate()
+    assert tr_step.alpha < 1
+    return args, tr_step
+
+
+def reference_refinement(args, tr_step):
+    # tightly converged solution of the refinement subproblem
+    x, _, _, scaling, _, delta, theta, ub, lb, _ = args
+    res = scipy.optimize.minimize(
+        fun=lambda c: quadratic_form(tr_step.chess, tr_step.cg, c),
+        jac=lambda c: tr_step.chess.dot(c) + tr_step.cg,
+        hess=lambda c: tr_step.chess,
+        x0=tr_step.sc,
+        method='trust-constr',
+        constraints=[
+            scipy.optimize.NonlinearConstraint(
+                fun=lambda c: c.dot(c),
+                lb=-np.inf,
+                ub=delta**2,
+                jac=lambda c: 2 * c[None, :],
+                hess=lambda c, v: 2 * v[0] * np.eye(len(c)),
+            ),
+            scipy.optimize.LinearConstraint(
+                np.eye(len(x)),
+                theta * (lb - x) / scaling.diagonal(),
+                theta * (ub - x) / scaling.diagonal(),
+            ),
+        ],
+        options={'maxiter': 1000, 'gtol': 1e-10, 'xtol': 1e-12},
+    )
+    return quadratic_form(tr_step.shess, tr_step.sg, res.x)
+
+
+def test_refined_step_scale_invariant():
+    """
+    Refinement has to find the solution of the refinement subproblem
+    regardless of the scale of the objective function (fides-dev/fides#80).
+    """
+    qpvals = []
+    for scale in [1e-8, 1.0, 1e8]:
+        args, tr_step = convex_refine_setup(scale)
+        ref_step = RefinedStep(*args[:-1], tr_step)
+        ref_step.calculate()
+        qpvals.append(ref_step.qpval / scale)
+    args, tr_step = convex_refine_setup(1.0)
+    qpval_ref = reference_refinement(args, tr_step)
+    assert qpval_ref < tr_step.qpval
+    assert qpvals == pytest.approx([qpvals[1]] * 3, rel=1e-12)
+    assert qpvals[1] <= qpval_ref + 1e-8 * abs(qpval_ref)
+
+
+def test_refine_rosenbrock_iterations(monkeypatch):
+    """
+    Bounded Rosenbrock problem from fides-dev/fides#80, where every
+    refinement ran 100 iterations of trust-constr.
+    """
+
+    def fun(x):
+        return (
+            scipy.optimize.rosen(x),
+            scipy.optimize.rosen_der(x),
+            scipy.optimize.rosen_hess(x),
+        )
+
+    n = 10
+    niters = recording_refinement(monkeypatch)
+    fvals = {}
+    for stepback in [StepBackStrategy.REFLECT, StepBackStrategy.REFINE]:
+        opt = Optimizer(
+            fun,
+            lb=-2 * np.ones(n),
+            ub=0.8 * np.ones(n),
+            verbose=logging.WARNING,
+            options={
+                Options.SUBSPACE_DIM: SubSpaceDim.FULL,
+                Options.STEPBACK_STRAT: stepback,
+            },
+        )
+        fvals[stepback], *_ = opt.minimize(np.linspace(-1.5, 0.5, n))
+        assert opt.exitflag > 0
+    assert niters
+    assert max(niters) <= n
+    assert fvals[StepBackStrategy.REFINE] == pytest.approx(
+        fvals[StepBackStrategy.REFLECT], rel=1e-8
+    )
 
 
 def test_2d_step_1d_zero_hessian():

@@ -2,7 +2,7 @@
 Subproblem Solvers
 ------------------
 This module provides the machinery to solve 1- and N-dimensional
-trust-region subproblems.
+trust-region subproblems, optionally subject to additional bounds.
 """
 
 import logging
@@ -271,6 +271,147 @@ def solve_nd_trust_region_subproblem(
     s = s + sigma * v
     logger.debug('Found boundary 2D subproblem solution via hard case')
     return s, 'hard'
+
+
+#: tolerance relative to the trust region radius within which bounds are
+#: considered active
+ACTIVE_RTOL = 1e-10
+
+
+def solve_bounded_trust_region_subproblem(
+    b: np.ndarray,
+    g: np.ndarray,
+    delta: float,
+    a: np.ndarray,
+    lb: np.ndarray,
+    ub: np.ndarray,
+    s0: np.ndarray,
+    logger: logging.Logger | None = None,
+) -> tuple[np.ndarray, int]:
+    r"""
+    This function solves the n-dimensional subproblem with additional bounds
+
+    :math:`argmin_s\{s^T B s + s^T g: ||s|| <= \Delta, lb <= A s <= ub\}`
+
+    using a primal active-set method that starts at the feasible point s0.
+    Every iteration exactly solves the trust-region subproblem on the face
+    that is defined by the active bounds via
+    :func:`solve_nd_trust_region_subproblem`. If an inactive bound blocks
+    the way to that solution, the iterate stops at the bound, which becomes
+    active. Otherwise, the active bound with the most negative Lagrange
+    multiplier is released, or the method terminates if there is none. For
+    indefinite B, the method also terminates if the model would increase on
+    the way to the solution on the face, so the returned point is not
+    necessarily a local minimum.
+
+    :param b:
+        Hessian of the quadratic subproblem
+    :param g:
+        Gradient of the quadratic subproblem
+    :param delta:
+        Norm boundary for the solution of the quadratic subproblem
+    :param a:
+        Matrix that maps the solution to the bounded quantities
+    :param lb:
+        Lower bounds for :math:`As`, may be -inf
+    :param ub:
+        Upper bounds for :math:`As`, may be inf
+    :param s0:
+        Feasible starting point
+    :param logger:
+        Logger instance to be used for logging
+
+    :return:
+        s: Proposed step,
+        niter: Number of iterations
+    """
+    if logger is None:
+        logger = logging.getLogger('fides')
+
+    # write the bounds as c * s >= d with normalized rows c, dropping bounds
+    # that are vacuous or implied by the trust region constraint
+    anorm = norm(a, axis=1)
+    cnorm = np.concatenate([anorm, anorm])
+    c = np.vstack([a, -a])
+    d = np.concatenate([lb, -ub])
+    keep = (cnorm > 0) & np.isfinite(d)
+    c = c[keep] / cnorm[keep, None]
+    d = d[keep] / cnorm[keep]
+    keep = d > -delta
+    c, d = c[keep], d[keep]
+
+    s = s0.copy()
+    active = list(np.flatnonzero(c.dot(s) - d <= ACTIVE_RTOL * delta))
+    released = None
+    maxiter = 2 * len(d) + 10
+    niter = 0
+    while niter < maxiter:
+        niter += 1
+        # points on the face of the active bounds are s = sp + null * w, where
+        # sp is orthogonal to the null space of the active bounds
+        if active:
+            _, sv, vt = linalg.svd(c[active])
+            null = vt[np.sum(sv > ACTIVE_RTOL * sv[0]) :].T
+        else:
+            null = np.eye(len(s))
+        sp = s - null.dot(null.T.dot(s))
+        r = np.sqrt(max(delta * delta - sp.dot(sp), 0.0))
+        w = np.zeros(null.shape[1])
+        if null.shape[1] and r > 0:
+            w, _ = solve_nd_trust_region_subproblem(
+                null.T.dot(b).dot(null), null.T.dot(b.dot(sp) + g), r, logger
+            )
+        p = sp + null.dot(w) - s
+        if norm(p) <= ACTIVE_RTOL * delta:
+            # s already is the solution on the face up to roundoff
+            p = np.zeros(len(s))
+
+        # move towards the solution on the face until an inactive bound
+        # blocks the way
+        cp = c.dot(p)
+        inactive = np.ones(len(d), dtype=bool)
+        inactive[active] = False
+        blocking = np.flatnonzero(inactive & (cp < 0))
+        t, iblock = 1.0, None
+        if blocking.size:
+            slack = np.maximum(c[blocking].dot(s) - d[blocking], 0.0)
+            ratios = slack / -cp[blocking]
+            if ratios.min() < 1:
+                t, iblock = ratios.min(), blocking[ratios.argmin()]
+        # for indefinite B, the model may increase on the way to the solution
+        # on the face, stop at the current iterate in that case
+        grad = b.dot(s) + g
+        if t * grad.dot(p) + 0.5 * t * t * p.dot(b.dot(p)) > 0:
+            break
+        s = s + t * p
+        if iblock is not None:
+            if iblock == released and t == 0:
+                # releasing the bound did not allow any progress
+                break
+            active.append(iblock)
+            continue
+        if not active:
+            break
+
+        # Lagrange multipliers of the active bounds lam and of the trust
+        # region constraint mu: grad = c[active]^T * lam - mu * s
+        grad = b.dot(s) + g
+        lhs = c[active].T
+        if norm(s) >= delta * (1 - ACTIVE_RTOL):
+            lhs = np.hstack([lhs, -s[:, None]])
+        lam = np.linalg.lstsq(lhs, grad, rcond=None)[0][: len(active)]
+        # the sign of multipliers within the roundoff error of grad is
+        # unknown, which matters for badly conditioned B. Releasing such
+        # bounds is safe, as the iterate never moves to higher model values.
+        if lam.min() >= 10 * np.spacing(1) * (norm(b) * norm(s) + norm(g)):
+            break
+        released = active.pop(int(lam.argmin()))
+    else:
+        logger.debug(
+            'Bounded trust region subproblem did not converge within '
+            f'{maxiter} iterations.'
+        )
+    return s, niter
 
 
 def _slam_coefs(lam: float, w: np.ndarray, eigvals: np.ndarray) -> np.ndarray:

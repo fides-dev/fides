@@ -2,11 +2,13 @@ import numpy as np
 import pytest
 from numpy.linalg import norm
 from scipy import linalg
+from scipy.optimize import nnls
 from scipy.spatial.transform import Rotation
 
 from fides.steps import normalize
 from fides.subproblem import (
     solve_1d_trust_region_subproblem,
+    solve_bounded_trust_region_subproblem,
     solve_nd_trust_region_subproblem,
 )
 
@@ -454,3 +456,82 @@ def test_1d_boundary_solution_degenerate_start():
     # huge radii must not raise OverflowError
     with np.errstate(all='ignore'):
         get_1d_trust_region_boundary_solution(b, g, s, np.zeros(2), 1e155)
+
+
+def bounded_kkt_residual(s, b, g, delta, a, lb, ub):
+    """
+    Relative residual of the KKT conditions of the bounded subproblem with
+    nonnegative multipliers for the bounds that are active at s and for the
+    trust region constraint
+    """
+    grad = b @ s + g
+    scale = max(norm(g) + norm(b, 2) * norm(s), 1e-300)
+    tol = 1e-8 * delta * norm(a, axis=1)
+    cols = [a[a @ s - lb <= tol].T, -a[ub - a @ s <= tol].T]
+    if norm(s) >= delta * (1 - 1e-8):
+        cols.append(-s[:, None])
+    m = np.hstack(cols)
+    if m.shape[1] == 0:
+        return norm(grad) / scale
+    _, res = nnls(m, grad)
+    return res / scale
+
+
+@pytest.mark.parametrize('kind', ['posdef', 'indef', 'illcond_pos', 'zero'])
+@pytest.mark.parametrize('k', [2, 10])
+def test_bounded_subproblem_fuzz(kind, k):
+    rng = np.random.default_rng(0)
+    n = 10
+    for delta in [1e-4, 1.0, 1e4]:
+        for _ in range(10):
+            b, g = make_subproblem(rng, k, kind)
+            if k == n:
+                a = np.eye(n)
+            else:
+                a, _ = np.linalg.qr(rng.standard_normal((n, k)))
+            lb = -delta * rng.uniform(0.01, 2, n)
+            ub = delta * rng.uniform(0.01, 2, n)
+            lb[rng.random(n) < 0.2] = -np.inf
+            ub[rng.random(n) < 0.2] = np.inf
+            s0 = np.zeros(k)
+            s, niter = solve_bounded_trust_region_subproblem(
+                b, g, delta, a, lb, ub, s0
+            )
+            assert_feasible(s, delta)
+            assert np.all(a @ s >= lb - 1e-10 * delta)
+            assert np.all(a @ s <= ub + 1e-10 * delta)
+            assert quad(s, b, g) <= quad(s0, b, g)
+            assert niter <= n
+            if kind != 'indef':
+                # only local minima for indefinite b, which the active-set
+                # method does not always reach
+                kkt = bounded_kkt_residual(s, b, g, delta, a, lb, ub)
+                assert kkt < 1e-8
+
+
+@pytest.mark.parametrize('kind', ['posdef', 'indef', 'hard'])
+def test_bounded_subproblem_without_bounds(kind):
+    rng = np.random.default_rng(0)
+    n = 5
+    lb, ub = np.full(n, -np.inf), np.full(n, np.inf)
+    for _ in range(10):
+        b, g = make_subproblem(rng, n, kind)
+        s, niter = solve_bounded_trust_region_subproblem(
+            b, g, 1.0, np.eye(n), lb, ub, np.zeros(n)
+        )
+        s_ref, _ = solve_nd_trust_region_subproblem(b, g, 1.0)
+        assert niter == 1
+        np.testing.assert_allclose(s, s_ref)
+
+
+def test_bounded_subproblem_releases_bound():
+    # the start point is on the lower bound of the first variable, but the
+    # gradient points away from that bound
+    b = np.eye(2)
+    g = np.array([-2.0, 0.0])
+    lb, ub = np.array([0.0, -10.0]), np.array([10.0, 10.0])
+    s, niter = solve_bounded_trust_region_subproblem(
+        b, g, 1.0, np.eye(2), lb, ub, np.zeros(2)
+    )
+    np.testing.assert_allclose(s, [1.0, 0.0])
+    assert niter == 2

@@ -10,13 +10,13 @@ from logging import Logger
 import numpy as np
 import scipy.linalg as linalg
 from numpy.linalg import norm
-from scipy.optimize import LinearConstraint, NonlinearConstraint, minimize
 from scipy.sparse import csc_matrix
 
 from .subproblem import (
     get_1d_trust_region_boundary_solution,
     quadratic_form,
     solve_1d_trust_region_subproblem,
+    solve_bounded_trust_region_subproblem,
     solve_nd_trust_region_subproblem,
 )
 
@@ -653,8 +653,9 @@ class GradientStep(Step):
 
 class RefinedStep(Step):
     """
-    This class provides the machinery to refine a step based on interior
-    point optimization
+    This class provides the machinery to refine a step by minimizing the
+    quadratic model in the subspace of the step subject to the trust region
+    and bound constraints
     """
 
     type = 'ref'
@@ -674,54 +675,35 @@ class RefinedStep(Step):
         # nan for the active bound.
         dscaling = scaling.diagonal()
         movable = dscaling != 0
-        sslb = np.full(dscaling.shape, -np.inf)
-        ssub = np.full(dscaling.shape, np.inf)
-        sslb[movable] = self.theta * (lb - x)[movable] / dscaling[movable]
-        ssub[movable] = self.theta * (ub - x)[movable] / dscaling[movable]
-        self.constraints = [
-            NonlinearConstraint(
-                fun=lambda xc: (
-                    (norm(self.subspace.dot(xc)) - delta) * np.ones((1,))
-                ),
-                jac=lambda xc: (
-                    np.expand_dims(self.subspace.dot(xc), 1).T.dot(
-                        self.subspace
-                    )
-                    / norm(self.subspace.dot(xc))
-                ),
-                lb=-np.ones((1,)) * np.inf,
-                ub=np.zeros((1,)),
-            ),
-            LinearConstraint(
-                A=self.subspace,
-                lb=sslb,
-                ub=ssub,
-            ),
-        ]
+        self.sslb: np.ndarray = np.full(dscaling.shape, -np.inf)
+        self.ssub: np.ndarray = np.full(dscaling.shape, np.inf)
+        self.sslb[movable] = self.theta * (lb - x)[movable] / dscaling[movable]
+        self.ssub[movable] = self.theta * (ub - x)[movable] / dscaling[movable]
         self.guess: np.ndarray = step.sc.copy()
         self.qpval0: float = step.qpval
         self.reflection_indices: int = step.reflection_indices
         self.truncation_indices: int = step.truncation_indices
 
     def calculate(self):
-        res = minimize(
-            fun=lambda c: quadratic_form(self.chess, self.cg, c),
-            jac=lambda c: self.chess.dot(c) + self.cg,
-            hess=lambda c: self.chess,
-            x0=self.guess,
-            method='trust-constr',
-            constraints=self.constraints,
-            options={'verbose': 0, 'maxiter': 100, 'gtol': 0, 'xtol': 0},
+        # the subspace is orthonormal, so the norm of the coefficients is the
+        # norm of the step
+        sc, _ = solve_bounded_trust_region_subproblem(
+            self.chess,
+            self.cg,
+            self.delta,
+            self.subspace,
+            self.sslb,
+            self.ssub,
+            self.guess,
+            self.logger,
         )
-        sc = res.x
         nss = np.inf
         if np.all(np.isfinite(sc)):
             nss = norm(self.subspace.dot(sc))
         if nss > self.delta:
-            # trust-constr stops after maxiter iterations regardless of
-            # feasibility. Pull back slightly infeasible solutions onto the
-            # trust region boundary and discard anything else in favor of the
-            # unrefined step.
+            # pull back solutions that exceed the trust region by roundoff
+            # onto the trust region boundary and discard anything else in
+            # favor of the unrefined step.
             if nss <= self.delta * (1 + 1e-6):
                 sc = sc * self.delta / nss
             else:
@@ -731,7 +713,10 @@ class RefinedStep(Step):
                 )
                 sc = self.guess
         self.sc = sc
-        self.ss = self.subspace.dot(self.sc)
+        # the solution only satisfies the bounds up to roundoff relative to
+        # its norm, which may exceed the distance to bounds that are almost
+        # active and would trigger a step back of the whole step
+        self.ss = np.clip(self.subspace.dot(self.sc), self.sslb, self.ssub)
         self.s = self.scaling.dot(self.ss)
         self.step_back()
         self.qpval = quadratic_form(self.shess, self.sg, self.ss)
