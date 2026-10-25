@@ -372,9 +372,39 @@ class CGStep(Step):
     """
     This class provides the machinery to compute an approximate solution of
     the trust region subproblem using the conjugate gradients methods
+
+    :ivar sgnorm0: Norm of the rescaled gradient at the first iteration,
+        reference for the residual tolerance of the CG iteration
     """
 
     type = 'cg'
+
+    def __init__(
+        self,
+        x,
+        sg,
+        hess,
+        scaling,
+        g_dscaling,
+        delta,
+        theta,
+        ub,
+        lb,
+        logger,
+        sgnorm0: float | None = None,
+    ):
+        """
+        :param sgnorm0:
+            Norm of the rescaled gradient at the first iteration, defaults
+            to the norm of `sg`, i.e., the step is treated as the first step
+        """
+        super().__init__(
+            x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger
+        )
+        # scipy's norm does not overflow for entries beyond ~1e154
+        self.sgnorm0 = (
+            linalg.norm(sg, check_finite=False) if sgnorm0 is None else sgnorm0
+        )
 
     def calculate(self):
         # the subproblem solution is invariant to a joint rescaling of shess
@@ -384,8 +414,18 @@ class CGStep(Step):
         # the rescaling exact.
         scale = np.ldexp(1.0, np.frexp(np.max(np.abs(self.sg)))[1])
         nsg = norm(self.sg / scale)
-        # residual tolerance min(0.5, sqrt(|sg|)) * |sg| in rescaled units
-        eps = min(0.5, np.sqrt(scale * nsg)) * nsg
+        # residual tolerance eta * |sg|. The textbook forcing term
+        # eta = min(0.5, sqrt(|sg|)) [NocedalWright2006] depends on the scale
+        # of the objective function and stays at 0.5 while |sg| >= 0.25,
+        # where a single CG iteration (a steepest descent step) often meets
+        # it on ill-conditioned problems. Relative to the gradient norm at
+        # the first iteration, eta is invariant to that scale, keeps early
+        # steps cheap and still decreases like sqrt(|sg|) towards the
+        # optimum.
+        eta = 0.5
+        if 0 < scale * nsg < self.sgnorm0:
+            eta = min(eta, np.sqrt(scale * nsg / self.sgnorm0))
+        eps = eta * nsg
         ss = self.conj_grad(self.shess / scale, self.sg / scale, eps)
         # represent the whole CG step as 1D subspace (with ss0 = 0), such
         # that step back, reflection and truncation act on the step that is

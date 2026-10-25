@@ -7,6 +7,7 @@ performance according to the quadratic approximation of the objective function
 """
 
 import logging
+from functools import partial
 
 import numpy as np
 from scipy.sparse import csc_matrix
@@ -37,6 +38,7 @@ def trust_region(
     subspace_dim: SubSpaceDim,
     stepback_strategy: StepBackStrategy,
     logger: logging.Logger,
+    sgnorm0: float | None = None,
 ) -> Step:
     """
     Compute a step according to the solution of the trust-region subproblem.
@@ -72,6 +74,9 @@ def trust_region(
         optimization boundary.
     :param logger:
         logging.Logger instance to be used for logging
+    :param sgnorm0:
+        Norm of the scaled gradient at the first iteration, reference for
+        the residual tolerance of the conjugate gradient subproblem solver
 
     :return:
         s: proposed step,
@@ -83,7 +88,7 @@ def trust_region(
     step_options = {
         SubSpaceDim.TWO: TRStep2D,
         SubSpaceDim.FULL: TRStepFull,
-        SubSpaceDim.STEIHAUG: TRStepSteihaug,
+        SubSpaceDim.STEIHAUG: partial(TRStepSteihaug, sgnorm0=sgnorm0),
     }
     tr_step = step_options[subspace_dim](
         x, sg, hess, scaling, g_dscaling, delta, theta, ub, lb, logger

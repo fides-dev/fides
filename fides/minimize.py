@@ -13,6 +13,7 @@ from collections.abc import Callable, Sequence
 import h5py
 import numpy as np
 from numpy.linalg import norm
+from scipy import linalg
 from scipy.sparse import csc_matrix
 
 from .constants import (
@@ -338,6 +339,8 @@ class Optimizer:
         self.x_min = self.x
         self.fval_min = self.fval
         self.grad_min = self.grad
+        # norm of the scaled gradient at the first iteration
+        self.sgnorm0: float = np.nan
 
         self.hessian_update: HessianApproximation | None = hessian_update
         self.iterations_since_tr_update: int = 0
@@ -482,6 +485,12 @@ class Optimizer:
             v, dv = self.get_affine_scaling()
 
             scaling = csc_matrix(np.diag(np.sqrt(np.abs(v))))
+            if self.iteration == 1:
+                # reference for the residual tolerance of the CG subproblem
+                # solver, scipy's norm does not overflow for huge gradients
+                self.sgnorm0 = linalg.norm(
+                    scaling.dot(self.grad), check_finite=False
+                )
             theta = max(
                 self.get_option(Options.THETA_MAX),
                 1 - norm(v * self.grad, np.inf),
@@ -502,6 +511,7 @@ class Optimizer:
                 subspace_dim=self.get_option(Options.SUBSPACE_DIM),
                 stepback_strategy=self.get_option(Options.STEPBACK_STRAT),
                 logger=self.logger,
+                sgnorm0=self.sgnorm0,
             )
 
             # sum in the order used by the step classes to compute the
