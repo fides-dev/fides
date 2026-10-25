@@ -296,10 +296,100 @@ def test_multistart_randomfail():
         options={fides.Options.FATOL: 0, fides.Options.MAXITER: 1e3},
     )
 
+    # seeded, such that both failures at x0 and completed runs occur
+    np.random.seed(0)
+    n_raised = 0
     for _ in range(int(1e2)):
         x0 = np.random.random(x0.shape) * (ub - lb) + lb
-        with pytest.raises(RuntimeError):
+        try:
             opt.minimize(x0)
+        except RuntimeError:
+            # non-finite values at x0 raise, there is no point to fall back to
+            assert opt.iteration == 0
+            assert opt.exitflag == fides.ExitFlag.NOT_FINITE
+            n_raised += 1
+            continue
+        # non-finite values at trial points reject the step
+        assert opt.exitflag != fides.ExitFlag.NOT_FINITE
+        assert np.isfinite(opt.fval)
+        assert np.isfinite(opt.grad).all()
+        assert np.isfinite(opt.hess).all()
+        assert np.isfinite(opt.fval_min)
+        assert np.isfinite(opt.grad_min).all()
+    assert 0 < n_raised < 100
+
+
+def cliff_quadratic(bad, nargout=3):
+    # quadratic with minimum at [2, 2] that returns a non-finite function
+    # value, gradient or Hessian for x[0] > 0.5, e.g., because the
+    # sensitivity solve fails in that part of parameter space
+    def fun(x):
+        f, g, h = np.sum((x - 2) ** 2), 2 * (x - 2), 2 * np.eye(2)
+        if x[0] > 0.5:
+            if bad == 'fval':
+                f = np.nan
+            elif bad == 'grad':
+                g[0] = np.nan
+            elif bad == 'hess':
+                h[0, 0] = np.nan
+        return (f, g, h)[:nargout]
+
+    return fun
+
+
+@pytest.mark.parametrize(
+    ('bad', 'hessian_update', 'nargout'),
+    [
+        ('grad', None, 3),
+        ('grad', BFGS, 2),
+        ('hess', None, 3),
+        ('hess', HybridFixed, 3),
+    ],
+)
+def test_nonfinite_trial_point_rejected(bad, hessian_update, nargout, caplog):
+    # a trial point with finite function value, but non-finite gradient or
+    # Hessian is rejected like a trial point with non-finite function value,
+    # instead of ending the run with a RuntimeError (#79)
+    def run(bad):
+        happ = None if hessian_update is None else hessian_update()
+        opt = Optimizer(
+            cliff_quadratic(bad, nargout),
+            ub=np.full(2, 5.0),
+            lb=np.full(2, -5.0),
+            hessian_update=happ,
+        )
+        caplog.clear()
+        opt.minimize(np.zeros(2))
+        return opt
+
+    with caplog.at_level(logging.WARNING):
+        ref = run('fval')
+        assert 'Rejecting the step' not in caplog.text
+        opt = run(bad)
+        name = {'grad': 'gradient', 'hess': 'Hessian'}[bad]
+        assert f'Encountered non-finite {name} entries' in caplog.text
+        assert 'Rejecting the step' in caplog.text
+
+    assert opt.exitflag == ref.exitflag
+    assert opt.iteration == ref.iteration
+    assert opt.fval == ref.fval
+    assert np.array_equal(opt.x, ref.x)
+    assert opt.x[0] <= 0.5
+    # the minimum is only tracked over points with finite derivatives
+    assert opt.fval_min == ref.fval_min
+    assert np.array_equal(opt.x_min, ref.x_min)
+    assert np.isfinite(opt.grad_min).all()
+
+
+@pytest.mark.parametrize('bad', ['fval', 'grad', 'hess'])
+def test_nonfinite_initial_point_raises(bad):
+    # there is no point to fall back to at x0
+    opt = Optimizer(
+        cliff_quadratic(bad), ub=np.full(2, 5.0), lb=np.full(2, -5.0)
+    )
+    with pytest.raises(RuntimeError, match='non-finite .* at initial point'):
+        opt.minimize(np.array([1.0, 0.0]))
+    assert opt.exitflag == fides.ExitFlag.NOT_FINITE
 
 
 @pytest.mark.parametrize(
@@ -475,6 +565,55 @@ def test_history_reused_start_id(tmp_path):
     opt.minimize(x0, start_id='run2')
     with h5py.File(h5file, 'r') as f:
         assert set(f.keys()) == {'run', 'run2'}
+
+
+@pytest.mark.parametrize('history_file', ['str', 'path', 'pathlike', 'none'])
+def test_history_file_types(tmp_path, history_file):
+    # the default (None) must be accepted when passed explicitly, e.g. by
+    # callers that forward every option, as must any path-like
+    class PathLike:
+        def __init__(self, path):
+            self.path = path
+
+        def __fspath__(self):
+            return str(self.path)
+
+    h5file = tmp_path / 'history.h5'
+    value = {
+        'str': str(h5file),
+        'path': h5file,
+        'pathlike': PathLike(h5file),
+        'none': None,
+    }[history_file]
+
+    lb, ub, x0 = finite_bounds_exlude_optimum()
+    opt = Optimizer(
+        rosenboth,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        options={'history_file': value, Options.MAXITER: 5},
+    )
+    opt.minimize(x0)
+
+    if history_file == 'none':
+        assert not h5file.exists()
+    else:
+        with h5py.File(h5file, 'r') as f:
+            assert len(f.keys()) == 1
+
+
+def test_default_options_valid():
+    # every default must pass validation when passed explicitly
+    lb, ub, _ = finite_bounds_exlude_optimum()
+    for key, value in fides.constants.DEFAULT_OPTIONS.items():
+        Optimizer(rosenboth, ub=ub, lb=lb, options={key: value})
+    Optimizer(
+        rosenboth,
+        ub=ub,
+        lb=lb,
+        options=dict(fides.constants.DEFAULT_OPTIONS),
+    )
 
 
 def test_wrong_options():
