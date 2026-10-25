@@ -562,3 +562,32 @@ def test_steihaug_non_finite_curvature(g):
         step.calculate()
     assert np.all(np.isfinite(step.ss))
     assert norm(step.ss) <= 1.0
+
+
+def test_steihaug_tolerance_invariant_to_objective_scale():
+    """
+    The residual tolerance of the CG iteration must not depend on the scale
+    of the objective function (fides-dev/fides#77). With the forcing term
+    min(0.5, sqrt(|g|)), a single CG iteration (a steepest descent step) was
+    accepted for large gradients, whereas small gradients yielded the
+    Newton step.
+    """
+    hess = np.diag([1e6, 1.0])
+    # one steepest descent step reduces the residual to ~0.1 * |g|
+    g = hess @ np.array([1.0, 1e5])
+    x = np.zeros(2)
+    lb, ub = np.full(2, -np.inf), np.full(2, np.inf)
+    steps = []
+    for scale in 2.0 ** np.array([-40, 0, 40]):
+        # gradient decreased by 1e4 since the first iteration, eta = 0.01
+        step = TRStepSteihaug(
+            *step_args(x, scale * g, scale * hess, lb, ub, delta=1e6),
+            sgnorm0=scale * 1e4 * norm(g),
+        )
+        step.calculate()
+        steps.append(step.ss)
+    # power of two scales keep the computation exact
+    for ss in steps:
+        assert np.array_equal(ss, steps[0])
+    # interior Newton step
+    assert steps[0] == pytest.approx(-np.array([1.0, 1e5]))

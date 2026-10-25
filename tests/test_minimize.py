@@ -1090,6 +1090,49 @@ def test_huge_gradient_and_hessian(subspace_dim):
     assert np.allclose(opt.x, -50)
 
 
+@pytest.mark.parametrize('fscale', [1e-4, 1.0, 1e4])
+def test_steihaug_ill_conditioned_no_premature_ftol(fscale):
+    """
+    On this ill-conditioned quadratic (condition number 6.5e7), the forcing
+    term min(0.5, sqrt(|g|)) of the Steihaug CG accepted single CG
+    iterations (steepest descent steps) and FTOL was declared up to 0.8 %
+    above the optimum, depending on the scale of the objective function
+    (fides-dev/fides#77).
+    """
+    hess = np.array(
+        [
+            [15106736.52931055, 21141502.501449488],
+            [21141502.50144949, 29587009.60209251],
+        ]
+    )
+    c = np.array([9.66093597752945, -8.568774454162156])
+    lb = np.array([-0.9885675300285988, -1.8409960075420684])
+    ub = np.array([2.8159846577097527, 1.6686554904476258])
+    # bounded least squares solution (scipy bvls)
+    fopt = 46.03711167281389
+
+    def fun(x):
+        d = x - c
+        g = hess @ d
+        return fscale * 0.5 * d @ g, fscale * g, fscale * hess
+
+    opt = Optimizer(
+        fun,
+        ub=ub,
+        lb=lb,
+        verbose=logging.WARNING,
+        options={
+            Options.SUBSPACE_DIM: SubSpaceDim.STEIHAUG,
+            # absolute tolerances would make convergence depend on fscale
+            Options.FATOL: 0,
+            Options.GATOL: 0,
+        },
+    )
+    fval, *_ = opt.minimize(lb.copy())
+    assert opt.exitflag == fides.ExitFlag.FTOL
+    assert fval / fscale == pytest.approx(fopt, rel=1e-7)
+
+
 def test_gtol_not_triggered_by_rejected_step():
     """
     A rejected step must not trigger gradient based convergence: the
